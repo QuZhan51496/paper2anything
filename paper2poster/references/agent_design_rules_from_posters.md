@@ -3,9 +3,8 @@
 These rules are distilled from the local examples in `references/poster_examples/`.
 They are intended for the Paper2Poster planner, critic, and renderer agents.
 
-Before placing content, the planner should load
-`references/poster_archetype_library.json` and choose an archetype. The examples
-show that strong posters are not one template; they use different structures for
+Before placing content, the planner should pick a structure that fits the paper.
+Strong posters are not one template; they use different structures for
 method papers, benchmark papers, theory papers, visual papers, and diagnostic
 analysis papers.
 

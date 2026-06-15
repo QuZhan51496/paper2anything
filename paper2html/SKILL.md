@@ -126,7 +126,7 @@ LLM 渲染器被要求**先为这篇论文确立设计概念**（视觉范式 + 
 | `--variant 5` | Minimal archive 极简档案 |
 | `--variant 6` | Data dashboard 数据看板 |
 
-不传 `--variant` 则使用模型为该论文挑选的稳定可复现布局。`examples/` 收录了同一篇论文（SKILL0）用 `--variant 1/2/3` 生成的三个页面，浏览器打开任一 `index.html` 即可查看其设计语言差异。
+不传 `--variant` 则使用模型为该论文挑选的稳定可复现布局。
 
 ---
 

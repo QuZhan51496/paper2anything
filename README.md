@@ -28,17 +28,15 @@ paper2anything/
 │   └── scripts/             # extract_paper / render_pptx / page_screenshot / workdir + lib/
 ├── paper2poster/            # 论文 → 海报 HTML/PNG
 │   ├── SKILL.md
-│   ├── references/          # 海报示例、模板、配色、版式指南
-│   ├── scripts/             # parse_pdf / auto_outline / score_poster_visual / paper_quiz / ...
-│   └── assets/
+│   ├── references/          # 海报示例（真实海报 PNG）、配色、版式指南
+│   └── scripts/             # parse_pdf / auto_outline / score_poster_visual / paper_quiz / ...
 ├── paper2html/              # 论文 → 单页项目主页
 │   ├── SKILL.md
 │   ├── paper2html/          # Python 包（agent/pipeline/html_generator/mineru_client/config + prompts/）
-│   └── briefs/  examples/
+│   └── briefs/
 ├── paper2xhs/               # 论文 → 小红书
 │   ├── SKILL.md
-│   ├── scripts/             # main + stage1..7 + utils
-│   └── examples/
+│   └── scripts/             # main + stage1..7 + utils
 └── paper2wechat/            # 论文 → 公众号
     ├── SKILL.md
     └── scripts/             # main + stage1..7 + utils
