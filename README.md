@@ -90,8 +90,8 @@ set -a; source .env; set +a   # 每个新 shell 一次（或写进 ~/.bashrc 一
 | paper2slides | `MINERU_API_TOKEN`（云解析；`--backend local` 时不需要） |
 | paper2poster | `MINERU_API_TOKEN`、`DASHSCOPE_API_KEY`(或 `API_KEY`) |
 | paper2html | `MINERU_API_TOKEN`、`OPENAI_API_KEY`、`LLM_BASE_URL`、`LLM_MODEL` |
-| paper2xhs | `ANTHROPIC_API_KEY`、`MINERU_API_TOKEN`（封面另需 `OPENAI_API_KEY`） |
-| paper2wechat | `ANTHROPIC_API_KEY`、`MINERU_API_TOKEN`、`WECHAT_APPID`/`WECHAT_APP_SECRET`（封面另需 `OPENAI_API_KEY`） |
+| paper2xhs | `MINERU_API_TOKEN`（封面另需 `OPENAI_API_KEY`；半自动发布另需 `XHS_SKILLS_DIR`） |
+| paper2wechat | `MINERU_API_TOKEN`（封面另需 `OPENAI_API_KEY`；排版用 `md2wechat`，已在统一环境内） |
 
 > 5 个 skill 统一用 `MINERU_API_TOKEN`。各脚本最终都从 `os.environ` 读取，故只需这一个
 > `.env` + 一次 `source`，无需各 skill 的局部配置文件；脚本启动时也会自动 `load_dotenv`
@@ -108,8 +108,8 @@ set -a; source .env; set +a   # 每个新 shell 一次（或写进 ~/.bashrc 一
 | paper2slides | `<论文名>.pptx`（直接在论文目录，重名 `-v2/-v3`）；中间产物 `.paper2anything/slides/<论文名>/` |
 | paper2poster | `.paper2anything/poster/`（`poster.html` / `poster.png` + 全部中间产物） |
 | paper2html | `.paper2anything/html/<输入名>_agent/`（`index.html` 等；`-o` 可覆盖） |
-| paper2xhs | `.paper2anything/xhs/<task_id>/`（`xhs/xhs_post.json\|md`、封面） |
-| paper2wechat | `.paper2anything/wechat/<task_id>/`（`wechat/wechat_article.md\|html`、封面） |
+| paper2xhs | `.paper2anything/xhs/`（`understanding/`、`xhs/xhs_post.json\|md`、`xhs/cover.png`） |
+| paper2wechat | `.paper2anything/wechat/`（`understanding/`、`wechat/wechat_article.md\|html`、`wechat/cover.jpg`） |
 
 > 论文目录只读时，slides 回退到 `~/.cache/paper2anything/slides/`。这些产物目录已在包根 `.gitignore` 忽略。
 

@@ -21,6 +21,8 @@ import subprocess
 import shutil
 from pathlib import Path
 
+import _env  # noqa: F401  # 独立运行时兜底加载包根 .env（MD2WECHAT_CMD / MD2WECHAT_THEME 等）
+
 from utils import (
     load_json,
     print_error,
@@ -28,6 +30,7 @@ from utils import (
     print_stage_header,
     print_success,
     print_warning,
+    resolve_workspace,
     save_stage_result,
 )
 
@@ -129,9 +132,16 @@ def _print_publish_guide(article_path: Path, html_path: Path, md_path: Path, art
     print_info("═" * 60 + "\n")
 
 
-def run(task_id: str, workspace: dict) -> dict:
-    print_stage_header(7, "md2wechat 格式化与发布准备")
+def run(workdir: str) -> dict:
+    """
+    md2wechat 排版：把 wechat/wechat_article.md 转成公众号 HTML（草稿）；
+    md2wechat 不可用时降级为“手动粘贴 Markdown”指引。
 
+    输入：wechat/wechat_article.md（+ wechat_article.json 的 title/digest）+ cover.jpg（可选）
+    """
+    print_stage_header("md2wechat 排版与发布准备")
+
+    workspace = resolve_workspace(workdir)
     md_path = workspace["wechat"] / "wechat_article.md"
     html_path = workspace["wechat"] / "wechat_article.html"
     article_json_path = workspace["wechat"] / "wechat_article.json"
@@ -200,3 +210,18 @@ def run(task_id: str, workspace: dict) -> dict:
     }
     save_stage_result(result, "stage7_publish", workspace)
     return result
+
+
+if __name__ == "__main__":
+    import argparse
+    import sys
+
+    parser = argparse.ArgumentParser(description="md2wechat 排版与发布准备（协调式机械步骤）")
+    parser.add_argument(
+        "--workdir", required=True,
+        help="工作区目录，约定 <pdf目录>/.paper2anything/wechat",
+    )
+    args = parser.parse_args()
+    res = run(args.workdir)
+    # degraded（md2wechat 不可用，已输出 md 供手动粘贴）不算失败
+    sys.exit(0 if res.get("status") in ("success", "degraded") else 1)

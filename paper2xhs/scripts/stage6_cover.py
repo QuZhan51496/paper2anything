@@ -9,15 +9,16 @@ import os
 import shutil
 from pathlib import Path
 
+import _env  # noqa: F401  # 独立运行时兜底加载包根 .env（OPENAI_API_KEY 等）
+
 from utils import (
     load_json,
-    logger,
     print_error,
     print_info,
     print_stage_header,
     print_success,
     print_warning,
-    save_json,
+    resolve_workspace,
     save_stage_result,
 )
 
@@ -145,17 +146,18 @@ def _validate_image(image_path: Path) -> bool:
         return image_path.stat().st_size > 10240
 
 
-def run(task_id: str, workspace: dict) -> dict:
+def run(workdir: str) -> dict:
     """
-    执行 Stage 6：封面生成（可选）
+    生成小红书封面（可选）：优先复用论文原图（understanding.important_figures 里
+    suitable_for_cover 最高分且 image_path 存在的），否则用 OPENAI_IMAGE_MODEL 生成；
+    无 OPENAI_API_KEY 则跳过（status=skipped）。
 
-    输入：
-      - workspace["understanding"]/paper_understanding.json
-      - workspace["xhs"]/xhs_post.json
-    输出：workspace["xhs"]/cover.png
+    输入：understanding/paper_understanding.json、xhs/xhs_post.json
+    输出：xhs/cover.png
     """
-    print_stage_header(6, "封面生成（可选）")
+    print_stage_header("生成封面")
 
+    workspace = resolve_workspace(workdir)
     understanding_path = workspace["understanding"] / "paper_understanding.json"
     post_path = workspace["xhs"] / "xhs_post.json"
     cover_path = workspace["xhs"] / "cover.png"
@@ -230,3 +232,18 @@ def run(task_id: str, workspace: dict) -> dict:
     }
     save_stage_result(result, "stage6_cover", workspace)
     return result
+
+
+if __name__ == "__main__":
+    import argparse
+    import sys
+
+    parser = argparse.ArgumentParser(description="生成小红书封面（协调式机械步骤）")
+    parser.add_argument(
+        "--workdir", required=True,
+        help="工作区目录，约定 <pdf目录>/.paper2anything/xhs",
+    )
+    args = parser.parse_args()
+    res = run(args.workdir)
+    # skipped（无 key / 无合适图）不算失败
+    sys.exit(0 if res.get("status") in ("success", "skipped") else 1)

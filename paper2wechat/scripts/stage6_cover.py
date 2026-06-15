@@ -11,6 +11,8 @@ import os
 import shutil
 from pathlib import Path
 
+import _env  # noqa: F401  # 独立运行时兜底加载包根 .env（OPENAI_API_KEY 等）
+
 from utils import (
     load_json,
     logger,
@@ -19,6 +21,7 @@ from utils import (
     print_stage_header,
     print_success,
     print_warning,
+    resolve_workspace,
     save_stage_result,
 )
 
@@ -142,44 +145,33 @@ def _validate_image(image_path: Path) -> bool:
         return image_path.stat().st_size > 5120
 
 
-def run(task_id: str, workspace: dict) -> dict:
-    print_stage_header(6, "封面生成（微信横版 900×383）")
+def run(workdir: str) -> dict:
+    """
+    生成微信公众号封面（横版 900×383 JPG）：优先复用 understanding.important_figures 里
+    suitable_for_cover 最高分的论文原图，否则用 OPENAI_IMAGE_MODEL 生成横版图再裁剪；
+    无 OPENAI_API_KEY 则跳过（status=skipped）。
 
+    输入：understanding/paper_understanding.json
+    输出：wechat/cover.jpg
+    """
+    print_stage_header("生成封面（微信横版 900×383）")
+
+    workspace = resolve_workspace(workdir)
     understanding_path = workspace["understanding"] / "paper_understanding.json"
-    outline_path = workspace["assets"] / "article_outline.json"
     cover_path = workspace["wechat"] / "cover.jpg"
     figures_dir = workspace["figures"]
 
-    for p in [understanding_path]:
-        if not p.exists():
-            print_error(f"输入文件不存在: {p}")
-            return {"status": "failed", "error": f"{p.name} 不存在"}
+    if not understanding_path.exists():
+        print_error(f"输入文件不存在: {understanding_path}")
+        return {"status": "failed", "error": f"{understanding_path.name} 不存在"}
 
     understanding = load_json(understanding_path)
     paper_title = understanding.get("paper_title", "")
     method_name = understanding.get("method_name", "")
     keywords = understanding.get("keywords", [])
 
-    # 从 outline 获取封面图建议
-    cover_figure_id = None
-    if outline_path.exists():
-        try:
-            outline = load_json(outline_path)
-            cover_figure_id = outline.get("cover_figure_id")
-        except Exception:
-            pass
-
-    # ── 优先使用论文原图 ──
+    # 优先使用论文原图（important_figures 里 suitable_for_cover 最高分）
     main_figure_path, _ = _select_cover_figure(understanding, figures_dir)
-
-    # 如果 outline 指定了封面图，优先使用
-    if cover_figure_id:
-        for fig in understanding.get("important_figures", []):
-            if fig.get("figure_id") == cover_figure_id:
-                candidate = Path(fig.get("image_path", ""))
-                if candidate.exists():
-                    main_figure_path = candidate
-                    break
 
     if main_figure_path:
         print_info(f"使用论文原图作为封面: {main_figure_path.name}（resize 到 {WECHAT_COVER_W}×{WECHAT_COVER_H}）")
@@ -216,3 +208,17 @@ def run(task_id: str, workspace: dict) -> dict:
     }
     save_stage_result(result, "stage6_cover", workspace)
     return result
+
+
+if __name__ == "__main__":
+    import argparse
+    import sys
+
+    parser = argparse.ArgumentParser(description="生成微信公众号封面（协调式机械步骤）")
+    parser.add_argument(
+        "--workdir", required=True,
+        help="工作区目录，约定 <pdf目录>/.paper2anything/wechat",
+    )
+    args = parser.parse_args()
+    res = run(args.workdir)
+    sys.exit(0 if res.get("status") in ("success", "skipped") else 1)

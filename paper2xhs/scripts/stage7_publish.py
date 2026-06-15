@@ -17,6 +17,8 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+import _env  # noqa: F401  # 独立运行时兜底加载包根 .env（XHS_SKILLS_DIR 等）
+
 from utils import (
     load_json,
     print_error,
@@ -24,6 +26,7 @@ from utils import (
     print_stage_header,
     print_success,
     print_warning,
+    resolve_workspace,
     save_stage_result,
 )
 
@@ -55,20 +58,19 @@ def _run_cli(skills_dir: Path, args: list[str]) -> bool:
     return result.returncode == 0
 
 
-def run(task_id: str, workspace: dict) -> dict:
+def run(workdir: str) -> dict:
     """
-    执行 Stage 7：半自动发布
+    半自动发布到小红书（依赖外部 xiaohongshu-skills CLI + Chrome 扩展）。
 
-    输入：
-      - workspace["xhs"]/xhs_post.json
-      - workspace["xhs"]/cover.png（可选）
+    输入：xhs/xhs_post.json（title/body/hashtags）+ xhs/cover.png（可选）
     """
-    print_stage_header(7, "半自动发布（xiaohongshu-skills）")
+    print_stage_header("半自动发布到小红书")
 
     skills_dir = _get_skills_dir()
     if not skills_dir:
         return {"status": "failed", "error": "XHS_SKILLS_DIR 未配置或路径无效"}
 
+    workspace = resolve_workspace(workdir)
     post_path = workspace["xhs"] / "xhs_post.json"
     if not post_path.exists():
         print_error(f"帖子文件不存在: {post_path}")
@@ -77,7 +79,7 @@ def run(task_id: str, workspace: dict) -> dict:
     post = load_json(post_path)
     title = post.get("title", "")[:20]
     body = post.get("body", "")
-    tags = post.get("tags", [])
+    tags = post.get("hashtags") or post.get("tags") or []  # Claude 写的产物用 hashtags
 
     # 收集图片（目前只有封面，多图扩展在此处添加）
     images: list[str] = []
@@ -150,3 +152,18 @@ def run(task_id: str, workspace: dict) -> dict:
     result = {"status": "success", "title": title, "images_count": len(images)}
     save_stage_result(result, "stage7_publish", workspace)
     return result
+
+
+if __name__ == "__main__":
+    import argparse
+    import sys
+
+    parser = argparse.ArgumentParser(description="半自动发布到小红书（协调式机械步骤）")
+    parser.add_argument(
+        "--workdir", required=True,
+        help="工作区目录，约定 <pdf目录>/.paper2anything/xhs",
+    )
+    args = parser.parse_args()
+    res = run(args.workdir)
+    # cancelled（用户取消）不算失败
+    sys.exit(0 if res.get("status") in ("success", "cancelled") else 1)

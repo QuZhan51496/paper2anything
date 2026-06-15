@@ -1,286 +1,182 @@
 ---
 name: paper2wechat
-description: 将学术论文 PDF 转换为微信公众号推文草稿的完整流水线工具。当用户提到"论文转公众号"、"paper2wechat"、"把论文发到公众号"、"论文转微信推文"、"PDF 转公众号"、"帮我把这篇论文写成公众号文章"时触发。包含 7 个阶段：PDF 上传验证、MinerU 解析、论文深度理解（学术专业版）、公众号大纲结构化、长文生成、封面生成（可选）、md2wechat 格式化发布。
-allowed-tools: Bash, Read, Write, Glob, Grep
+description: 把学术论文 PDF 转成微信公众号深度解读推文（长文 + 配图 + 封面）。Claude 主导设计的协调式：机械活（MinerU 解析 PDF、生成封面、md2wechat 排版）交给 scripts/ 下的小工具，论文理解、文章结构、长文撰写由 Claude 亲自完成并在关键点与用户确认。当用户说“论文转公众号”、“paper2wechat”、“把论文写成公众号文章”、“论文转微信推文”、“PDF 转公众号”时触发。
+allowed-tools: Bash, Read, Write, Glob, Grep, AskUserQuestion
 ---
 
-# paper2wechat — 论文转微信公众号流水线
+# paper2wechat — 论文转公众号深度解读（Claude 主导的协调式）
 
-## 工具简介
+把一篇论文 PDF 写成**学术深度解读型**公众号长文。**Claude（你）是主笔**：这份文件是配方，
+不是全自动脚本——没有 `main.py`。机械步骤（解析 / 封面 / 排版）调用 `scripts/` 下的小工具；
+**论文理解、文章结构、长文撰写由你亲自完成**，并在关键点用 `AskUserQuestion` 与用户确认。
 
-paper2wechat 是一个将学术论文 PDF 转换为**学术深度解读型**微信公众号推文的 7 阶段流水线工具。
+目标读者：有 AI/ML 背景的研究者、工程师、学生——读得懂方法细节、关心贡献与局限。
 
-目标读者定位：有一定 AI/ML 背景的研究者、工程师、在读学生——读得懂公式描述、关心方法细节、希望快速理解一篇新论文的贡献与局限。
+```text
+PDF
+ → 解析            (stage2_parse.py：MinerU → parsed/ + figures/，含表格)
+ → 你读懂论文       (读 parsed/ + 看 figures/) → understanding/paper_understanding.json   [确认切入角度]
+ → 你写深度解读长文  (结构自由、配图、忠实准确) → wechat/wechat_article.md + .json          [确认]
+ → 封面            (stage6_cover.py：横版 900×383，优先复用论文原图)
+ → md2wechat 排版   (stage7_publish.py：→ 公众号 HTML / 草稿)
+ → 公众号推文
+```
 
-## 你的职责
+## How Claude runs this skill
 
-当用户触发此 skill 时，你需要：
-1. 引导用户完成环境准备（重点：md2wechat 安装）
-2. 确认 PDF 文件路径
-3. 执行流水线命令
-4. 在每个关键阶段展示预览并等待用户确认
-5. 处理错误和异常情况
+1. **一步步来**：机械步骤用 `Bash` 调脚本，创作步骤你自己用 `Read` / `Write` 做。
+2. **每个 Bash 块开头就地算 `WORKDIR`**（各 Bash 调用是独立 shell、不共享变量）：
+   ```bash
+   WORKDIR="$(dirname "$pdf_path")/.paper2anything/wechat"
+   ```
+   `$pdf_path` 是用户给的论文 PDF（每块重设一次）。脚本在 `${CLAUDE_SKILL_DIR}/scripts`。
+3. **两个决策点用 `AskUserQuestion` 暂停**：① 读懂论文后确认“切入角度/深度/篇幅”；② 长文成稿后确认。
+4. **深度解读 = 读懂后用自己的话讲清楚**：可以加直觉解释、类比、背景、应用与局限，让有背景的读者快速吃透这篇论文——但**忠实于论文、不夸大、不编造数据**。
 
 ---
 
-## 第一步：定位脚本目录
+## Step 0：环境与凭据
 
-所有 stage 脚本位于 `scripts/`（在 paper2wechat skill 目录下），**必须 `cd` 到该目录运行**（把下面路径替换成你的实际部署路径）：
+> **统一环境**：所有 `python` 命令都在 paper2anything 的统一 conda 环境（顶层 `environment.yml`），以 `conda run -n paper2anything --no-capture-output` 为前缀。md2wechat 已含在该环境中。
 
-```bash
-cd <paper2anything 包根>/paper2wechat/scripts
-ls main.py 2>/dev/null && echo "脚本目录正确" || echo "未找到 main.py"
-```
+凭据集中在包根 `.env`（从 `.env.example` 复制，已 gitignore），每个新 shell 先导出一次：
 
----
-
-## 第二步：环境检查
-
-> **统一环境**：本 skill 所有 `python` 命令都运行在 paper2anything 包的统一 conda 环境里（由顶层 `environment.yml` 创建），命令均以 `conda run -n paper2anything --no-capture-output` 为前缀；下面的 `pip install` 仅在统一环境缺依赖时兜底。md2wechat 也已包含在统一环境中。
-
-**检查 Python 依赖：**
-```bash
-conda run -n paper2anything --no-capture-output python -c "import anthropic, click, rich, dotenv" 2>&1
-```
-
-如果缺少依赖（依赖统一在顶层 `environment.yml`，各 skill 不再保留 requirements.txt）：
-```bash
-pip install anthropic click rich python-dotenv openai Pillow md2wechat
-```
-
-**检查 md2wechat（Stage 7 核心依赖）：**
-
-md2wechat 用于将生成的 Markdown 转换为微信公众号兼容的 HTML 格式并辅助发布。
-
-```bash
-md2wechat --version 2>&1 || echo "未安装"
-```
-
-如果未安装，按以下步骤安装：
-```bash
-# 方式一：pip 安装
-pip install md2wechat
-
-# 方式二：从源码安装（推荐，功能更完整）
-git clone https://github.com/geekjourneyx/md2wechat-skill.git ~/tools/md2wechat-skill
-cd ~/tools/md2wechat-skill
-pip install -e .
-```
-
-安装后验证：
-```bash
-md2wechat --help
-```
-
-在 `.env` 中配置 md2wechat 路径（如果不在 PATH 中）：
-```
-MD2WECHAT_CMD=/path/to/md2wechat
-```
-
-**统一凭据**：所有 key 集中在 paper2anything 包根的 `.env`（从 `.env.example` 复制填写，应 gitignore）。运行前在当前 shell 导出一次：
 ```bash
 set -a; source <paper2anything 包根>/.env; set +a
 ```
 
-本 skill 用到：
-- `ANTHROPIC_API_KEY` + `ANTHROPIC_BASE_URL`（必填）
-- `OPENAI_API_KEY`（仅封面 AI 生成时需要，可用 `--skip-cover` 跳过）
-- `MINERU_API_TOKEN`（Stage 2 PDF 解析，必填）
-- `WECHAT_APPID` / `WECHAT_APP_SECRET`、`MD2WECHAT_THEME` / `MD2WECHAT_CMD`（Stage 7）
+本 skill 用到的 key（**理解与撰文由你 Claude 亲自做，不调用 Anthropic API，故无需 `ANTHROPIC_API_KEY`**）：
+- `MINERU_API_TOKEN` — 解析 PDF（必填）
+- `OPENAI_API_KEY`(+ `OPENAI_BASE_URL`) — 仅封面 AI 生成；无则自动跳过封面
+- `MD2WECHAT_CMD` / `MD2WECHAT_THEME` — md2wechat 排版（不在 PATH 时填 CMD；主题默认 `default`）
 
-> main.py 的 `load_dotenv()` 也会自动向上找到包根 `.env`。
+依赖自检（缺啥按提示装；依赖统一在 `environment.yml`）：
 
-**检查 MinerU API token：**
 ```bash
-grep -q '^MINERU_API_TOKEN=..' <paper2anything 包根>/.env && echo "已配置" || echo "缺 token，请在 https://mineru.net 申请后填入 .env"
+conda run -n paper2anything --no-capture-output python -c "import requests, rich, dotenv" 2>&1
+md2wechat --help >/dev/null 2>&1 && echo "md2wechat 就绪" || echo "md2wechat 未就绪（可后置；缺它 Step 5 会降级为输出 Markdown 供手动粘贴）"
 ```
 
 ---
 
-## 第三步：确认 PDF 路径
+## Step 1：解析 PDF（脚本）
 
 ```bash
-test -f "<用户提供的路径>" && echo "文件存在" || echo "文件不存在"
+pdf_path="/path/to/paper.pdf"          # ← 用户的论文 PDF
+WORKDIR="$(dirname "$pdf_path")/.paper2anything/wechat"
+conda run -n paper2anything --no-capture-output \
+  python "${CLAUDE_SKILL_DIR}/scripts/stage2_parse.py" "$pdf_path" --workdir "$WORKDIR"
 ```
+
+产出（`$WORKDIR` 下）：`parsed/paper_meta.json`、`parsed/sections.json`、`parsed/figures_index.json`、`parsed/tables_index.json`（`[{table_id, caption, html, image_path, page}]`）、`parsed/references.json`，以及 `figures/*`（含表格图）。
+
+解析完，`Read` `parsed/sections.json` 与 `parsed/paper_meta.json` 通读全文。
 
 ---
 
-## 第四步：执行流水线
+## Step 2：读懂论文 → 写 understanding（你来做）[确认]
 
-**标准运行（含人工确认，推荐）：**
-```bash
-conda run -n paper2anything --no-capture-output python main.py <pdf路径>
-```
+深度解读的地基，**你自己做判断**：
 
-**跳过封面生成：**
-```bash
-conda run -n paper2anything --no-capture-output python main.py <pdf路径> --skip-cover
-```
-
-**跳过 md2wechat 格式化（仅生成 Markdown）：**
-```bash
-conda run -n paper2anything --no-capture-output python main.py <pdf路径> --skip-publish
-```
-
-**全自动运行：**
-```bash
-conda run -n paper2anything --no-capture-output python main.py <pdf路径> --no-confirm
-```
-
-**从指定阶段继续：**
-```bash
-conda run -n paper2anything --no-capture-output python main.py <pdf路径> --resume <task_id> --from-stage <阶段编号>
-```
-
----
-
-## 流水线阶段说明
-
-| 阶段 | 名称 | 关键输出 |
-|------|------|----------|
-| 1 | PDF 上传验证 | `raw/paper.pdf` |
-| 2 | MinerU 解析 | `parsed/paper_meta.json` 等 |
-| 3 | 论文深度理解（技术细节 + 相关工作对比） | `understanding/paper_understanding.json` |
-| 4 | 公众号大纲结构化 | `assets/article_outline.json` |
-| 5 | 公众号长文生成（2000-3500 字） | `wechat/wechat_article.md` |
-| 6 | 封面生成（横版 900×383，可选） | `wechat/cover.jpg` |
-| 7 | md2wechat 格式化 | `wechat/wechat_article.html` |
+1. `Read` `parsed/sections.json`（全文）+ `paper_meta.json`；`Read` `figures_index.json` / `tables_index.json` 的图注表注，并**实际 `Read` 关键图**（`figures/` 下）判断哪些值得内嵌、哪张适合做横版封面。
+2. 用 `Write` 落 `understanding/paper_understanding.json`：
+   ```json
+   {
+     "paper_title": "...", "method_name": "方法简称",
+     "one_sentence_summary": "一句话讲清贡献",
+     "problem": "背景与要解决的问题", "method": "核心方法（技术要点，用文字不用公式）",
+     "method_intuition": "直觉性解释/类比，帮读者吃透",
+     "contributions": ["贡献1", "贡献2"],
+     "comparison": "与主要 baseline 的关键差异",
+     "experiment_results": ["关键数据（含具体数字）", "..."],
+     "limitations": "论文承认的局限或潜在不足",
+     "keywords": ["关键词", "..."],
+     "important_figures": [
+       {"figure_id": "fig_1", "image_path": "<figures_index.json 里的真实路径>",
+        "suitable_for_cover": true, "importance_score": 0.9,
+        "wechat_caption": "图1：……（≤50字中文图注）", "description": "图说明"}
+     ]
+   }
+   ```
+   - `important_figures` 必须含 `image_path`（取自 `figures_index.json`，真实存在）、`suitable_for_cover`、`importance_score`——**封面脚本（Step 4）靠它选横版原图**；漏了就只能 AI 生成。
+3. 用 `AskUserQuestion` 与用户确认**切入角度 / 深度 / 目标篇幅**（如：偏方法细节还是偏直觉科普、约 1500 还是 2500 字）。
 
 ---
 
-## Stage 3 阶段说明（重点）
+## Step 3：写深度解读长文（你来做）[确认]
 
-Stage 3 使用 Claude Sonnet 进行**深度学术理解**，提取以下内容：
+按公众号深度解读风格**亲自撰写**，用 `Write` 落 `wechat/wechat_article.md` 和 `wechat/wechat_article.json`。
 
-1. **技术细节提取**：详细描述方法的关键技术步骤、核心算法思路（用文字而非公式）
-2. **相关工作对比**：明确列出与哪些 baseline 相比、具体差异在哪里
-3. **图表角色分析**：每张图分析其在文章中的角色（architecture/result_table/comparison/ablation/other），标注是否适合在公众号文章中内嵌展示
+**公众号深度解读规则（领域知识）：**
+- **篇幅**约 1500–2500 字（按论文复杂度和 Step 2 的约定增减）。
+- **结构自由、随论文走**——不强求固定四节。一个好用的骨架：
+  1. 导语：这篇为什么值得读（1 段，抛出问题或亮点钩子）
+  2. 背景与问题：现有方法的不足
+  3. 核心方法：讲清思路，**配框架图**，可用类比/直觉解释
+  4. 关键实验与结果：摆具体数字，**配结果图/表**
+  5. 意义、应用与局限：能用在哪、有什么不足
+  6. 结尾：一句话总结 + 延伸思考
+- 用 H2（`## 小节标题`）分节；关键技术术语首次出现给中英文、可 `**加粗**`。
+- **配图**：在合适位置插 `![图注](../figures/<图片名>.png)`（路径相对 `wechat/` 目录，故用 `../figures/...`；图片名取自 `figures_index.json` 的 `image_path` 文件名）。
+- **忠实准确**：实验数字照实引用，不夸大、不编造；可有解读和洞察，但区分“论文说的”与“你的点评”。
 
-Stage 3 输出的 `paper_understanding.json` 新增字段：
+产物 —— `wechat/wechat_article.md`：第一行 `# {标题}`，然后正文（含配图）。
+`wechat/wechat_article.json`（供排版脚本读 title/digest/word_count）：
 ```json
-{
-  "technical_details": "方法的详细技术描述（3-5句，保留关键技术词汇）",
-  "related_work_comparison": "与主要 baseline 的核心差异（2-3条对比）",
-  "method_intuition": "方法的直觉性解释（类比或比喻，帮助读者理解）",
-  "limitations": "论文承认的局限性或潜在不足"
-}
+{"title": "最终标题", "digest": "公众号摘要，≤120字", "word_count": 2200}
 ```
+
+写完用 `AskUserQuestion` 给用户看标题 + 摘要 + 小节结构，确认或按反馈修改（可直接改 .md/.json）。
 
 ---
 
-## Stage 4 阶段说明（重点）
-
-Stage 4 生成**公众号文章大纲**（而不是 XHS 的碎片化素材），输出 `article_outline.json`：
-
-```json
-{
-  "title_candidates": ["标题1（含核心贡献词）", "标题2（问题切入）", "标题3（对比切入）"],
-  "digest": "文章摘要，用于公众号列表页，概括核心贡献（100-120字）",
-  "article_outline": [
-    {
-      "section_id": 1,
-      "section_title": "研究背景与动机",
-      "key_points": ["要点1", "要点2"],
-      "writing_hints": "这一节重点说清楚问题是什么、为什么现有方法不够好",
-      "suggested_figures": []
-    },
-    {
-      "section_id": 2,
-      "section_title": "方法介绍：XXX",
-      "key_points": ["核心思路", "关键组件"],
-      "writing_hints": "围绕架构图展开，用类比帮助读者理解",
-      "suggested_figures": ["fig1"]
-    }
-  ],
-  "cover_figure_id": "fig1",
-  "inline_figures": [
-    {
-      "figure_id": "fig1",
-      "insert_after_section": 2,
-      "wechat_caption": "图1：XXX 方法整体框架",
-      "role": "architecture"
-    }
-  ]
-}
-```
-
----
-
-## Stage 5 阶段说明（重点）
-
-Stage 5 基于 Stage 4 大纲生成完整的**学术深度解读型**公众号文章：
-
-文章风格要求：
-- 长度：2000-3500 字（正文）
-- 结构：有 H2 级标题分节，逻辑清晰
-- 语气：专业但不晦涩——保留关键技术术语，用文字描述核心公式
-- 数字：关键实验数字必须保留（如"在 XX 数据集上提升了 3.2 个点"）
-- 图表：在正文中用 `![图注](figure_path)` 引用关键图
-- 结尾：包含"延伸阅读/思考"或对工作局限性的讨论
-
-输出 `wechat_article.json`：
-```json
-{
-  "title": "最终使用的标题",
-  "digest": "100-120字摘要",
-  "body_markdown": "完整正文（Markdown 格式）",
-  "cover_figure_path": "figures/fig1.jpg",
-  "word_count": 2500
-}
-```
-
----
-
-## Stage 7 阶段说明
-
-Stage 7 调用 md2wechat 将 Markdown 转换为微信公众号兼容 HTML，并准备草稿发布：
+## Step 4：生成封面（脚本，可选）
 
 ```bash
-# md2wechat 将 Markdown → 微信格式 HTML
-md2wechat --input wechat_article.md --output wechat_article.html --theme academic
-
-# 生成的 HTML 可以：
-# 1. 直接复制到微信公众号编辑器
-# 2. 或通过微信 MP API 上传草稿
+pdf_path="/path/to/paper.pdf"
+WORKDIR="$(dirname "$pdf_path")/.paper2anything/wechat"
+conda run -n paper2anything --no-capture-output \
+  python "${CLAUDE_SKILL_DIR}/scripts/stage6_cover.py" --workdir "$WORKDIR"
 ```
 
-Stage 7 完成后，会在终端输出：
-- HTML 文件路径（可复制到公众号编辑器）
-- 文章标题、摘要、字数统计
+横版 900×383 JPG：优先把 `understanding.important_figures` 里 `suitable_for_cover` 最高分的论文原图裁成封面；否则（配了 `OPENAI_API_KEY` 时）AI 生成横版图再裁剪；都没有则 `skipped`。产出 `wechat/cover.jpg`。
 
 ---
 
-## 查看生成结果
+## Step 5：md2wechat 排版与发布准备（脚本）
 
 ```bash
-cat <论文目录>/.paper2anything/wechat/<task_id>/wechat/wechat_article.json
-cat <论文目录>/.paper2anything/wechat/<task_id>/wechat/wechat_article.md
+pdf_path="/path/to/paper.pdf"
+WORKDIR="$(dirname "$pdf_path")/.paper2anything/wechat"
+conda run -n paper2anything --no-capture-output \
+  python "${CLAUDE_SKILL_DIR}/scripts/stage7_publish.py" --workdir "$WORKDIR"
 ```
+
+读 `wechat/wechat_article.md`（+ `.json` 的 title/digest）+ `cover.jpg`，调 md2wechat 转成公众号 HTML 草稿；**md2wechat 不可用时自动降级**为“把 Markdown 手动粘贴到公众号编辑器”的指引（不报错）。脚本会打印发布步骤（mp.weixin.qq.com → 新建图文 → 粘贴 → 传封面 → 发布）。
 
 ---
 
-## 恢复中断的任务
+## 产物位置
 
-```bash
-ls <论文目录>/.paper2anything/wechat/
-conda run -n paper2anything --no-capture-output python main.py <pdf路径> --resume <task_id> --from-stage <阶段编号>
-```
+全部落在论文旁 `<pdf目录>/.paper2anything/wechat/`：
+
+| 子目录 | 内容 | 谁写 |
+|---|---|---|
+| `parsed/` | MinerU PIR（meta/sections/figures_index/tables_index/references） | stage2_parse |
+| `figures/` | 论文插图 + 表格图实体 | stage2_parse |
+| `understanding/paper_understanding.json` | 论文理解 + important_figures | **你（Claude）** |
+| `wechat/wechat_article.md` `.json` | 深度解读长文 + 元数据 | **你（Claude）** |
+| `wechat/cover.jpg` | 横版封面 | stage6_cover |
+| `wechat/wechat_article.html` | md2wechat 排版结果 | stage7_publish |
+| `logs/` | 各脚本 `*_result.json` | 脚本 |
+
+重跑覆盖同一目录（无 task_id）。要留旧版本就先把 `wechat/` 改名备份。
 
 ---
 
-## 常见问题处理
+## 排错
 
-**MinerU 解析失败：**
-- 检查 `MINERU_API_TOKEN` 是否有效
-- 重试：`conda run -n paper2anything --no-capture-output python main.py <pdf路径> --resume <task_id> --from-stage 2`
-
-**Stage 5 生成文章质量不满意：**
-- 可以直接编辑 `<论文目录>/.paper2anything/wechat/<task_id>/wechat/wechat_article.md` 后继续
-- 或重新从 Stage 5 开始：`conda run -n paper2anything --no-capture-output python main.py <pdf路径> --resume <task_id> --from-stage 5`
-
-**md2wechat 命令找不到：**
-- 检查 `.env` 中 `MD2WECHAT_CMD` 是否正确配置
-- 或者确认 `md2wechat` 已加入 PATH
-
-**封面生成失败（非致命）：**
-- 使用 `--skip-cover` 跳过，封面可手动选择论文图
+- **MinerU 解析失败**：核对 `MINERU_API_TOKEN`；PDF ≤200MB / ≤200 页；能访问 `mineru.net`。重跑 Step 1（覆盖）。
+- **封面没生成**：没配 `OPENAI_API_KEY` 会自动跳过（正常）；想复用原图，确保 `understanding.important_figures` 有 `suitable_for_cover:true` 且 `image_path` 存在的**横版**图。
+- **md2wechat 不可用**：Step 5 自动降级为输出 Markdown 供手动粘贴；要排版就装 md2wechat 或在 `.env` 配 `MD2WECHAT_CMD`。
+- **理解/撰文不需要 API key**：这两步是你（Claude）亲自做的，不调用 Anthropic API。

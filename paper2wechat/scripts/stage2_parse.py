@@ -19,20 +19,23 @@ from pathlib import Path
 
 import requests
 
+import _env  # noqa: F401  # 独立运行时兜底加载包根 .env（MINERU_API_TOKEN 等）
+
 from utils import (
-    load_json,
     logger,
     print_error,
     print_info,
     print_stage_header,
     print_success,
     print_warning,
+    resolve_workspace,
     save_json,
     save_stage_result,
 )
 
 
-MINERU_API_BASE = os.environ.get("MINERU_API_BASE", "https://mineru.net/api/v4")
+# host-root 形式，URL 处自拼 /api/v4（与 slides/poster/html 统一；勿写成 .../api/v4）
+MINERU_API_BASE = os.environ.get("MINERU_API_BASE", "https://mineru.net")
 MINERU_POLL_INTERVAL = 5
 MINERU_POLL_TIMEOUT = 600  # 10 分钟
 
@@ -49,7 +52,7 @@ def _mineru_headers() -> dict:
 
 def _request_upload_url(pdf_name: str, model_version: str = "vlm") -> tuple[str, str]:
     """请求一个 PUT 上传 URL，返回 (batch_id, upload_url)"""
-    url = f"{MINERU_API_BASE}/file-urls/batch"
+    url = f"{MINERU_API_BASE}/api/v4/file-urls/batch"
     payload = {
         "files": [{"name": pdf_name}],
         "model_version": model_version,
@@ -76,7 +79,7 @@ def _upload_pdf(upload_url: str, pdf_path: Path) -> None:
 
 def _poll_batch(batch_id: str) -> dict:
     """轮询批次状态直到 done/failed/超时；返回该文件的结果对象"""
-    url = f"{MINERU_API_BASE}/extract-results/batch/{batch_id}"
+    url = f"{MINERU_API_BASE}/api/v4/extract-results/batch/{batch_id}"
     headers = {"Authorization": _mineru_headers()["Authorization"]}
     deadline = time.time() + MINERU_POLL_TIMEOUT
     last_state = None
@@ -325,23 +328,35 @@ def _validate(meta: dict, sections: list) -> dict:
     return checks
 
 
-def run(task_id: str, workspace: dict, base_dir: str = "workspace") -> dict:
+def run(pdf_path: str, workdir: str) -> dict:
     """
-    执行 Stage 2：MinerU 解析
+    MinerU 云端解析 PDF → parsed/ 下的 PIR（paper_meta / sections / figures_index /
+    tables_index / references）+ figures/
 
-    输入：workspace["raw"]/paper.pdf
-    输出：workspace["parsed"]/ 下的 PIR 文件
+    输入：PDF 路径 + 工作区目录（<pdf目录>/.paper2anything/wechat）
+    输出：parsed/*.json、figures/*
     """
-    print_stage_header(2, "MinerU 解析")
+    print_stage_header("MinerU 解析 PDF")
 
-    pdf_path = workspace["raw"] / "paper.pdf"
-    parsed_dir = workspace["parsed"]
-    figures_dir = workspace["figures"]
-    pages_dir = workspace["pages"]
-
+    pdf_path = Path(pdf_path).expanduser().resolve()
     if not pdf_path.exists():
         print_error(f"PDF 不存在: {pdf_path}")
         return {"status": "failed", "error": "PDF 文件不存在"}
+    if pdf_path.suffix.lower() != ".pdf":
+        print_error(f"不是 PDF 文件: {pdf_path.suffix}")
+        return {"status": "failed", "error": "不是 PDF 文件"}
+    try:
+        with open(pdf_path, "rb") as f:
+            if f.read(5) != b"%PDF-":
+                print_error("无效的 PDF 文件头")
+                return {"status": "failed", "error": "无效的 PDF 文件头"}
+    except OSError as e:
+        print_error(f"PDF 无法读取: {e}")
+        return {"status": "failed", "error": str(e)}
+
+    workspace = resolve_workspace(workdir)
+    parsed_dir = workspace["parsed"]
+    figures_dir = workspace["figures"]
 
     # ── 调用 MinerU ──
     mineru_tmp = workspace["root"] / "_mineru_tmp"
@@ -382,10 +397,9 @@ def run(task_id: str, workspace: dict, base_dir: str = "workspace") -> dict:
                 print_error("MinerU 输出中未找到可解析文件")
                 return {"status": "failed", "error": "MinerU 输出无法解析"}
 
-        # 复制图片和页面（包含表格图片）
+        # 复制图片/表格图到工作区 figures/
         figures = _copy_figures(mineru_out, figures_dir, figures)
         tables = _copy_figures(mineru_out, figures_dir, tables, id_field="table_id")
-        _copy_pages(mineru_out, pages_dir)
     else:
         print_error("MinerU 未生成输出目录")
         return {"status": "failed", "error": "MinerU 未生成输出"}
@@ -429,3 +443,20 @@ def run(task_id: str, workspace: dict, base_dir: str = "workspace") -> dict:
     }
     save_stage_result(result, "stage2_parse", workspace)
     return result
+
+
+if __name__ == "__main__":
+    import argparse
+    import sys
+
+    parser = argparse.ArgumentParser(
+        description="MinerU 云端解析 PDF → parsed/ PIR + figures/（协调式机械步骤）"
+    )
+    parser.add_argument("pdf_path", help="论文 PDF 路径")
+    parser.add_argument(
+        "--workdir", required=True,
+        help="工作区目录，约定 <pdf目录>/.paper2anything/wechat",
+    )
+    args = parser.parse_args()
+    res = run(args.pdf_path, args.workdir)
+    sys.exit(0 if res.get("status") == "success" else 1)

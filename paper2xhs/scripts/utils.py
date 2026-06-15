@@ -1,14 +1,13 @@
 """
 paper2xhs 工具函数模块
-提供日志、文件操作、任务 ID 生成等基础功能
+
+协调式（Claude 主导）下的基础设施：日志、工作区解析、JSON 读写、Rich 输出。
+工作区不再用 task_id 子目录——固定落在论文旁 `<pdf目录>/.paper2anything/xhs/`，
+与 poster 的 RUN_DIR、slides 的 .paper2anything/slides/ 方案一致。
 """
 
 import json
 import logging
-import os
-import random
-import string
-from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -34,26 +33,20 @@ def setup_logging(log_level: str = "INFO") -> logging.Logger:
 logger = setup_logging()
 
 
-def generate_task_id() -> str:
-    """生成唯一任务 ID，格式：YYYYMMDD_HHMMSS_随机6位"""
-    now = datetime.now().strftime("%Y%m%d_%H%M%S")
-    suffix = "".join(random.choices(string.ascii_lowercase + string.digits, k=6))
-    return f"{now}_{suffix}"
+def resolve_workspace(workdir: str | Path) -> dict[str, Path]:
+    """解析协调式工作区（root = 论文旁 .paper2anything/xhs/），按需创建子目录。
 
-
-def create_workspace(task_id: str, base_dir: str = "workspace") -> dict[str, Path]:
-    """创建任务工作区目录结构，返回各子目录路径"""
-    base = Path(base_dir) / task_id
+    供机械脚本（parse/cover/publish）共用：每个脚本拿到同一个 --workdir 即对齐到
+    同一组产物目录，无需 task_id。
+    """
+    base = Path(workdir).expanduser().resolve()
     dirs = {
         "root": base,
-        "raw": base / "raw",
-        "parsed": base / "parsed",
-        "pages": base / "pages",
-        "figures": base / "figures",
-        "understanding": base / "understanding",
-        "assets": base / "assets",
-        "xhs": base / "xhs",
-        "logs": base / "logs",
+        "parsed": base / "parsed",            # MinerU 解析出的 PIR（脚本写）
+        "figures": base / "figures",          # 论文插图实体（脚本写）
+        "understanding": base / "understanding",  # paper_understanding.json（Claude 写）
+        "xhs": base / "xhs",                  # xhs_post.json/md（Claude 写）+ cover.png（脚本写）
+        "logs": base / "logs",                # 各步骤 *_result.json
     }
     for d in dirs.values():
         d.mkdir(parents=True, exist_ok=True)
@@ -62,6 +55,7 @@ def create_workspace(task_id: str, base_dir: str = "workspace") -> dict[str, Pat
 
 def save_json(data: Any, path: Path, indent: int = 2) -> None:
     """将数据保存为 JSON 文件"""
+    path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=indent)
@@ -75,16 +69,16 @@ def load_json(path: Path) -> Any:
 
 
 def save_stage_result(result: dict, stage_name: str, workspace: dict[str, Path]) -> None:
-    """保存阶段执行结果到日志目录"""
+    """保存步骤执行结果到日志目录"""
     log_path = workspace["logs"] / f"{stage_name}_result.json"
     save_json(result, log_path)
 
 
-def print_stage_header(stage_num: int, stage_name: str) -> None:
-    """打印阶段标题"""
+def print_stage_header(title: str) -> None:
+    """打印步骤标题"""
     console.print(
         Panel(
-            Text(f"Stage {stage_num}: {stage_name}", style="bold cyan", justify="center"),
+            Text(title, style="bold cyan", justify="center"),
             border_style="cyan",
         )
     )
@@ -104,25 +98,3 @@ def print_warning(message: str) -> None:
 
 def print_info(message: str) -> None:
     console.print(f"[bold blue]ℹ[/bold blue] {message}")
-
-
-def confirm_continue(prompt_text: str = "是否继续到下一阶段？") -> bool:
-    """人工确认是否继续，返回 True 表示继续"""
-    console.print(f"\n[bold yellow]{prompt_text}[/bold yellow] [y/n]: ", end="")
-    try:
-        answer = input().strip().lower()
-        return answer in ("y", "yes", "是", "")
-    except (EOFError, KeyboardInterrupt):
-        return False
-
-
-def find_latest_task(base_dir: str = "workspace") -> str | None:
-    """查找最新的任务 ID"""
-    base = Path(base_dir)
-    if not base.exists():
-        return None
-    tasks = sorted(
-        [d.name for d in base.iterdir() if d.is_dir()],
-        reverse=True,
-    )
-    return tasks[0] if tasks else None
