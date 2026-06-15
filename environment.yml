@@ -33,13 +33,11 @@ dependencies:
       - markitdown[pptx]    # paper2slides
       # ---- HTTP / LLM 客户端 ----
       - requests>=2.31.0
-      - openai>=1.50.0
-      - anthropic>=0.40.0   # paper2xhs / paper2wechat
+      - openai>=1.50.0      # paper2html / paper2poster；paper2xhs·paper2wechat 封面
       # ---- 浏览器渲染 / 截图 ----
-      - playwright>=1.45.0  # paper2poster 渲染、paper2xhs 发布
-      # ---- CLI / 配置 ----
-      - rich>=13.0.0        # paper2xhs / paper2wechat
-      - click>=8.1.0        # paper2xhs / paper2wechat
+      - playwright>=1.45.0  # paper2poster 渲染（截图）
+      # ---- 进度输出 / 配置 ----
+      - rich>=13.0.0        # paper2xhs / paper2wechat（Rich 进度输出）
       - python-dotenv>=1.0.0
       # ---- 公众号格式化（paper2wechat Stage 7）----
       - md2wechat
