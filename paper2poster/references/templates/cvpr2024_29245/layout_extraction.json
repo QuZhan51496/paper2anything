@@ -1,0 +1,173 @@
+{
+  "grid": {
+    "type": "three_zone",
+    "columns": 3,
+    "rows": 4,
+    "description": "Top title band, followed by three main horizontal zones: left column with CAN diagrams and intuition, center column with architecture and performance charts, right column with comparison tables and results."
+  },
+  "title_band": {
+    "bbox_pct": {
+      "x": 0,
+      "y": 0,
+      "w": 100,
+      "h": 12
+    },
+    "alignment": "left",
+    "has_subtitle": true,
+    "has_authors": true,
+    "has_affiliations": true,
+    "has_logo": true
+  },
+  "hero_visual": {
+    "present": true,
+    "bbox_pct": {
+      "x": 35,
+      "y": 18,
+      "w": 65,
+      "h": 28
+    },
+    "role_hint": "method_main",
+    "caption_position": "below"
+  },
+  "secondary_visuals": [
+    {
+      "bbox_pct": {
+        "x": 2,
+        "y": 20,
+        "w": 32,
+        "h": 25
+      },
+      "role_hint": "method_main",
+      "caption_position": "below"
+    },
+    {
+      "bbox_pct": {
+        "x": 2,
+        "y": 55,
+        "w": 32,
+        "h": 25
+      },
+      "role_hint": "problem_context",
+      "caption_position": "below"
+    },
+    {
+      "bbox_pct": {
+        "x": 35,
+        "y": 55,
+        "w": 30,
+        "h": 20
+      },
+      "role_hint": "result_evidence",
+      "caption_position": "below"
+    },
+    {
+      "bbox_pct": {
+        "x": 67,
+        "y": 55,
+        "w": 30,
+        "h": 20
+      },
+      "role_hint": "result_evidence",
+      "caption_position": "below"
+    },
+    {
+      "bbox_pct": {
+        "x": 70,
+        "y": 20,
+        "w": 28,
+        "h": 25
+      },
+      "role_hint": "result_evidence",
+      "caption_position": "below"
+    }
+  ],
+  "text_blocks": [
+    {
+      "bbox_pct": {
+        "x": 2,
+        "y": 47,
+        "w": 32,
+        "h": 8
+      },
+      "role_hint": "motivation",
+      "n_bullets_estimate": 3,
+      "has_section_header": true
+    },
+    {
+      "bbox_pct": {
+        "x": 35,
+        "y": 47,
+        "w": 63,
+        "h": 6
+      },
+      "role_hint": "contribution",
+      "n_bullets_estimate": 2,
+      "has_section_header": false
+    },
+    {
+      "bbox_pct": {
+        "x": 35,
+        "y": 78,
+        "w": 63,
+        "h": 8
+      },
+      "role_hint": "takeaway",
+      "n_bullets_estimate": 2,
+      "has_section_header": false
+    },
+    {
+      "bbox_pct": {
+        "x": 70,
+        "y": 88,
+        "w": 28,
+        "h": 3
+      },
+      "role_hint": "aux",
+      "n_bullets_estimate": 0,
+      "has_section_header": false
+    },
+    {
+      "bbox_pct": {
+        "x": 70,
+        "y": 47,
+        "w": 28,
+        "h": 8
+      },
+      "role_hint": "limitation",
+      "n_bullets_estimate": 2,
+      "has_section_header": false
+    }
+  ],
+  "headline_band": {
+    "present": true,
+    "bbox_pct": {
+      "x": 35,
+      "y": 13,
+      "w": 65,
+      "h": 4
+    },
+    "style": "strap"
+  },
+  "color_palette": {
+    "primary": "#1B3A5C",
+    "secondary": "#2E86AB",
+    "accent": "#A3D5FF",
+    "background": "#FFFFFF",
+    "text": "#1A1A2E"
+  },
+  "typography": {
+    "title_size_band": "huge",
+    "section_size_band": "large",
+    "body_size_band": "medium",
+    "font_family_hint": "sans"
+  },
+  "visual_density": "dense",
+  "reading_order": [
+    "title",
+    "problem",
+    "method",
+    "result",
+    "takeaway"
+  ],
+  "notes": "Right column contains two stacked tables and two charts; left column has two diagram blocks with bullet explanations below each."
+}

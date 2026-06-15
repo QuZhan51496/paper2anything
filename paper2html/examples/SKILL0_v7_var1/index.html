@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SKILL0 — In-Context Agentic RL for Skill Internalization</title>
+<script>
+  MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{
+    --accent:#7c3aed;
+    --accent2:#06b6d4;
+    --accent3:#ec4899;
+    --ink:#0f1024;
+    --ink2:#444565;
+    --muted:#74758f;
+    --bg:#ffffff;
+    --band:#f5f3ff;
+    --band2:#0c0b1f;
+    --line:#e7e3f5;
+    --radius:22px;
+    --shadow:0 24px 60px -28px rgba(81,46,160,.45);
+    --maxw:1120px;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+    color:var(--ink);background:var(--bg);line-height:1.6;-webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--accent);text-decoration:none;}
+  h1,h2,h3{line-height:1.12;letter-spacing:-.02em;margin:0;}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px;}
+  .band{padding:84px 0;}
+  .band--soft{background:var(--band);}
+  .eyebrow{
+    display:inline-block;font-weight:700;font-size:.78rem;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--accent);background:rgba(124,58,237,.1);padding:7px 14px;border-radius:999px;
+  }
+  .section-title{font-size:clamp(1.9rem,4vw,2.9rem);font-weight:800;margin:18px 0 12px;}
+  .section-lead{font-size:1.12rem;color:var(--ink2);max-width:720px;}
+
+  /* NAV */
+  nav{position:sticky;top:0;z-index:50;backdrop-filter:saturate(180%) blur(14px);
+    background:rgba(255,255,255,.82);border-bottom:1px solid var(--line);}
+  .nav-in{display:flex;align-items:center;justify-content:space-between;height:62px;}
+  .brand{font-weight:800;letter-spacing:-.02em;display:flex;align-items:center;gap:9px;font-size:1.05rem;}
+  .brand .dot{width:12px;height:12px;border-radius:4px;background:linear-gradient(135deg,var(--accent),var(--accent3));}
+  .nav-links{display:flex;gap:6px;align-items:center;}
+  .nav-links a{color:var(--ink2);font-weight:600;font-size:.92rem;padding:8px 12px;border-radius:10px;}
+  .nav-links a:hover{background:var(--band);color:var(--accent);}
+  .nav-cta{background:var(--ink);color:#fff!important;padding:9px 16px!important;border-radius:11px;}
+  .nav-cta:hover{background:var(--accent)!important;color:#fff!important;}
+  @media(max-width:780px){.nav-links a:not(.nav-cta){display:none;}}
+
+  /* HERO */
+  .hero{position:relative;overflow:hidden;background:
+    radial-gradient(900px 500px at 78% -10%,rgba(124,58,237,.22),transparent 60%),
+    radial-gradient(700px 460px at 5% 20%,rgba(6,182,212,.16),transparent 55%);
+    padding:88px 0 64px;}
+  .hero-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:54px;align-items:center;}
+  @media(max-width:900px){.hero-grid{grid-template-columns:1fr;gap:36px;}}
+  .hero h1{font-size:clamp(2.3rem,5.4vw,4rem);font-weight:850;}
+  .hero h1 .grad{background:linear-gradient(110deg,var(--accent),var(--accent3),var(--accent2));
+    -webkit-background-clip:text;background-clip:text;color:transparent;}
+  .hero-sub{font-size:1.18rem;color:var(--ink2);margin:22px 0 6px;max-width:560px;}
+  .quote{font-style:italic;font-weight:600;color:var(--accent);margin:18px 0 26px;font-size:1.05rem;
+    border-left:3px solid var(--accent);padding-left:14px;}
+  .btn-row{display:flex;flex-wrap:wrap;gap:12px;margin-top:8px;}
+  .btn{display:inline-flex;align-items:center;gap:9px;font-weight:700;font-size:.97rem;
+    padding:13px 22px;border-radius:14px;transition:transform .15s ease,box-shadow .2s ease;}
+  .btn:hover{transform:translateY(-2px);}
+  .btn-primary{background:linear-gradient(120deg,var(--accent),var(--accent3));color:#fff;
+    box-shadow:0 16px 34px -14px rgba(124,58,237,.7);}
+  .btn-ghost{background:#fff;color:var(--ink);border:1.5px solid var(--line);}
+  .btn-ghost:hover{border-color:var(--accent);color:var(--accent);}
+  .hero-fig{background:#fff;border:1px solid var(--line);border-radius:var(--radius);
+    padding:18px;box-shadow:var(--shadow);}
+  .hero-fig img{width:100%;height:auto;border-radius:14px;display:block;}
+  .hero-fig figcaption{font-size:.82rem;color:var(--muted);margin-top:12px;text-align:center;}
+
+  /* FIGURE FAMILY */
+  figure.frame{margin:0;background:#fff;border:1px solid var(--line);border-radius:var(--radius);
+    padding:18px;box-shadow:0 16px 40px -26px rgba(60,40,120,.4);}
+  figure.frame .imgwrap{background:linear-gradient(180deg,#faf9ff,#f3f0fc);border-radius:14px;
+    padding:14px;display:flex;justify-content:center;}
+  figure.frame img{max-width:100%;height:auto;object-fit:contain;display:block;border-radius:8px;}
+  figure.frame figcaption{font-size:.84rem;color:var(--muted);margin-top:13px;line-height:1.5;}
+
+  /* STAT CARDS */
+  .stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;}
+  @media(max-width:820px){.stat-grid{grid-template-columns:1fr;}}
+  .stat{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:30px 28px;
+    position:relative;overflow:hidden;transition:transform .2s ease,box-shadow .2s ease;}
+  .stat:hover{transform:translateY(-4px);box-shadow:var(--shadow);}
+  .stat::before{content:"";position:absolute;inset:0 0 auto 0;height:5px;
+    background:linear-gradient(90deg,var(--accent),var(--accent3));}
+  .stat .num{font-size:3rem;font-weight:850;letter-spacing:-.03em;
+    background:linear-gradient(120deg,var(--accent),var(--accent3));-webkit-background-clip:text;background-clip:text;color:transparent;}
+  .stat .lbl{font-weight:700;margin:6px 0 4px;font-size:1.05rem;}
+  .stat .desc{color:var(--ink2);font-size:.95rem;}
+
+  /* FEATURE / PROBLEM CARDS */
+  .feature-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;}
+  @media(max-width:820px){.feature-grid{grid-template-columns:1fr;}}
+  .fcard{background:#fff;border:1px solid var(--line);border-radius:18px;padding:26px;
+    transition:transform .2s ease,box-shadow .2s ease;}
+  .fcard:hover{transform:translateY(-4px);box-shadow:var(--shadow);}
+  .fcard .ic{width:46px;height:46px;border-radius:13px;display:grid;place-items:center;color:#fff;
+    background:linear-gradient(135deg,var(--accent),var(--accent3));margin-bottom:14px;}
+  .fcard h3{font-size:1.15rem;font-weight:750;margin-bottom:7px;}
+  .fcard p{color:var(--ink2);font-size:.96rem;margin:0;}
+
+  /* STORY STEPS */
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:30px;}
+  @media(max-width:820px){.steps{grid-template-columns:1fr;}}
+  .step{background:#fff;border:1px solid var(--line);border-radius:18px;padding:26px;position:relative;}
+  .step .badge{position:absolute;top:-16px;left:24px;width:36px;height:36px;border-radius:11px;
+    background:var(--ink);color:#fff;display:grid;place-items:center;font-weight:800;}
+  .step h3{font-size:1.08rem;margin:10px 0 8px;font-weight:750;}
+  .step p{color:var(--ink2);font-size:.94rem;margin:0;}
+
+  /* DARK BAND */
+  .band--dark{background:
+    radial-gradient(800px 400px at 80% 10%,rgba(124,58,237,.4),transparent 60%),
+    radial-gradient(700px 420px at 10% 90%,rgba(6,182,212,.28),transparent 60%),
+    var(--band2);color:#f0eefb;}
+  .band--dark .section-title{color:#fff;}
+  .band--dark .section-lead{color:#c9c6e6;}
+  .band--dark .eyebrow{color:#d8c9ff;background:rgba(216,201,255,.14);}
+
+  /* TABLES */
+  .tabs{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 22px;}
+  .tab{padding:10px 18px;border-radius:12px;border:1.5px solid var(--line);background:#fff;
+    font-weight:700;font-size:.92rem;cursor:pointer;color:var(--ink2);transition:.15s;}
+  .tab.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .tpanel{display:none;}
+  .tpanel.active{display:block;animation:fade .35s ease;}
+  .tscroll{overflow-x:auto;border-radius:var(--radius);border:1px solid var(--line);background:#fff;
+    box-shadow:0 16px 40px -28px rgba(60,40,120,.4);}
+  table.data{border-collapse:collapse;width:100%;font-size:.86rem;min-width:680px;}
+  table.data th,table.data td{padding:9px 11px;text-align:right;border-bottom:1px solid #eee;white-space:nowrap;}
+  table.data th:first-child,table.data td:first-child{text-align:left;}
+  table.data thead th{background:#f7f5ff;color:var(--ink);font-weight:750;position:sticky;top:0;}
+  table.data .grouphead td{background:#efeafd;font-weight:800;color:var(--accent);text-align:left;}
+  table.data tr.win{background:linear-gradient(90deg,rgba(124,58,237,.1),rgba(236,72,153,.06));}
+  table.data tr.win td{font-weight:800;color:var(--ink);}
+  .tcap{font-size:.86rem;color:var(--muted);margin:12px 4px 0;line-height:1.5;}
+  .takeaway{margin-top:12px;font-size:.95rem;background:#fff;border:1px dashed var(--accent);
+    border-radius:14px;padding:14px 18px;color:var(--ink2);}
+  .takeaway b{color:var(--accent);}
+
+  /* GALLERY */
+  .gal{display:grid;grid-template-columns:repeat(2,1fr);gap:22px;}
+  @media(max-width:820px){.gal{grid-template-columns:1fr;}}
+  .gal-sq{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;}
+  @media(max-width:820px){.gal-sq{grid-template-columns:1fr;}}
+
+  /* BIBTEX */
+  .bibwrap{background:var(--band2);border-radius:var(--radius);padding:26px;position:relative;color:#dcd9f2;}
+  .bibwrap pre{margin:0;white-space:pre-wrap;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-size:.86rem;line-height:1.6;overflow-x:auto;}
+  .copybtn{position:absolute;top:18px;right:18px;background:var(--accent);color:#fff;border:none;
+    padding:8px 15px;border-radius:10px;font-weight:700;cursor:pointer;font-size:.85rem;}
+  .copybtn:hover{background:var(--accent3);}
+
+  footer{background:var(--band2);color:#b9b6d6;padding:46px 0 56px;}
+  footer a{color:#d8c9ff;}
+
+  .reveal{opacity:0;transform:translateY(26px);transition:opacity .6s ease,transform .6s ease;}
+  .reveal.in{opacity:1;transform:none;}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap nav-in">
+    <div class="brand"><span class="dot"></span>SKILL0</div>
+    <div class="nav-links">
+      <a href="#why">Why</a>
+      <a href="#impact">Impact</a>
+      <a href="#how">How it works</a>
+      <a href="#results">Results</a>
+      <a href="#cite">Cite</a>
+      <a class="nav-cta" href="https://github.com/ZJU-REAL/SkillZero">Get the Code</a>
+    </div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<header class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <span class="eyebrow">In-Context Agentic Reinforcement Learning</span>
+      <h1>Bake skills <span class="grad">into the model</span>, not the prompt.</h1>
+      <p class="hero-sub">SKILL0 internalizes procedural agent skills directly into model parameters — so the policy acts <strong>zero-shot</strong> at inference, with no skill retrieval and no token overhead.</p>
+      <p class="quote">“Skills at training, zero at inference.” — SKILL0</p>
+      <div class="btn-row">
+        <a class="btn btn-primary" href="https://arxiv.org/abs/2411.10949">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2h9l5 5v15H6z"/><path d="M14 2v6h6"/></svg>
+          Read the Paper
+        </a>
+        <a class="btn btn-ghost" href="https://github.com/ZJU-REAL/SkillZero">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.9a3.4 3.4 0 0 0-1-2.6c3-.3 6-1.5 6-6.6a5 5 0 0 0-1.4-3.5 4.7 4.7 0 0 0-.1-3.5s-1.1-.3-3.5 1.3a12 12 0 0 0-6.4 0C6.3 1.6 5.2 1.9 5.2 1.9a4.7 4.7 0 0 0-.1 3.5A5 5 0 0 0 3.7 9c0 5 3 6.3 6 6.6a3.4 3.4 0 0 0-1 2.6V22"/></svg>
+          View Code
+        </a>
+      </div>
+    </div>
+    <figure class="hero-fig reveal">
+      <img src="images/24f5b39ce62dbcce8fdd335fa2b50c94c5a4b21dd355c5e790b8123fe5d9be97.jpg" alt="Comparison of Skill Augmentation and Skill Internalization">
+      <figcaption>Figure 1 — (a) Skill Augmentation injects skills at runtime; (b) our Skill Internalization moves them into the weights.</figcaption>
+    </figure>
+  </div>
+</header>
+
+<!-- WHY / PROBLEM -->
+<section class="band" id="why">
+  <div class="wrap">
+    <div class="reveal">
+      <span class="eyebrow">The problem with inference-time skills</span>
+      <h2 class="section-title">Loading skills at runtime is a leaky abstraction.</h2>
+      <p class="section-lead">Agent skills — structured packages of procedural knowledge and executable resources — are a reliable way to augment LLM agents. But injecting them at inference time has three structural costs.</p>
+    </div>
+    <div class="feature-grid" style="margin-top:34px;">
+      <div class="fcard reveal">
+        <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4-4"/></svg></div>
+        <h3>Retrieval noise</h3>
+        <p>Skill retrieval surfaces irrelevant guidance, steering the agent with content it never actually needed.</p>
+      </div>
+      <div class="fcard reveal">
+        <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V4h16v3"/><path d="M9 20h6M12 4v16"/></svg></div>
+        <h3>Token overhead</h3>
+        <p>Injected skill text imposes a substantial context-token cost on every single step of every task.</p>
+      </div>
+      <div class="fcard reveal">
+        <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a7 7 0 0 0-4 12.7V18h8v-3.3A7 7 0 0 0 12 2Z"/><path d="M9 22h6"/></svg></div>
+        <h3>No true acquisition</h3>
+        <p>The model merely <em>follows</em> the skill — it never acquires the knowledge into its own parameters.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- IMPACT / STATS -->
+<section class="band band--soft" id="impact">
+  <div class="wrap">
+    <div class="reveal" style="text-align:center;max-width:760px;margin:0 auto 38px;">
+      <span class="eyebrow">Headline results</span>
+      <h2 class="section-title">Substantial gains over standard RL — at zero runtime skill cost.</h2>
+      <p class="section-lead" style="margin:0 auto;">SKILL0 outperforms the standard RL baseline across agentic benchmarks while operating fully zero-shot at inference.</p>
+    </div>
+    <div class="stat-grid">
+      <div class="stat reveal">
+        <div class="num">+9.7%</div>
+        <div class="lbl">ALFWorld</div>
+        <div class="desc">Improvement over the standard RL baseline on embodied household tasks.</div>
+      </div>
+      <div class="stat reveal">
+        <div class="num">+6.6%</div>
+        <div class="lbl">Search-QA</div>
+        <div class="desc">Improvement over the standard RL baseline on multi-hop search tasks.</div>
+      </div>
+      <div class="stat reveal">
+        <div class="num">+10.1%</div>
+        <div class="lbl">WebShop</div>
+        <div class="desc">Improvement reported over the standard RL baseline on interactive shopping.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ABSTRACT -->
+<section class="band">
+  <div class="wrap" style="max-width:860px;">
+    <div class="reveal">
+      <span class="eyebrow">Abstract</span>
+      <h2 class="section-title">What SKILL0 does</h2>
+      <p style="font-size:1.08rem;color:var(--ink2);">Agent skills have become a reliable mechanism for augmenting LLM agents. Yet inference-time augmentation is fundamentally limited: retrieval noise introduces irrelevant guidance, injected skill content imposes substantial token overhead, and the model never truly acquires the knowledge it merely follows. We ask whether skills can instead be <strong>internalized into model parameters</strong>, enabling zero-shot autonomous behavior without any runtime skill retrieval.</p>
+      <p style="font-size:1.08rem;color:var(--ink2);">We introduce <strong>SKILL0</strong>, an in-context reinforcement learning framework for skill internalization. It uses a training-time curriculum that begins with full skill context and progressively withdraws it. Skills are grouped offline by category and rendered with interaction history into a compact visual context, teaching the model tool invocation and multi-turn task completion. A <strong>Dynamic Curriculum</strong> then evaluates each skill file's on-policy helpfulness, retaining only those from which the current policy still benefits within a linearly decaying budget — until the agent operates fully zero-shot.</p>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="band band--dark" id="how">
+  <div class="wrap">
+    <div class="reveal" style="max-width:760px;">
+      <span class="eyebrow">How it works</span>
+      <h2 class="section-title">A curriculum that teaches, then takes the training wheels off.</h2>
+      <p class="section-lead">SKILL0 starts with full skill context and progressively withdraws it, so the policy must internalize what it once read.</p>
+    </div>
+    <div class="steps" style="margin-top:42px;">
+      <div class="step reveal">
+        <div class="badge">1</div>
+        <h3>Relevance-Driven Skill Grouping</h3>
+        <p>Skills are grouped offline by category and rendered with interaction history into a compact visual context.</p>
+      </div>
+      <div class="step reveal">
+        <div class="badge">2</div>
+        <h3>In-Context RL Agent Loop</h3>
+        <p>A skill-enhanced agent loop teaches tool invocation and multi-turn task completion under reinforcement learning.</p>
+      </div>
+      <div class="step reveal">
+        <div class="badge">3</div>
+        <h3>Dynamic Skill Curriculum</h3>
+        <p>On-policy helpfulness is scored per skill file; only helpful skills are retained within a linearly decaying budget — toward zero-shot.</p>
+      </div>
+    </div>
+    <figure class="frame reveal" style="margin-top:42px;">
+      <div class="imgwrap">
+        <img src="images/b938e8fde8953efc7463c4f1eb271141fe4a35f9aa68bce1aa71d8db7b489260.jpg" alt="Overview of SKILL0 pipeline">
+      </div>
+      <figcaption>Figure 2 — Overview of SKILL0: (a) Relevance-Driven Skill Grouping; (b) In-Context Reinforcement Learning with a skill-enhanced agent loop; (c) Dynamic curriculum learning during the training process.</figcaption>
+    </figure>
+    <figure class="frame reveal" style="margin-top:24px;">
+      <div class="imgwrap">
+        <img src="images/4ff557dde92576e8117e87bb0a5406443d15088690882c0a3633a0bb89d9b507.jpg" alt="Skill Internalization schematic">
+      </div>
+      <figcaption>Skill Internalization (Ours, SKILL0): skills live in the weights, not the prompt.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- TRAINING DYNAMICS -->
+<section class="band">
+  <div class="wrap">
+    <div class="reveal" style="max-width:760px;">
+      <span class="eyebrow">Training dynamics</span>
+      <h2 class="section-title">Higher reward throughout — on both backbones.</h2>
+      <p class="section-lead">Throughout RL optimization, SKILL0 maintains consistently higher reward curves on both the 3B and 7B backbones compared to the AgentOCR baseline.</p>
+    </div>
+    <div class="gal" style="margin-top:34px;">
+      <figure class="frame reveal">
+        <div class="imgwrap"><img src="images/4b1c74a1db5e6c59b0324655eb6e560e22e275a96b5052e903bc35b0b03179c3.jpg" alt="Training dynamics on Qwen2.5-VL-3B"></div>
+        <figcaption>Figure 3 — Training dynamics with AgentOCR on Qwen2.5-VL-3B.</figcaption>
+      </figure>
+      <figure class="frame reveal">
+        <div class="imgwrap"><img src="images/db269081197243c9c7159b8e9c34f248aa6351dbc39f6e8c5ce68fa90de17a7a.jpg" alt="Training dynamics on Qwen2.5-VL-7B"></div>
+        <figcaption>Figure 4 — Training dynamics with AgentOCR on Qwen2.5-VL-7B.</figcaption>
+      </figure>
+    </div>
+    <div class="gal-sq" style="margin-top:24px;">
+      <figure class="frame reveal">
+        <div class="imgwrap"><img src="images/cfdafd56b2472d812707214c3a45861bbd5f893a97fb86ff2a2c18c3545bc7b4.jpg" alt="Training dynamics comparison panel a"></div>
+        <figcaption>Figure 5 (a) — Validation performance of SKILL0 (OCR) with and without skill augmentation, every 10 steps.</figcaption>
+      </figure>
+      <figure class="frame reveal">
+        <div class="imgwrap"><img src="images/2643bcefa8d0f1629741074f535dcc09ffe3840c0fb7aa56c11a7ec0eb40f871.jpg" alt="Training dynamics comparison panel b"></div>
+        <figcaption>Figure 5 (b) — SKILL0 vs. AgentOCR, both evaluated without skill augmentation.</figcaption>
+      </figure>
+      <figure class="frame reveal">
+        <div class="imgwrap"><img src="images/b4407396b0bb0191e0bc660560ca23b7a70c012e9a8131093350e1d883a131e5.jpg" alt="Training dynamics comparison panel c"></div>
+        <figcaption>Figure 5 (c) — Performance comparison of SKILL0 (OCR) across settings.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- RESULTS TABLES -->
+<section class="band band--soft" id="results">
+  <div class="wrap">
+    <div class="reveal" style="max-width:760px;">
+      <span class="eyebrow">Benchmarks</span>
+      <h2 class="section-title">Best-in-class success rates at the lowest token cost.</h2>
+      <p class="section-lead">SKILL0 (★, visual context) tops or matches the strongest baselines while keeping per-step context tokens far below skill-augmented methods.</p>
+    </div>
+
+    <div class="tabs reveal" style="margin-top:26px;">
+      <div class="tab active" data-tab="t1">ALFWorld &amp; Search-QA</div>
+      <div class="tab" data-tab="t2">WebShop</div>
+      <div class="tab" data-tab="t3">Ablations</div>
+    </div>
+
+    <!-- TABLE 1 -->
+    <div class="tpanel active" id="t1">
+      <div class="tscroll">
+        <table class="data">
+          <thead>
+            <tr><th>Method</th><th>Pick</th><th>Look</th><th>Clean</th><th>Heat</th><th>Cool</th><th>Pick2</th><th>ALF Avg↑</th><th>Cost</th><th>SQA Avg↑</th><th>Cost</th></tr>
+          </thead>
+          <tbody>
+            <tr class="grouphead"><td colspan="11">Qwen2.5-(VL)-3B-Instruct</td></tr>
+            <tr><td>Zero-Shot</td><td>27.0</td><td>24.3</td><td>4.5</td><td>20.5</td><td>10.2</td><td>0.0</td><td>15.2</td><td>1.21</td><td>15.9</td><td>0.48</td></tr>
+            <tr><td>Few-Shot</td><td>44.1</td><td>45.1</td><td>30.5</td><td>44.1</td><td>9.2</td><td>3.3</td><td>29.3</td><td>2.30</td><td>17.9</td><td>0.86</td></tr>
+            <tr><td>Zero-Shot★</td><td>44.3</td><td>27.6</td><td>8.6</td><td>3.1</td><td>5.7</td><td>3.1</td><td>17.6</td><td>0.48</td><td>12.7</td><td>0.15</td></tr>
+            <tr><td>Few-Shot★†</td><td>57.1</td><td>25.3</td><td>4.5</td><td>5.5</td><td>10.2</td><td>9.4</td><td>23.8</td><td>0.88</td><td>14.6</td><td>0.36</td></tr>
+            <tr><td>GRPO</td><td>92.6</td><td>85.7</td><td>70.6</td><td>86.6</td><td>79.3</td><td>65.0</td><td>79.9</td><td>1.02</td><td>36.4</td><td>0.61</td></tr>
+            <tr><td>AgentOCR★</td><td>91.9</td><td>81.8</td><td>76.0</td><td>73.3</td><td>76.1</td><td>70.0</td><td>78.2</td><td>0.38</td><td>34.2</td><td>0.26</td></tr>
+            <tr><td>EvolveR</td><td>77.3</td><td>24.5</td><td>47.9</td><td>41.7</td><td>24.6</td><td>22.5</td><td>44.1</td><td>1.89</td><td>38.2</td><td>1</td></tr>
+            <tr><td>SkillRL†</td><td>91.9</td><td>100</td><td>82.9</td><td>87.4</td><td>78.7</td><td>70.0</td><td>82.4</td><td>2.21</td><td>38.9</td><td>0.87</td></tr>
+            <tr class="win"><td>SKILL0★</td><td>95.6</td><td>80.4</td><td>100</td><td>86.7</td><td>78.7</td><td>75.2</td><td>87.9</td><td>0.38</td><td>40.8</td><td>0.18</td></tr>
+            <tr class="grouphead"><td colspan="11">Qwen2.5-(VL)-7B-Instruct</td></tr>
+            <tr><td>Zero-Shot</td><td>67.6</td><td>35.4</td><td>19.3</td><td>31.3</td><td>30.1</td><td>4.4</td><td>31.3</td><td>1.08</td><td>17.5</td><td>0.70</td></tr>
+            <tr><td>Few-Shot</td><td>75.4</td><td>64.9</td><td>67.5</td><td>26.7</td><td>19.4</td><td>8.9</td><td>48.4</td><td>2.12</td><td>20.1</td><td>0.97</td></tr>
+            <tr><td>Zero-Shot★</td><td>46.0</td><td>35.6</td><td>19.1</td><td>7.1</td><td>5.5</td><td>5.4</td><td>21.1</td><td>0.52</td><td>14.0</td><td>0.26</td></tr>
+            <tr><td>Few-Shot★†</td><td>44.3</td><td>55.4</td><td>52.9</td><td>0.0</td><td>11.2</td><td>5.4</td><td>28.9</td><td>1.79</td><td>17.3</td><td>0.41</td></tr>
+            <tr><td>GRPO</td><td>92.6</td><td>93.8</td><td>85.2</td><td>80.0</td><td>82.7</td><td>56.5</td><td>81.8</td><td>0.95</td><td>41.9</td><td>0.73</td></tr>
+            <tr><td>AgentOCR★</td><td>95.6</td><td>96.2</td><td>78.1</td><td>73.2</td><td>72.4</td><td>72.0</td><td>81.2</td><td>0.43</td><td>40.1</td><td>0.36</td></tr>
+            <tr><td>EvolveR</td><td>64.9</td><td>33.3</td><td>46.4</td><td>13.3</td><td>33.3</td><td>33.3</td><td>43.8</td><td>1</td><td>43.1</td><td>1</td></tr>
+            <tr><td>SkillRL†</td><td>97.9</td><td>71.4</td><td>90.0</td><td>90.0</td><td>95.5</td><td>87.5</td><td>89.9</td><td>—</td><td>47.1</td><td>—</td></tr>
+            <tr class="win"><td>SKILL0★</td><td>100</td><td>85.8</td><td>94.6</td><td>81.9</td><td>85.7</td><td>80.1</td><td>89.8</td><td>0.41</td><td>44.4</td><td>0.34</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="takeaway reveal">On the 3B backbone, <b>SKILL0★ reaches 87.9% ALFWorld / 40.8% Search-QA</b> — the top score in both — while keeping per-step context cost at just <b>0.38k / 0.18k</b>, the lowest among strong baselines.</div>
+      <p class="tcap">Table 1 — Success rate (%) and average context token cost (k) per step. † = validated with skill augmentation; ★ = encodes visual context with reduced token overhead.</p>
+    </div>
+
+    <!-- TABLE 2 -->
+    <div class="tpanel" id="t2">
+      <div class="tscroll">
+        <table class="data">
+          <thead>
+            <tr><th>Method</th><th>Infer w/ Skills</th><th>3B Score↑</th><th>3B Acc↑</th><th>3B Tokens↓</th><th>7B Score↑</th><th>7B Acc↑</th><th>7B Tokens↓</th></tr>
+          </thead>
+          <tbody>
+            <tr class="grouphead"><td colspan="8">Baselines</td></tr>
+            <tr><td>Zero-Shot</td><td>—</td><td>23.4</td><td>6.3</td><td>0.46k</td><td>26.8</td><td>7.8</td><td>0.48k</td></tr>
+            <tr><td>Few-Shot</td><td>✓</td><td>45.8</td><td>18.4</td><td>0.78k</td><td>51.2</td><td>24.2</td><td>0.91k</td></tr>
+            <tr><td>AgentOCR</td><td>—</td><td>75.2</td><td>56.3</td><td>0.42k</td><td>78.6</td><td>59.3</td><td>0.40k</td></tr>
+            <tr class="grouphead"><td colspan="8">Ours: RL w/ Skills</td></tr>
+            <tr class="win"><td>SKILL0</td><td>✓</td><td>80.9</td><td>64.1</td><td>0.94k</td><td>85.3</td><td>71.9</td><td>0.89k</td></tr>
+            <tr class="win"><td>SKILL0</td><td>—</td><td>78.6</td><td>66.4</td><td>0.49k</td><td>85.1</td><td>74.2</td><td>0.46k</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="takeaway reveal">On WebShop, <b>SKILL0 hits 85.3% Score / 74.2% Accuracy</b> on the 7B model — and notably, the zero-skill (internalized) variant matches the skill-augmented one while <b>halving token cost</b> (0.46k vs 0.89k).</div>
+      <p class="tcap">Table 2 — WebShop (128 tasks): Score (%), Accuracy (%) and average context token cost (k) per step. All methods encode visual context with reduced token overhead.</p>
+    </div>
+
+    <!-- TABLE 3 -->
+    <div class="tpanel" id="t3">
+      <div class="tscroll">
+        <table class="data">
+          <thead>
+            <tr><th>Method</th><th>w/ S</th><th>w/o S</th><th>Δ</th></tr>
+          </thead>
+          <tbody>
+            <tr class="win"><td>Filter &amp; Rank &amp; Select</td><td>86.3</td><td>87.9</td><td>↑1.6</td></tr>
+            <tr><td>w/o Filter</td><td>81.6</td><td>78.9</td><td>↓2.7</td></tr>
+            <tr><td>w/o Rank (Random Select)</td><td>76.6</td><td>62.9</td><td>↓13.7</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="takeaway reveal">Removing the ranking step costs <b>13.7 points</b> in the zero-shot setting — the Dynamic Skill Curriculum's <b>Filter → Rank → Select</b> design is what enables the policy to keep its skills after the context is withdrawn.</div>
+      <p class="tcap">Table 3 — Ablations of the Dynamic Skill Curriculum on ALFWorld across inference settings (w/ and w/o skill context).</p>
+      <div class="gal-sq" style="margin-top:24px;">
+        <figure class="frame reveal" style="grid-column:span 2;">
+          <div class="imgwrap"><img src="images/1e0878865168abef637dc170be4a9226dd6fe7b076ee7eebbb078ffe53b85c45.jpg" alt="Training dynamics of helpfulness"></div>
+          <figcaption>Figure 6 — Training dynamics of helpfulness, reported by \(\Delta_k\) for each sub-task \(k\).</figcaption>
+        </figure>
+        <figure class="frame reveal">
+          <div class="imgwrap"><img src="images/65cd1dcab33a702fc2b80c3a5679c9ae03b29918ff61780589225f2dcb02d45f.jpg" alt="Ablation of skill budget M"></div>
+          <figcaption>Figure 7 — Ablations of skill budget \(M\).</figcaption>
+        </figure>
+      </div>
+      <figure class="frame reveal" style="margin-top:18px;max-width:480px;">
+        <div class="imgwrap"><img src="images/18dcc8177458244afcfb6b1061237e2ed2451610dbc0d05db219dd6e88b8667c.jpg" alt="Ablation of skill budget during training"></div>
+        <figcaption>Figure 8 — Ablations of skill budget during the training process.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- EXTRA GALLERY: helpfulness dynamics figure already shown in ablation; one remaining figure -->
+<section class="band">
+  <div class="wrap">
+    <div class="reveal" style="max-width:760px;">
+      <span class="eyebrow">Inside the curriculum</span>
+      <h2 class="section-title">Watching helpfulness decay toward zero-shot.</h2>
+      <p class="section-lead">The Dynamic Curriculum tracks each skill file's on-policy helpfulness and retains only those the current policy still benefits from — within a linearly decaying budget.</p>
+    </div>
+    <figure class="frame reveal" style="margin-top:30px;">
+      <div class="imgwrap"><img src="images/bd6283051256f0d4690d114ac921d385ee63b8376e28959d8f069105cd7f6f10.jpg" alt="Curriculum helpfulness dynamics"></div>
+      <figcaption>Curriculum dynamics — skill helpfulness over the training process as the budget linearly decays.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- BIBTEX -->
+<section class="band band--soft" id="cite">
+  <div class="wrap" style="max-width:840px;">
+    <div class="reveal">
+      <span class="eyebrow">Citation</span>
+      <h2 class="section-title">Cite SKILL0</h2>
+    </div>
+    <div class="bibwrap reveal" style="margin-top:22px;">
+      <button class="copybtn" id="copyBtn">Copy</button>
+      <pre id="bib">@article{paperskill0,
+  title={SKILL0: In-Context Agentic Reinforcement Learning for Skill Internalization},
+  author={Unknown},
+  journal={arXiv preprint},
+  year={}
+}</pre>
+    </div>
+    <div class="btn-row" style="margin-top:26px;">
+      <a class="btn btn-primary" href="https://arxiv.org/abs/2411.10949">Read the Paper</a>
+      <a class="btn btn-ghost" href="https://github.com/ZJU-REAL/SkillZero">View Code on GitHub</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="brand" style="color:#fff;"><span class="dot"></span>SKILL0</div>
+    <p style="margin:14px 0 0;max-width:560px;">In-Context Agentic Reinforcement Learning for Skill Internalization — skills at training, zero at inference.</p>
+    <p style="margin:10px 0 0;font-size:.88rem;">
+      <a href="https://arxiv.org/abs/2411.10949">arXiv</a> ·
+      <a href="https://github.com/ZJU-REAL/SkillZero">Code</a>
+    </p>
+  </div>
+</footer>
+
+<script>
+  // tabs
+  document.querySelectorAll('.tab').forEach(t=>{
+    t.addEventListener('click',()=>{
+      document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+      document.querySelectorAll('.tpanel').forEach(x=>x.classList.remove('active'));
+      t.classList.add('active');
+      document.getElementById(t.dataset.tab).classList.add('active');
+    });
+  });
+  // copy
+  document.getElementById('copyBtn').addEventListener('click',function(){
+    navigator.clipboard.writeText(document.getElementById('bib').innerText).then(()=>{
+      this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1600);
+    });
+  });
+  // reveal
+  const io=new IntersectionObserver((es)=>{
+    es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}});
+  },{threshold:.12});
+  document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+</script>
+</body>
+</html>

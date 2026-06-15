@@ -1,0 +1,185 @@
+{
+  "grid": {
+    "type": "three_zone",
+    "columns": 3,
+    "rows": 6,
+    "description": "Three vertical zones: left narrow column with problem/motivation and evaluation setup, central wide column with core method description and dataset details, right zone with architecture diagram, results table, and conclusion."
+  },
+  "title_band": {
+    "bbox_pct": {
+      "x": 0,
+      "y": 0,
+      "w": 100,
+      "h": 10
+    },
+    "alignment": "center",
+    "has_subtitle": true,
+    "has_authors": true,
+    "has_affiliations": true,
+    "has_logo": true
+  },
+  "hero_visual": {
+    "present": true,
+    "bbox_pct": {
+      "x": 63,
+      "y": 12,
+      "w": 35,
+      "h": 30
+    },
+    "role_hint": "method_main",
+    "caption_position": "below"
+  },
+  "secondary_visuals": [
+    {
+      "bbox_pct": {
+        "x": 16,
+        "y": 18,
+        "w": 14,
+        "h": 12
+      },
+      "role_hint": "problem_context",
+      "caption_position": "below"
+    },
+    {
+      "bbox_pct": {
+        "x": 16,
+        "y": 47,
+        "w": 28,
+        "h": 20
+      },
+      "role_hint": "result_evidence",
+      "caption_position": "below"
+    },
+    {
+      "bbox_pct": {
+        "x": 16,
+        "y": 70,
+        "w": 28,
+        "h": 18
+      },
+      "role_hint": "aux",
+      "caption_position": "below"
+    },
+    {
+      "bbox_pct": {
+        "x": 63,
+        "y": 45,
+        "w": 35,
+        "h": 15
+      },
+      "role_hint": "result_evidence",
+      "caption_position": "none"
+    }
+  ],
+  "text_blocks": [
+    {
+      "bbox_pct": {
+        "x": 16,
+        "y": 12,
+        "w": 28,
+        "h": 14
+      },
+      "role_hint": "motivation",
+      "n_bullets_estimate": 3,
+      "has_section_header": true
+    },
+    {
+      "bbox_pct": {
+        "x": 16,
+        "y": 38,
+        "w": 28,
+        "h": 8
+      },
+      "role_hint": "contribution",
+      "n_bullets_estimate": 1,
+      "has_section_header": true
+    },
+    {
+      "bbox_pct": {
+        "x": 44,
+        "y": 12,
+        "w": 20,
+        "h": 10
+      },
+      "role_hint": "method",
+      "n_bullets_estimate": 3,
+      "has_section_header": true
+    },
+    {
+      "bbox_pct": {
+        "x": 44,
+        "y": 52,
+        "w": 20,
+        "h": 12
+      },
+      "role_hint": "result",
+      "n_bullets_estimate": 0,
+      "has_section_header": true
+    },
+    {
+      "bbox_pct": {
+        "x": 63,
+        "y": 78,
+        "w": 35,
+        "h": 4
+      },
+      "role_hint": "takeaway",
+      "n_bullets_estimate": 1,
+      "has_section_header": false
+    },
+    {
+      "bbox_pct": {
+        "x": 1,
+        "y": 68,
+        "w": 14,
+        "h": 20
+      },
+      "role_hint": "method",
+      "n_bullets_estimate": 0,
+      "has_section_header": true
+    },
+    {
+      "bbox_pct": {
+        "x": 30,
+        "y": 85,
+        "w": 14,
+        "h": 8
+      },
+      "role_hint": "aux",
+      "n_bullets_estimate": 2,
+      "has_section_header": false
+    }
+  ],
+  "headline_band": {
+    "present": false,
+    "bbox_pct": {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0
+    },
+    "style": "none"
+  },
+  "color_palette": {
+    "primary": "#1B3A5C",
+    "secondary": "#2E86AB",
+    "accent": "#A3D5FF",
+    "background": "#FFFFFF",
+    "text": "#1A1A2E"
+  },
+  "typography": {
+    "title_size_band": "huge",
+    "section_size_band": "large",
+    "body_size_band": "medium",
+    "font_family_hint": "sans"
+  },
+  "visual_density": "dense",
+  "reading_order": [
+    "title",
+    "problem",
+    "method",
+    "result",
+    "takeaway"
+  ],
+  "notes": "Left column uses numbered sections (1–4); central column has two QR codes near top; right column combines diagram, table, and summary text in stacked layout."
+}

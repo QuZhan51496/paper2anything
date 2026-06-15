@@ -1,0 +1,226 @@
+{
+  "grid": {
+    "type": "three_zone",
+    "columns": 3,
+    "rows": 6,
+    "description": "Three vertical zones: left (Highlights + INTR architecture), center (Results & Analysis), right (Interpretation examples + comparison charts + Acknowledgement)"
+  },
+  "title_band": {
+    "bbox_pct": {
+      "x": 0,
+      "y": 0,
+      "w": 100,
+      "h": 15
+    },
+    "alignment": "center",
+    "has_subtitle": true,
+    "has_authors": true,
+    "has_affiliations": true,
+    "has_logo": true
+  },
+  "hero_visual": {
+    "present": true,
+    "bbox_pct": {
+      "x": 10,
+      "y": 20,
+      "w": 35,
+      "h": 25
+    },
+    "role_hint": "problem_context",
+    "caption_position": "below"
+  },
+  "secondary_visuals": [
+    {
+      "bbox_pct": {
+        "x": 37,
+        "y": 25,
+        "w": 60,
+        "h": 20
+      },
+      "role_hint": "result_evidence",
+      "caption_position": "below"
+    },
+    {
+      "bbox_pct": {
+        "x": 68,
+        "y": 20,
+        "w": 30,
+        "h": 18
+      },
+      "role_hint": "result_evidence",
+      "caption_position": "below"
+    },
+    {
+      "bbox_pct": {
+        "x": 68,
+        "y": 40,
+        "w": 30,
+        "h": 15
+      },
+      "role_hint": "result_evidence",
+      "caption_position": "below"
+    },
+    {
+      "bbox_pct": {
+        "x": 68,
+        "y": 58,
+        "w": 30,
+        "h": 12
+      },
+      "role_hint": "result_evidence",
+      "caption_position": "below"
+    },
+    {
+      "bbox_pct": {
+        "x": 10,
+        "y": 50,
+        "w": 35,
+        "h": 30
+      },
+      "role_hint": "method_main",
+      "caption_position": "below"
+    },
+    {
+      "bbox_pct": {
+        "x": 37,
+        "y": 48,
+        "w": 60,
+        "h": 25
+      },
+      "role_hint": "result_evidence",
+      "caption_position": "below"
+    },
+    {
+      "bbox_pct": {
+        "x": 37,
+        "y": 75,
+        "w": 60,
+        "h": 15
+      },
+      "role_hint": "result_evidence",
+      "caption_position": "below"
+    }
+  ],
+  "text_blocks": [
+    {
+      "bbox_pct": {
+        "x": 5,
+        "y": 18,
+        "w": 35,
+        "h": 12
+      },
+      "role_hint": "motivation",
+      "n_bullets_estimate": 2,
+      "has_section_header": true
+    },
+    {
+      "bbox_pct": {
+        "x": 5,
+        "y": 48,
+        "w": 35,
+        "h": 10
+      },
+      "role_hint": "contribution",
+      "n_bullets_estimate": 2,
+      "has_section_header": true
+    },
+    {
+      "bbox_pct": {
+        "x": 5,
+        "y": 85,
+        "w": 35,
+        "h": 8
+      },
+      "role_hint": "method",
+      "n_bullets_estimate": 2,
+      "has_section_header": false
+    },
+    {
+      "bbox_pct": {
+        "x": 37,
+        "y": 18,
+        "w": 60,
+        "h": 8
+      },
+      "role_hint": "result",
+      "n_bullets_estimate": 2,
+      "has_section_header": true
+    },
+    {
+      "bbox_pct": {
+        "x": 68,
+        "y": 18,
+        "w": 30,
+        "h": 10
+      },
+      "role_hint": "takeaway",
+      "n_bullets_estimate": 2,
+      "has_section_header": false
+    },
+    {
+      "bbox_pct": {
+        "x": 68,
+        "y": 40,
+        "w": 30,
+        "h": 8
+      },
+      "role_hint": "result",
+      "n_bullets_estimate": 1,
+      "has_section_header": false
+    },
+    {
+      "bbox_pct": {
+        "x": 68,
+        "y": 58,
+        "w": 30,
+        "h": 8
+      },
+      "role_hint": "result",
+      "n_bullets_estimate": 1,
+      "has_section_header": false
+    },
+    {
+      "bbox_pct": {
+        "x": 68,
+        "y": 92,
+        "w": 30,
+        "h": 6
+      },
+      "role_hint": "aux",
+      "n_bullets_estimate": 1,
+      "has_section_header": true
+    }
+  ],
+  "headline_band": {
+    "present": false,
+    "bbox_pct": {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0
+    },
+    "style": "none"
+  },
+  "color_palette": {
+    "primary": "#1B3A5C",
+    "secondary": "#2E86AB",
+    "accent": "#A3D5FF",
+    "background": "#FFFFFF",
+    "text": "#1A1A2E"
+  },
+  "typography": {
+    "title_size_band": "huge",
+    "section_size_band": "large",
+    "body_size_band": "medium",
+    "font_family_hint": "sans"
+  },
+  "visual_density": "dense",
+  "reading_order": [
+    "title",
+    "problem",
+    "method",
+    "result",
+    "takeaway"
+  ],
+  "notes": "Left zone contains Highlights and INTR architecture diagram; center zone is dominated by grid-based results; right zone has interpretation examples and bar charts with consistent vertical alignment."
+}

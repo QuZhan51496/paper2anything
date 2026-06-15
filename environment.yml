@@ -1,0 +1,48 @@
+# paper2anything 的统一 conda 环境定义
+# 一个环境覆盖 5 个 skill：paper2slides / paper2poster / paper2html / paper2xhs / paper2wechat
+#
+# 复现：
+#     conda env create -f environment.yml
+#     conda activate paper2anything
+#
+# 更新（已存在）：
+#     conda env update -f environment.yml --prune
+#
+# 系统依赖（不在此文件管理，需另装；详见 README.md）：
+#     poppler-utils（pdfimages / pdftoppm）............................ paper2slides
+#     libreoffice（pptx → pdf，视觉 QA 用）............................. paper2slides
+#     Node.js + pptxgenjs（PPT 渲染）+ react-icons/react/react-dom/sharp
+#       （icon 光栅，仅 icon 元素需要）................................. paper2slides
+#     playwright 浏览器内核（装好后跑一次 `playwright install chromium`） paper2poster / paper2xhs
+#     md2wechat（已在下方 pip 装；如需源码版见 paper2wechat/SKILL.md）.... paper2wechat
+#     可选 tesseract-ocr（扫描版论文 OCR）.............................. paper2slides
+name: paper2anything
+channels:
+  - defaults
+dependencies:
+  - python=3.13
+  - pip
+  - pip:
+      # ---- PDF 解析 ----
+      - pdfplumber          # paper2slides
+      - pypdf               # paper2slides
+      - PyMuPDF             # paper2poster
+      # ---- 图像处理（全 skill 通用）----
+      - Pillow>=10.0.0
+      # ---- 视觉 QA 链路：pptx 文本提取 ----
+      - markitdown[pptx]    # paper2slides
+      # ---- HTTP / LLM 客户端 ----
+      - requests>=2.31.0
+      - openai>=1.50.0
+      - anthropic>=0.40.0   # paper2xhs / paper2wechat
+      # ---- 浏览器渲染 / 截图 ----
+      - playwright>=1.45.0  # paper2poster 渲染、paper2xhs 发布
+      # ---- CLI / 配置 ----
+      - rich>=13.0.0        # paper2xhs / paper2wechat
+      - click>=8.1.0        # paper2xhs / paper2wechat
+      - python-dotenv>=1.0.0
+      # ---- 公众号格式化（paper2wechat Stage 7）----
+      - md2wechat
+      # ---- 可选 OCR（paper2slides 扫描版论文）：取消注释以启用 ----
+      # - pytesseract
+      # - pdf2image

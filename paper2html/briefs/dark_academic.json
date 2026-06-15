@@ -1,0 +1,20 @@
+{
+  "audience": "ML researchers and practitioners browsing a top-conference project page",
+  "goal": "A dark, restrained, high-end academic project page that feels like a flagship conference showcase (VPR / PRO-CUA vibe)",
+  "style": "dark",
+  "emphasis": [
+    "28.4 BLEU state-of-the-art on WMT'14 En-De",
+    "41.8 BLEU on WMT'14 En-Fr",
+    "trained in 12 hours on 8 GPUs",
+    "O(1) path length via pure self-attention"
+  ],
+  "narrative_angle": "Attention replaces recurrence and convolution entirely — a cleaner, faster, more parallel path to sequence modeling.",
+  "hero_message": "Attention is all you need: a pure-attention architecture that drops recurrence and convolution.",
+  "teaser_heading": "The Transformer architecture",
+  "table_mode": "html",
+  "figure_strategy": "architecture-figure-as-large-hero-teaser",
+  "sections": [],
+  "notes": "Dark theme: deep near-black background, one electric cyan / blue accent, restrained and academic — NOT flashy neon. Generous whitespace, large display title in the hero. Render the key claims as oversized glowing metric cards. Numbered method step cards. Rebuild result tables as real styled HTML tables with the best row bolded. Soft 1px borders and subtle glow/shadow on cards. Keep it elegant and technical.",
+  "source_brief": "Make this Attention Is All You Need paper into a dark, premium, restrained academic project page in the spirit of VPR and PRO-CUA. Deep dark background with a single electric cyan/blue accent, big airy hero, glowing big-number metric cards for the BLEU / training-time / O(1) claims, numbered method steps, and clean native result tables with the winning row bolded. Technical and elegant, not neon.",
+  "confirmed": true
+}

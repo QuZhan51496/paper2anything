@@ -1,0 +1,262 @@
+{
+  "name": "cvpr2024_29245",
+  "schema_version": 2,
+  "source_image": null,
+  "grid": {
+    "type": "three_zone",
+    "columns": 3,
+    "rows": 4,
+    "description": "Top title band, followed by three main horizontal zones: left column with CAN diagrams and intuition, center column with architecture and performance charts, right column with comparison tables and results."
+  },
+  "color_palette": {
+    "primary": "#1B3A5C",
+    "secondary": "#2E86AB",
+    "accent": "#A3D5FF",
+    "background": "#FFFFFF",
+    "text": "#1A1A2E"
+  },
+  "typography": {
+    "title_size_band": "huge",
+    "section_size_band": "large",
+    "body_size_band": "medium",
+    "font_family_hint": "sans"
+  },
+  "visual_density": "dense",
+  "reading_order": [
+    "title",
+    "problem",
+    "method",
+    "result",
+    "takeaway"
+  ],
+  "notes": "Right column contains two stacked tables and two charts; left column has two diagram blocks with bullet explanations below each.",
+  "panels": [
+    {
+      "id": "title_band",
+      "kind": "title",
+      "bbox_pct": {
+        "x": 0.0,
+        "y": 0.0,
+        "w": 100.0,
+        "h": 12.0
+      },
+      "alignment": "left",
+      "needs": []
+    },
+    {
+      "id": "headline_band",
+      "kind": "headline",
+      "bbox_pct": {
+        "x": 35.0,
+        "y": 13.0,
+        "w": 65.0,
+        "h": 4.0
+      },
+      "style": "strap",
+      "needs": [
+        "headline_claim_or_metric"
+      ]
+    },
+    {
+      "id": "hero_method_main",
+      "kind": "figure",
+      "role": "method_main",
+      "is_hero": true,
+      "bbox_pct": {
+        "x": 35.0,
+        "y": 18.0,
+        "w": 65.0,
+        "h": 28.0
+      },
+      "caption_position": "below",
+      "needs": [
+        "figure:method_main"
+      ]
+    },
+    {
+      "id": "figure_aux_0",
+      "kind": "figure_aux",
+      "role": "method_main",
+      "is_hero": false,
+      "bbox_pct": {
+        "x": 2.0,
+        "y": 20.0,
+        "w": 32.0,
+        "h": 25.0
+      },
+      "caption_position": "below",
+      "aux_index": 0,
+      "needs": [
+        "figure_aux"
+      ]
+    },
+    {
+      "id": "figure_problem_context",
+      "kind": "figure",
+      "role": "problem_context",
+      "is_hero": false,
+      "bbox_pct": {
+        "x": 2.0,
+        "y": 55.0,
+        "w": 32.0,
+        "h": 25.0
+      },
+      "caption_position": "below",
+      "needs": [
+        "figure:problem_context"
+      ]
+    },
+    {
+      "id": "figure_result_evidence",
+      "kind": "figure",
+      "role": "result_evidence",
+      "is_hero": false,
+      "bbox_pct": {
+        "x": 35.0,
+        "y": 55.0,
+        "w": 30.0,
+        "h": 20.0
+      },
+      "caption_position": "below",
+      "needs": [
+        "figure:result_evidence"
+      ]
+    },
+    {
+      "id": "figure_aux_1",
+      "kind": "figure_aux",
+      "role": "result_evidence",
+      "is_hero": false,
+      "bbox_pct": {
+        "x": 67.0,
+        "y": 55.0,
+        "w": 30.0,
+        "h": 20.0
+      },
+      "caption_position": "below",
+      "aux_index": 1,
+      "needs": [
+        "figure_aux"
+      ]
+    },
+    {
+      "id": "figure_aux_2",
+      "kind": "figure_aux",
+      "role": "result_evidence",
+      "is_hero": false,
+      "bbox_pct": {
+        "x": 70.0,
+        "y": 20.0,
+        "w": 28.0,
+        "h": 25.0
+      },
+      "caption_position": "below",
+      "aux_index": 2,
+      "needs": [
+        "figure_aux"
+      ]
+    },
+    {
+      "id": "text_motivation_0",
+      "kind": "text",
+      "role": "motivation",
+      "is_known_role": true,
+      "bbox_pct": {
+        "x": 2.0,
+        "y": 47.0,
+        "w": 32.0,
+        "h": 8.0
+      },
+      "n_bullets_estimate": 3,
+      "has_section_header": true,
+      "needs": [
+        "section"
+      ]
+    },
+    {
+      "id": "text_contribution_1",
+      "kind": "text",
+      "role": "contribution",
+      "is_known_role": true,
+      "bbox_pct": {
+        "x": 35.0,
+        "y": 47.0,
+        "w": 63.0,
+        "h": 6.0
+      },
+      "n_bullets_estimate": 2,
+      "has_section_header": false,
+      "needs": [
+        "section"
+      ]
+    },
+    {
+      "id": "text_takeaway_2",
+      "kind": "text",
+      "role": "takeaway",
+      "is_known_role": true,
+      "bbox_pct": {
+        "x": 35.0,
+        "y": 78.0,
+        "w": 63.0,
+        "h": 8.0
+      },
+      "n_bullets_estimate": 2,
+      "has_section_header": false,
+      "needs": [
+        "section"
+      ]
+    },
+    {
+      "id": "text_aux_3",
+      "kind": "text",
+      "role": "aux",
+      "is_known_role": false,
+      "bbox_pct": {
+        "x": 70.0,
+        "y": 88.0,
+        "w": 28.0,
+        "h": 3.0
+      },
+      "n_bullets_estimate": 3,
+      "has_section_header": false,
+      "needs": [
+        "section"
+      ]
+    },
+    {
+      "id": "text_limitation_4",
+      "kind": "text",
+      "role": "limitation",
+      "is_known_role": true,
+      "bbox_pct": {
+        "x": 70.0,
+        "y": 47.0,
+        "w": 28.0,
+        "h": 8.0
+      },
+      "n_bullets_estimate": 2,
+      "has_section_header": false,
+      "needs": [
+        "section"
+      ]
+    }
+  ],
+  "shape": {
+    "n_known_figure_panels": 3,
+    "n_aux_figure_panels": 3,
+    "n_known_text_panels": 4,
+    "n_aux_text_panels": 1,
+    "has_headline": true,
+    "figure_roles": [
+      "method_main",
+      "problem_context",
+      "result_evidence"
+    ]
+  },
+  "skeleton_file": "cvpr2024_29245.html",
+  "render_size": {
+    "width": 2400,
+    "height": 1800
+  }
+}

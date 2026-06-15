@@ -1,0 +1,248 @@
+{
+  "name": "cvpr2024_29230",
+  "schema_version": 2,
+  "source_image": null,
+  "grid": {
+    "type": "three_zone",
+    "columns": 3,
+    "rows": 6,
+    "description": "Left column: introduction and goal; middle column: method diagrams and modules; right column: experimental results, comparisons, and conclusion."
+  },
+  "color_palette": {
+    "primary": "#1B3A5C",
+    "secondary": "#2E86AB",
+    "accent": "#A3D5FF",
+    "background": "#FFFFFF",
+    "text": "#1A1A2E"
+  },
+  "typography": {
+    "title_size_band": "huge",
+    "section_size_band": "large",
+    "body_size_band": "medium",
+    "font_family_hint": "sans"
+  },
+  "visual_density": "dense",
+  "reading_order": [
+    "title",
+    "problem",
+    "method",
+    "result",
+    "takeaway"
+  ],
+  "notes": "Left column includes figure grid with input/SAM outputs; middle column has two stacked architecture diagrams; right column contains tables and qualitative image rows.",
+  "panels": [
+    {
+      "id": "title_band",
+      "kind": "title",
+      "bbox_pct": {
+        "x": 0.0,
+        "y": 0.0,
+        "w": 100.0,
+        "h": 10.0
+      },
+      "alignment": "center",
+      "needs": []
+    },
+    {
+      "id": "hero_problem_context",
+      "kind": "figure",
+      "role": "problem_context",
+      "is_hero": true,
+      "bbox_pct": {
+        "x": 15.0,
+        "y": 28.0,
+        "w": 32.0,
+        "h": 22.0
+      },
+      "caption_position": "below",
+      "needs": [
+        "figure:problem_context"
+      ]
+    },
+    {
+      "id": "figure_method_main",
+      "kind": "figure",
+      "role": "method_main",
+      "is_hero": false,
+      "bbox_pct": {
+        "x": 35.0,
+        "y": 35.0,
+        "w": 60.0,
+        "h": 25.0
+      },
+      "caption_position": "below",
+      "needs": [
+        "figure:method_main"
+      ]
+    },
+    {
+      "id": "figure_result_evidence",
+      "kind": "figure",
+      "role": "result_evidence",
+      "is_hero": false,
+      "bbox_pct": {
+        "x": 68.0,
+        "y": 57.0,
+        "w": 30.0,
+        "h": 28.0
+      },
+      "caption_position": "below",
+      "needs": [
+        "figure:result_evidence"
+      ]
+    },
+    {
+      "id": "figure_aux_0",
+      "kind": "figure_aux",
+      "role": "aux",
+      "is_hero": false,
+      "bbox_pct": {
+        "x": 35.0,
+        "y": 78.0,
+        "w": 30.0,
+        "h": 12.0
+      },
+      "caption_position": "below",
+      "aux_index": 0,
+      "needs": [
+        "figure_aux"
+      ]
+    },
+    {
+      "id": "text_motivation_0",
+      "kind": "text",
+      "role": "motivation",
+      "is_known_role": true,
+      "bbox_pct": {
+        "x": 2.0,
+        "y": 18.0,
+        "w": 32.0,
+        "h": 20.0
+      },
+      "n_bullets_estimate": 4,
+      "has_section_header": true,
+      "needs": [
+        "section"
+      ]
+    },
+    {
+      "id": "text_contribution_1",
+      "kind": "text",
+      "role": "contribution",
+      "is_known_role": true,
+      "bbox_pct": {
+        "x": 2.0,
+        "y": 48.0,
+        "w": 32.0,
+        "h": 15.0
+      },
+      "n_bullets_estimate": 3,
+      "has_section_header": true,
+      "needs": [
+        "section"
+      ]
+    },
+    {
+      "id": "text_method_2",
+      "kind": "text",
+      "role": "method",
+      "is_known_role": true,
+      "bbox_pct": {
+        "x": 35.0,
+        "y": 18.0,
+        "w": 60.0,
+        "h": 10.0
+      },
+      "n_bullets_estimate": 4,
+      "has_section_header": true,
+      "needs": [
+        "section"
+      ]
+    },
+    {
+      "id": "text_method_3",
+      "kind": "text",
+      "role": "method",
+      "is_known_role": true,
+      "bbox_pct": {
+        "x": 35.0,
+        "y": 58.0,
+        "w": 60.0,
+        "h": 10.0
+      },
+      "n_bullets_estimate": 3,
+      "has_section_header": true,
+      "needs": [
+        "section"
+      ]
+    },
+    {
+      "id": "text_result_4",
+      "kind": "text",
+      "role": "result",
+      "is_known_role": true,
+      "bbox_pct": {
+        "x": 68.0,
+        "y": 20.0,
+        "w": 30.0,
+        "h": 12.0
+      },
+      "n_bullets_estimate": 2,
+      "has_section_header": true,
+      "needs": [
+        "section"
+      ]
+    },
+    {
+      "id": "text_result_5",
+      "kind": "text",
+      "role": "result",
+      "is_known_role": true,
+      "bbox_pct": {
+        "x": 68.0,
+        "y": 35.0,
+        "w": 30.0,
+        "h": 12.0
+      },
+      "n_bullets_estimate": 2,
+      "has_section_header": true,
+      "needs": [
+        "section"
+      ]
+    },
+    {
+      "id": "text_takeaway_6",
+      "kind": "text",
+      "role": "takeaway",
+      "is_known_role": true,
+      "bbox_pct": {
+        "x": 68.0,
+        "y": 85.0,
+        "w": 30.0,
+        "h": 8.0
+      },
+      "n_bullets_estimate": 1,
+      "has_section_header": true,
+      "needs": [
+        "section"
+      ]
+    }
+  ],
+  "shape": {
+    "n_known_figure_panels": 3,
+    "n_aux_figure_panels": 1,
+    "n_known_text_panels": 7,
+    "n_aux_text_panels": 0,
+    "has_headline": false,
+    "figure_roles": [
+      "method_main",
+      "problem_context",
+      "result_evidence"
+    ]
+  },
+  "skeleton_file": "cvpr2024_29230.html",
+  "render_size": {
+    "width": 2400,
+    "height": 1800
+  }
+}
