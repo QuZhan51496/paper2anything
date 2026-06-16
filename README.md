@@ -56,7 +56,7 @@ conda activate paper2anything
 ```
 
 `environment.yml` 已合并 5 个 skill 的全部 Python 依赖（pdfplumber / pypdf / PyMuPDF /
-Pillow / markitdown / requests / openai / anthropic / playwright / rich / click /
+Pillow / markitdown / requests / openai / playwright / rich /
 python-dotenv / md2wechat …）。
 
 ### 系统级依赖（不在 conda 内，需另装）
