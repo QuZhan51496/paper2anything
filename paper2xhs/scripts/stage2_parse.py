@@ -189,6 +189,8 @@ def _parse_content_list(content_list_path: Path) -> tuple:
         current_lines = []
 
     for item in items:
+        if not isinstance(item, dict):  # MinerU content_list 偶含 list 型嵌套块, 跳过避免 .get 崩溃
+            continue
         itype = item.get("type", "")
         text = item.get("text", "").strip()
         page = item.get("page_idx", 0) + 1
