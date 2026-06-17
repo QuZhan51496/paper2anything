@@ -2,7 +2,7 @@
 
 > paper2slides 精简副本：只保留 `render_pptx.py` 实际产出的元素（text / shape /
 > line / image / icon）相关内容与踩坑点。官方完整 API（Tables / Charts / Slide
-> Masters / Backgrounds 等）本 skill 不用，已删除——需要时查 PptxGenJS 官方文档。
+> Masters / Backgrounds 等）本 skill 不用——需要时查 PptxGenJS 官方文档。
 
 ---
 
@@ -174,8 +174,8 @@ Popular icon sets in react-icons:
 ## Common Pitfalls
 
 ⚠️ These issues cause file corruption, visual bugs, or broken output. Avoid them.
-（编号保持官方原编号，调用方按 "#N" 引用——故 #2/#4/#5/#6/#7 是本 skill 用不到
-已删，留 #1 / #3 / #8 间隙是有意为之。）
+（编号沿用 PptxGenJS 官方原编号，调用方按 "#N" 引用——本 skill 只用到 #1 / #3 / #8，
+其余官方编号此处不列。）
 
 1. **NEVER use "#" with hex colors in PptxGenJS color fields** - causes file corruption
    ```javascript

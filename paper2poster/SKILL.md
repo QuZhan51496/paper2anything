@@ -90,7 +90,7 @@ conda run -n paper2anything --no-capture-output python ${SKILL_DIR}/scripts/pars
   --output-dir "${RUN_DIR}/parsed"
 ```
 
-MinerU (cloud) is the only parser — on failure the script exits non-zero (no local fallback). Fix the token / network and re-run.
+MinerU (cloud) is the only parser — on failure the script exits non-zero. Fix the token / network and re-run.
 
 Produces:
 - `parsed/content.md` — full text in Markdown
@@ -444,6 +444,6 @@ Suggested starting palettes (pick whatever the design calls for — `color_schem
 - **MinerU 401**: token missing — set `MINERU_API_TOKEN` from `https://mineru.net/apiManage/token`.
 - **MinerU OSS download stalls**: requests through MinerU's presigned OSS URLs need `proxies={"http": None, "https": None}` to bypass system proxy (already handled in `parse_pdf.py`).
 - **Playwright missing**: `pip install playwright && playwright install chromium`. The geometry check (Step 5, check a) and `screenshot.py` both need it.
-- **No external VLM / LLM**: this skill calls no vision/LLM API. Figure choice, design, the visual read (Step 6), and the content check (Step 7, blind subagent) are all done by you; the geometry check (Step 5a) is pure pixel math. The only network dependency is MinerU for PDF parsing (Step 1), which is cloud-only (no local parser). For a fully offline run, parse the PDF elsewhere and drop `content.md` + `mineru_raw.json` + `figures/` into `parsed/` by hand.
+- **No external VLM / LLM**: this skill calls no vision/LLM API. Figure choice, design, the visual read (Step 6), and the content check (Step 7, blind subagent) are all done by you; the geometry check (Step 5a) is pure pixel math. The only network dependency is MinerU for PDF parsing (Step 1). For a fully offline run, parse the PDF elsewhere and drop `content.md` + `mineru_raw.json` + `figures/` into `parsed/` by hand.
 
 For layout principles see [references/layout_guide.md](references/layout_guide.md) and [references/poster_design_guide.md](references/poster_design_guide.md). For agent-extracted design rules see [references/agent_design_rules_from_posters.md](references/agent_design_rules_from_posters.md).

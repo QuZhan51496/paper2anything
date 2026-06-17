@@ -13,7 +13,7 @@ mineru_parser.py — MinerU 解压输出 → paper2slides schema
   - 全部坐标用 layout.pdf_info[page].page_size = [W, H] 归一化到 0..1，top-origin
   - LaTeX 清洗：MinerU 会把字母间错插空格（"A t t e n t i o n"），但要保留控制序列后的必要空格
   - 子图归并：caption 不带 "Figure N" 的 image 暂存 staging，遇下一带编号 caption 合并为 subfigures
-  - kind 分类复用 sectionize.py 的关键词表，保证两条后端路径的 kind 一致
+  - kind 分类复用 sectionize.py 的关键词表
 
 CLI（无网络测试）：
     python -m scripts.lib.mineru_parser <unzipped_dir> <workdir>
@@ -26,7 +26,7 @@ import re
 import sys
 from pathlib import Path
 
-# 复用 sectionize 的关键词表，保证 kind 跨后端一致
+# 复用 sectionize 的关键词表给章节标题分 kind
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from lib.sectionize import (  # noqa: E402
     NUMBERING, NUMBERED_KEYWORDS, TOP_LEVEL_KEYWORDS,
@@ -90,8 +90,8 @@ def clean_latex(s: str) -> str:
     只做这一步即可——LaTeX 控制序列（如 \operatorname、\frac、\sqrt）后跟的
     通常是 `{` 或空白，被 step 1 不会破坏。
 
-    早期版本试图给 `\word + 字母` 自动补空格，但贪婪量词 + 回溯会把 `\operatorname`
-    拆成 `\operatornam e`（regex 缩短匹配以满足后置字母条件）。已移除。
+    不要尝试给 `\word + 字母` 自动补空格：贪婪量词 + 回溯会把 `\operatorname`
+    拆成 `\operatornam e`（regex 缩短匹配以满足后置字母条件）。
     """
     if not s:
         return ""
@@ -623,7 +623,7 @@ def build_figures_index(cl: list, layout: dict, *,
         "extract_backend": "mineru",
         "mineru_task_id": mineru_task_id,
         "captions": captions,
-        "embedded_images": [],   # mineru 后端不再产 pdfimages 嵌入图
+        "embedded_images": [],   # mineru 后端无 pdfimages 嵌入图（用 page_renders / 裁图）
         "page_renders": page_renders,
     }
 

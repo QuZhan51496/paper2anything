@@ -47,8 +47,8 @@ Stage 0.5 用 AskUserQuestion 与用户确认三项后由你写出。落在 work
 - **Stage 5** 读 `visual_qa`：`false` 跳过视觉 QA，`qa_log.json` 记
   `"visual_qa": false`。
 
-> `schema_version` 保持 `"0.1"`：config.json 为本仓库新增产物，与既有 schema 平行，
-> 旧 workdir 无此文件时 Stage 0.5 会重新生成（等价于"未配置"，走默认）。
+> `schema_version` 保持 `"0.1"`：config.json 是独立的配置产物，与各阶段产物 schema 平行，
+> workdir 无此文件时 Stage 0.5 会重新生成（等价于"未配置"，走默认）。
 
 ---
 
@@ -316,7 +316,7 @@ icon 在 Stage 4 由 react-icons → SVG → sharp 实时光栅成 PNG 嵌入，
 
 ---
 
-## figures_index.json（Stage 1 产物，本身不是阶段标志，但 sectionize 与 Stage 3 都要读）
+## figures_index.json（Stage 1 产物，本身不是阶段标志，但 Stage 2 与 Stage 3 都要读）
 
 ```json
 {
@@ -338,9 +338,8 @@ icon 在 Stage 4 由 react-icons → SVG → sharp 实时光栅成 PNG 嵌入，
 }
 ```
 
-> `avg_text_density` / `ocr_used` / `embedded_images` 是旧 local 后端字段，MinerU 路径
-> 不再产出——图实体由 MinerU 写入 `figures/`。某 figure 在原文是矢量图、`figures/` 里没有
-> 清晰实体时，回退用 `page_renders` 同页 PNG 裁剪（`scripts/page_screenshot.py` 提供）。
+> 图实体由 MinerU 写入 `figures/`。某 figure 在原文是矢量图、`figures/` 里没有清晰实体时，
+> 回退用 `page_renders` 同页 PNG 裁剪（`scripts/page_screenshot.py` 提供）。
 
 ### `captions[].bbox`（仅 `kind == "table"`）
 
@@ -358,27 +357,27 @@ MinerU 未能定位该表。Stage 3 在这种情况下走视觉估算 fallback�
 
 `schema_version` 保持 `"0.1"`。
 
-### Addendum: mineru 字段
+### 顶层字段：`extract_backend` / `mineru_task_id`
 
-Stage 1 走 MinerU 云 API（现为唯一解析路径），`figures_index.json` 顶层含以下字段。`schema_version` 仍为 `"0.1"`——下游用 `.get(default)` 读取，兼容旧 figures_index.json。
+`figures_index.json` 顶层还含以下两个字段，下游用 `.get(default)` 防御式读取：
 
 **`figures_index.json` 顶层**：
 
 | 字段 | 类型 | 说明 |
 |---|---|---|
-| `extract_backend` | `"mineru"` | Stage 1 实际走的后端（现恒为 `"mineru"`）|
+| `extract_backend` | `"mineru"` | Stage 1 解析后端（固定为 `"mineru"`）|
 | `mineru_task_id` | string \| null | MinerU 任务 ID（便于复跑诊断；写入 `run.log`）|
 
 **`figures_index.json/captions[i]`**（mineru 后端时所有 caption 都带）：
 
 | 字段 | 含义 |
 |---|---|
-| `bbox_source` | 新枚举值 `"mineru:vlm"`（VLM 模型识别，`bbox_confidence == "high"`）|
+| `bbox_source` | 枚举值如 `"mineru:vlm"`（VLM 模型识别，`bbox_confidence == "high"`）|
 | `html` | 仅 `kind == "table"` 有；MinerU 把表识别成 HTML，可供 Stage 3 选择直接渲染或裁图 |
-| `high_res_crop_path` | `"figures/<id>.png"`，`extract_paper` 已用 PIL 从 150 dpi 整页 PNG 裁出高清版 |
+| `high_res_crop_path` | `"figures/<id>.png"`，`extract_paper` 已用 PIL 从 300 dpi 整页 PNG 裁出高清版 |
 | `subfigures` | `[{page, bbox}]` 子图列表（如论文 Figure 2 是两个并排子图，无编号 caption 的 image 会被归并到下一个有编号 figure）|
 
-**`paper_meta.json` 顶层**新增：
+**`paper_meta.json` 顶层**还含：
 
 ```json
 "equations": [
@@ -392,11 +391,11 @@ Stage 1 走 MinerU 云 API（现为唯一解析路径），`figures_index.json` 
 
 `latex` 是 `clean_latex` 清洗后的字串（VLM 在字母间错插的空格已合并）；`latex_raw` 保留原始供调试。Stage 3 可三选一处理，详见 [design-style.md](design-style.md) 的 "Equations" 一节。
 
-`paper_meta.json/figures[]` 与 `tables[]` 自动继承 captions 的新字段（`html` / `high_res_crop_path` / `bbox` / `bbox_source` / `bbox_confidence` / `subfigures`）。
+`paper_meta.json/figures[]` 与 `tables[]` 自动继承 captions 的这些字段（`html` / `high_res_crop_path` / `bbox` / `bbox_source` / `bbox_confidence` / `subfigures`）。
 
-### Addendum: `is_appendix` 标记（figures / tables / equations 通用）
+### `is_appendix` 标记（figures / tables / equations 通用）
 
-每个 figure / table / equation 都附带 `is_appendix: bool`，由两条后端各自计算：
+每个 figure / table / equation 都附带 `is_appendix: bool`，由 Stage 1 解析计算：
 
 - **判定规则**：找到 `sections[]` 中 `kind == "references"` 的章节，记其 `page_start` 为 `T`；该条目的 `page > T` 即视为附录。无 references 章节时 fallback 到"最后一个非 references section 的 page_end"。
 - **目的**：保留全部识别结果（**Stage 1 不丢弃任何 figure/table**，附录数据可能在长 talk / 补充材料场景仍有用），但让 Stage 2 在选 `figure_ref` / `equation_ref` 时**默认只挑 `is_appendix == false`**。详见 [outline-heuristics.md](outline-heuristics.md)。

@@ -29,7 +29,7 @@ paper2anything/
 ├── paper2poster/            # 论文 → 海报 HTML/PNG
 │   ├── SKILL.md
 │   ├── references/          # 海报示例（真实海报 PNG）、配色、版式指南
-│   └── scripts/             # parse_pdf / auto_outline / score_poster_visual / paper_quiz / ...
+│   └── scripts/             # parse_pdf / auto_outline / screenshot / check_env
 ├── paper2html/              # 论文 → 单页项目主页
 │   ├── SKILL.md
 │   ├── references/          # 设计语言、HTML 撰写规范、QA 清单

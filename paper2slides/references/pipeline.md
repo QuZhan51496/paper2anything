@@ -98,7 +98,7 @@ python -m scripts.workdir resolve <paper.pdf> [--output <out.pptx>] --ensure
 ## Stage 1: Extract（PDF → MinerU 云解析 → 元数据 + 图 + 整页渲染）
 
 解析统一走 **MinerU 云 API**：上传 PDF 到 mineru.net，云端解析后下载结果。必填
-`MINERU_API_TOKEN`（包根 `.env`）；无 token 或解析失败**直接报错**，无本地 fallback。
+`MINERU_API_TOKEN`（包根 `.env`）；无 token 或解析失败**直接报错**。
 
 ```bash
 python -m scripts.extract_paper <paper.pdf> [--dpi 300]

@@ -121,7 +121,7 @@ function iconKey(el) {
   return [el.lib || "fa", el.icon, el.color || "", el.iconSize || 256].join("|");
 }
 // 预扫描所有 icon 元素，去重后并发光栅，结果存进 iconCache；
-// 无 icon 时 jobs=[]，Promise.all([]) 立即 resolve —— 与旧行为严格等价。
+// 无 icon 时 jobs=[]，Promise.all([]) 立即 resolve。
 function buildIconCache() {
   const jobs = [];
   for (const sd of (spec.slides || [])) {
@@ -287,7 +287,7 @@ def _normalize_image_boxes(spec: dict, workdir: Path) -> None:
             el["y"] = round(float(el.get("y") or 0) + offset_y, 3)
             el["w"] = round(new_w, 3)
             el["h"] = round(new_h, 3)
-            # 既然 (w, h) 已是按原比例的实际占位，PptxGenJS 不再需要 sizing
+            # 既然 (w, h) 已是按原比例的实际占位，PptxGenJS 无需 sizing
             el.pop("sizing", None)
 
 

@@ -8,7 +8,7 @@ extract_paper.py — Stage 1: PDF 解析（MinerU 云 API）
   - pages/page-NN.png   整页 PNG（pdftoppm 渲染，默认 300 dpi，供高清裁图与公式裁源）
   - 高清 figure/table 裁图
 
-解析统一走 MinerU 云端；需要 MINERU_API_TOKEN。失败即报错——不再有本地 fallback。
+解析统一走 MinerU 云端；需要 MINERU_API_TOKEN。失败即报错。
 
 CLI:
     python scripts/extract_paper.py <paper.pdf> [--output <out.pptx>] [--dpi 300]

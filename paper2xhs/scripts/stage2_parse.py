@@ -299,17 +299,6 @@ def _copy_figures(mineru_out: Path, figures_dir: Path, figures_index: list) -> l
     return updated
 
 
-def _copy_pages(mineru_out: Path, pages_dir: Path) -> None:
-    """将页面图片复制到工作区 pages/ 目录"""
-    for img in sorted(mineru_out.glob("*.png")):
-        shutil.copy2(img, pages_dir / img.name)
-    # MinerU 有时将页面图放在 images/ 子目录
-    images_sub = mineru_out / "images"
-    if images_sub.exists():
-        for img in sorted(images_sub.glob("*.png")):
-            shutil.copy2(img, pages_dir / img.name)
-
-
 def _validate(meta: dict, sections: list) -> dict:
     """验证解析结果"""
     checks = {

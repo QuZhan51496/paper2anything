@@ -2,7 +2,7 @@
 paper2wechat 工具函数模块
 
 协调式（你主导）下的基础设施：日志、工作区解析、JSON 读写、Rich 输出。
-工作区不再用 task_id 子目录——固定落在论文旁 `<pdf目录>/.paper2anything/wechat/`，
+工作区固定落在论文旁 `<pdf目录>/.paper2anything/wechat/`（无 task_id 子目录），
 与 poster 的 RUN_DIR、slides 的 .paper2anything/slides/ 方案一致。
 """
 

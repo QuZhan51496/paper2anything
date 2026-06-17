@@ -6,13 +6,9 @@ import sys
 import _env  # noqa: F401  # 统一加载包根 .env（凭据）
 
 REQUIRED = {
-    "pptx": "python-pptx",
     "PIL": "Pillow",
     "requests": "requests",
-}
-
-OPTIONAL = {
-    "yaml": "pyyaml (optional)",
+    "playwright": "playwright",
 }
 
 missing = []
@@ -21,13 +17,6 @@ for module, package in REQUIRED.items():
         importlib.import_module(module)
     except ImportError:
         missing.append(package)
-
-optional_missing = []
-for module, desc in OPTIONAL.items():
-    try:
-        importlib.import_module(module)
-    except ImportError:
-        optional_missing.append(desc)
 
 # Check MinerU token
 has_token = bool(os.environ.get("MINERU_API_TOKEN", ""))
@@ -38,9 +27,6 @@ if missing:
     sys.exit(1)
 else:
     print("Required dependencies: OK")
-
-if optional_missing:
-    print(f"Optional (not critical): {', '.join(optional_missing)}")
 
 if has_token:
     print("MinerU API token: configured")

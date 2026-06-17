@@ -20,7 +20,7 @@ description: "Turn an academic paper PDF into a presentation deck (.pptx) end-to
 | 4. render     | `slide_spec.json` | `output.pptx` | `scripts/render_pptx.py`（PptxGenJS 桥）|
 | 5. qa         | `output.pptx` | pass / fail + 修复列表 | content QA 始终跑；**视觉 QA 由 Stage 0.5 的 `config.json/visual_qa` 门控**|
 
-阶段详细协议见 `references/pipeline.md`。（原独立的 sectionize 步骤已并入 Stage 1 的 MinerU 解析，阶段相应重编号。）
+阶段详细协议见 `references/pipeline.md`。
 
 ## Invocation Contract
 
@@ -89,7 +89,7 @@ set -a; source <paper2anything 包根>/.env; set +a   # 导出统一 .env（含 
 conda run -n paper2anything --no-capture-output python -m scripts.extract_paper <paper.pdf>
 ```
 
-一次性产出 `paper_meta.json` + `figures_index.json` + `pages/` + 高清裁图（结构化元数据由 MinerU 直接给出，**无独立 sectionize 步骤**）。
+一次性产出 `paper_meta.json` + `figures_index.json` + `pages/` + 高清裁图（结构化元数据由 MinerU 直接给出）。
 
 `--dpi` 调节（默认 300）、MinerU 解析的已知不完美（如 bbox 偶把 `y` 起点压在子图标题上），见
 [references/pipeline.md](references/pipeline.md) §Stage 1。

@@ -139,9 +139,7 @@ def _guess_parsed_dir(source: Path) -> Path | None:
     candidates = [
         source.parent / "parsed",
         source.parent.parent / source.stem / "parsed",
-        default_output_root(source) / f"{source.stem}_agent" / "parsed",
         default_output_root(source) / source.stem / "parsed",
-        default_output_root(source) / source.stem.replace("_agent", "") / "parsed",
     ]
     for candidate in candidates:
         if candidate.exists():
@@ -228,7 +226,7 @@ def extract_manifest(
     figures = _extract_figures(body, image_roots, body_headings)
     if cutoff and not figures:
         # Cutoff removed every figure -> likely a false positive; fall back to full text.
-        print("[agent] appendix filter removed all figures; using full document instead.")
+        print("[paper2html] appendix filter removed all figures; using full document instead.")
         body, body_headings = markdown, headings
         figures = _extract_figures(body, image_roots, body_headings)
     tables = _extract_tables(body, body_headings, parsed_dir=parsed_dir)
@@ -253,7 +251,7 @@ def extract_manifest(
 
 def validate_site(html: str, output_dir: Path, manifest: PaperManifest) -> QAResult:
     # 闸门2：你亲手写完 index.html 后校验。结构错误(缺 doctype / 缺图 / 空链)记 error，
-    # 内容保真(标题/图/表是否真进了页面)记 warning——renderer 无关，只看成品 HTML。
+    # 内容保真(标题/图/表是否真进了页面)记 warning——只校验成品 HTML 本身。
     errors: list[str] = []
     warnings: list[str] = []
 
@@ -349,76 +347,6 @@ def render_qa_report(qa: QAResult, manifest: PaperManifest) -> str:
             lines.append(f"- {key}: {value}")
 
     return "\n".join(lines) + "\n"
-
-
-def _parse_rotate_spec(spec: str, manifest: PaperManifest) -> dict[str, int]:
-    """Parse a CLI --rotate spec like "3:90,5:90" into {filename: degrees}.
-
-    Figure numbers are 1-based and refer to the order figures appear in manifest.figures.
-    """
-    rotations: dict[str, int] = {}
-    for chunk in spec.split(","):
-        chunk = chunk.strip()
-        if not chunk:
-            continue
-        if ":" not in chunk:
-            print(f"[agent] ignoring rotate token '{chunk}' (expected NUMBER:DEGREES)")
-            continue
-        num_str, deg_str = chunk.split(":", 1)
-        try:
-            idx = int(num_str.strip())
-            deg = int(deg_str.strip())
-        except ValueError:
-            print(f"[agent] ignoring rotate token '{chunk}' (non-integer)")
-            continue
-        if not (1 <= idx <= len(manifest.figures)):
-            print(f"[agent] ignoring rotate token '{chunk}' (no figure #{idx}; {len(manifest.figures)} figures)")
-            continue
-        deg = deg % 360
-        if deg == 0:
-            continue
-        if deg not in (90, 180, 270):
-            print(f"[agent] ignoring rotate token '{chunk}' (degrees must be 90/180/270)")
-            continue
-        rotations[manifest.figures[idx - 1].file] = deg
-    return rotations
-
-
-def _apply_image_rotations(output_dir: Path, rotations: dict[str, int]) -> None:
-    """Rotate already-copied images in place so they read upright. Clockwise degrees.
-
-    Operates only on the copied files under output_dir, never the source cache. Degrades
-    gracefully if Pillow is unavailable.
-    """
-    if not rotations:
-        return
-    try:
-        from PIL import Image
-    except ImportError:
-        print("[agent] Pillow not installed; skipping image rotation. Run: pip install Pillow")
-        return
-    for file_ref, deg in rotations.items():
-        deg = deg % 360
-        if deg == 0:
-            continue
-        # Accept keys with or without an "images/" prefix; images are copied under out_dir/<file_ref>
-        # but a hand-written brief may use the bare filename.
-        candidates = [output_dir / file_ref, output_dir / "images" / Path(file_ref).name]
-        target = next((c for c in candidates if c.exists()), None)
-        if target is None:
-            print(f"[agent] rotate: image not found in output, skipping: {file_ref}")
-            continue
-        try:
-            with Image.open(target) as img:
-                # PIL rotate is counter-clockwise; negate for clockwise (paper figures are
-                # usually stored rotated counter-clockwise and need a clockwise correction).
-                rotated = img.rotate(-deg, expand=True)
-                fmt = img.format or ("JPEG" if target.suffix.lower() in {".jpg", ".jpeg"} else "PNG")
-                save_kwargs = {"quality": 92} if fmt == "JPEG" else {}
-                rotated.save(target, format=fmt, **save_kwargs)
-            print(f"[agent] rotated {file_ref} by {deg} deg clockwise")
-        except Exception as exc:  # noqa: BLE001 - one bad image shouldn't abort the build
-            print(f"[agent] rotate failed for {file_ref}: {exc}")
 
 
 def copy_manifest_images(
@@ -578,8 +506,8 @@ def _lead_abstract(markdown: str) -> str:
     first ``## `` section heading and pick the longest prose paragraph. Author /
     affiliation / contact lines living in that same region are short and lose to
     the real abstract. If nothing is abstract-length we return "" rather than
-    fall back to the first paragraph (which would grab the author line — the old
-    bug); the empty slot is left for the downstream curation layer to fill.
+    fall back to the first paragraph (which would grab the author line); the
+    empty slot is left for you to fill from the full text.
     """
     first_section = re.search(r"^##\s+", markdown, re.MULTILINE)
     head = markdown[: first_section.start()] if first_section else markdown[:4000]
@@ -700,7 +628,7 @@ def _extract_tables(
     # MinerU usually renders result tables as images, so the markdown carries no
     # <table> pipe-tables for TABLE_RE to match and `tables` stays empty even though
     # the table crops exist. Fall back to the extracted images directly so the
-    # results section isn't silently dropped (the old `tables: []` bug).
+    # results section isn't silently dropped.
     if not tables and table_images:
         for item in table_images:
             image = str(item.get("image", ""))
@@ -951,48 +879,3 @@ def _limit_text(text: str, limit: int) -> str:
     if len(text) <= limit:
         return text
     return text[: limit - 1].rsplit(" ", 1)[0] + "..."
-
-
-def _json_dumps(data: object) -> str:
-    return json.dumps(data, ensure_ascii=False, indent=2) + "\n"
-
-
-def _image_dimensions(path: Path) -> tuple[int, int] | None:
-    try:
-        from PIL import Image
-    except ImportError:
-        return None
-    try:
-        with Image.open(path) as img:
-            return img.size
-    except Exception:  # noqa: BLE001
-        return None
-
-
-HTML_PROMPT_PATH = Path(__file__).parent / "prompts" / "html_generate_agent.txt"
-
-
-_VARIANT_BIASES = [
-    "EDITORIAL / MAGAZINE: a print-magazine art direction — a bold masthead, serif or high-contrast display "
-    "type for headings, multi-column text moments, pull quotes lifted from the abstract, generous margins, "
-    "and figures treated as full-bleed editorial spreads. Calm, sophisticated, paper-like palette.",
-    "PRODUCT LANDING PAGE: a polished SaaS/product launch feel — a punchy value-proposition hero, vivid accent "
-    "gradient, rounded feature cards, big benefit-driven stat callouts, clear section bands with alternating "
-    "backgrounds, and confident call-to-action buttons. Bright, modern, marketing-forward.",
-    "TERMINAL / TECHNICAL: a developer/console aesthetic — dark canvas, mono or mono-accented type, hairline "
-    "rules, code-block styling, a compact information-dense grid, subtle neon or phosphor accent. Reads like "
-    "elite engineering documentation, not a brochure.",
-    "ACADEMIC POSTER: a conference-poster layout — a strong title band, a clear column/zone structure, the "
-    "key figure as a central anchor, numbered findings, restrained scholarly palette with one accent, and "
-    "tight figure-caption pairing. Authoritative and structured.",
-    "MINIMAL ARCHIVE: extreme restraint — near-monochrome, a single hairline accent, enormous whitespace, "
-    "small understated type, almost no cards or shadows, content carried by typography and rhythm alone. "
-    "Quiet, gallery-like, confident.",
-    "DATA-VISUAL / DASHBOARD: an analytics dashboard art direction — oversized numerals, chart-like framing "
-    "around metrics and tables, a tight modular grid, badge/tag accents, and results treated as the visual "
-    "centerpiece. Crisp, quantitative, high signal density.",
-]
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

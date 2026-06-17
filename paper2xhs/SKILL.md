@@ -49,7 +49,7 @@ set -a; source <paper2anything 包根>/.env; set +a
 - `OPENAI_API_KEY`(+ `OPENAI_BASE_URL`) — 仅封面 AI 生成；无则自动跳过封面
 - `XHS_SKILLS_DIR` — 仅半自动发布（克隆 [xiaohongshu-skills](https://github.com/autoclaw-cc/xiaohongshu-skills)）；不发布可不配
 
-依赖自检（缺啥按提示装；依赖统一在 `environment.yml`，各 skill 不再保留 requirements.txt）：
+依赖自检（缺啥按提示装；依赖统一在 `environment.yml`）：
 
 ```bash
 conda run -n paper2anything --no-capture-output python -c "import requests, rich, dotenv" 2>&1

@@ -365,9 +365,8 @@ def _figure_priority(role, caption):
 def _build_asset_library(sections, figures, tables):
     """Derive a typed, role-tagged asset list from a built digest.
 
-    Backward compatible: this only adds a new `assets` field; existing
-    `sections`, `figures`, `tables` arrays are untouched and existing
-    callers (digest_to_outline.py, poster_agents.py) keep working.
+    Adds an `assets` field alongside the digest's `sections` / `figures` /
+    `tables` arrays, which stay as-is.
     """
     assets = []
     next_id = 0
@@ -452,7 +451,7 @@ def build_digest(parsed_dir):
     meta_path = os.path.join(parsed_dir, "metadata.json")
     if not os.path.exists(raw_path):
         raise FileNotFoundError(f"mineru_raw.json not found in {parsed_dir}. "
-                                f"Run parse_pdf.py with the mineru parser first.")
+                                f"Run parse_pdf.py first.")
 
     with open(raw_path, "r", encoding="utf-8") as f:
         raw = json.load(f)

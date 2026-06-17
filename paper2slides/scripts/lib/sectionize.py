@@ -1,10 +1,9 @@
 """
 lib/sectionize.py — 章节关键词表（共享库）
 
-论文章节标题的识别关键词与 kind 映射。原是 local 后端把 raw_text.txt 切成
-章节元数据的脚本；local 解析路径移除后，本模块只剩关键词表——`mineru_parser._classify_kind`
-复用这里的 `NUMBERING` / `NUMBERED_KEYWORDS` / `TOP_LEVEL_KEYWORDS` 给 MinerU 解析出的
-章节标题分类，保证 kind 跨论文一致。**不再有可执行入口**。
+论文章节标题的识别关键词表与 kind 映射，供 `mineru_parser._classify_kind` 复用——
+用 `NUMBERING` / `NUMBERED_KEYWORDS` / `TOP_LEVEL_KEYWORDS` 把 MinerU 解析出的章节
+标题分类成统一的 kind。纯数据模块，无可执行入口。
 
 识别分两类：
 1) TOP_LEVEL_KEYWORDS — 不需 numbering 也能识别（这些标题不易在正文里独占一行）

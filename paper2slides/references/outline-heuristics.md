@@ -154,7 +154,7 @@ Stage 0.5 让用户选了页数档，Stage 2 进来前先读 `config.json/deck_l
 
 > **公式同理**：mineru 后端会填 `paper_meta.equations[]`，每张 slide 也可填 `equation_ref: "eq_5"`（与 `figure_ref` 平行），Stage 3 据此决定 Unicode rewrite / 裁原图 / 仅入 speaker_notes。详见 `references/design-style.md` 的公式段。
 
-> **附录 vs 正文（重要）**：每个 `figures[i]` / `tables[i]` / `equations[i]` 带 `is_appendix: bool` 字段。**Stage 2 默认只挑 `is_appendix == false` 的条目**——附录里的 figure（如 attention 论文 Figure 3-5 在 References 之后的 attention 可视化）通常是补充材料，标准 deck 通常不展示。例外：长篇 keynote、补充材料 talk、或你判断附录某 figure 对叙事关键时，可以显式挑 `is_appendix == true` 的条目，并在 speaker_notes 注明 "from appendix"。判定规则简单：page 在 References 章节之后即标 appendix；详见 `references/schemas.md` 的相关 Addendum。
+> **附录 vs 正文（重要）**：每个 `figures[i]` / `tables[i]` / `equations[i]` 带 `is_appendix: bool` 字段。**Stage 2 默认只挑 `is_appendix == false` 的条目**——附录里的 figure（如 attention 论文 Figure 3-5 在 References 之后的 attention 可视化）通常是补充材料，标准 deck 通常不展示。例外：长篇 keynote、补充材料 talk、或你判断附录某 figure 对叙事关键时，可以显式挑 `is_appendix == true` 的条目，并在 speaker_notes 注明 "from appendix"。判定规则简单：page 在 References 章节之后即标 appendix；详见 `references/schemas.md` 的 `is_appendix` 说明。
 
 ## 受众适配（`audience` 字段）
 

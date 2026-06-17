@@ -38,9 +38,9 @@ API_BASE = os.environ.get("MINERU_API_BASE", "https://mineru.net")
 DEFAULT_TIMEOUT_S = 300
 DEFAULT_INTERVAL_S = 5
 
-# 提交/轮询也强制无代理直连（与下方 download_zip 的 _no_proxy_session 同配置）。原本 submit/
-# poll 用裸 requests，env 挂 ALL_PROXY=socks5h 时上传 OSS 会报 SOCKS 失败；download 早已绕过，
-# 这里补齐：trust_env=False 才能真正压住 all_proxy（proxies={"http":None} 会被 merge 剥掉）。
+# 提交/轮询强制无代理直连（与下方 download_zip 的 _no_proxy_session 同配置）：env 挂
+# ALL_PROXY=socks5h 时上传 OSS 会报 SOCKS 失败；trust_env=False 才能真正压住 all_proxy
+# （proxies={"http":None} 会被 merge 剥掉）。
 _SESSION = requests.Session()
 _SESSION.trust_env = False
 _SESSION.proxies = {"http": None, "https": None}

@@ -28,7 +28,7 @@ dependencies:
       - markitdown[pptx]    # paper2slides
       # ---- HTTP / LLM 客户端 ----
       - requests>=2.31.0
-      - openai>=1.50.0      # paper2html / paper2poster；paper2xhs·paper2wechat 封面
+      - openai>=1.50.0      # paper2xhs / paper2wechat 封面生成（可选）
       # ---- 浏览器渲染 / 截图 ----
       - playwright>=1.45.0  # paper2poster 渲染（截图）
       # ---- 进度输出 / 配置 ----
