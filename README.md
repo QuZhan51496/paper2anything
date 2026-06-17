@@ -49,6 +49,11 @@ paper2anything/
 5 个 skill 共用一个 conda 环境 `paper2anything`，所有 `python` 命令都以
 `conda run -n paper2anything --no-capture-output` 为前缀（或先 `conda activate paper2anything`）。
 
+**一键注册 + 自检**：在包根跑 `bash tools/install.sh` —— 把 5 个 skill 符号链接进
+`~/.claude/skills/`、没有 `.env` 时从 `.env.example` 引导一份、并检查 conda 环境与系统依赖
+（缺啥只提示、不阻塞）；加 `--create-env` 还会顺手 `conda env create` + 装 playwright chromium +
+跑 pip 自检。下面是等价的手动步骤。
+
 ```bash
 # 在 paper2anything 包根目录
 conda env create -f environment.yml
