@@ -376,7 +376,7 @@ def iter_figures(cl: list, layout: dict) -> list[dict]:
                 if staging:
                     # 多子图：当前 image 自己也是 figure 的一个子图（不是"主图"）。
                     # bbox 取所有子图的并集，subfigures 完整列出每个子图的精确边界
-                    # 供 Stage 4 视情况单独裁。
+                    # 供 Stage 3 视情况单独裁。
                     parts = list(staging) + [{
                         "page": page_no, "bbox": bbox, "caption": cap_text,
                     }]

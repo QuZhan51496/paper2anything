@@ -8,12 +8,10 @@ import _env  # noqa: F401  # 统一加载包根 .env（凭据）
 REQUIRED = {
     "pptx": "python-pptx",
     "PIL": "Pillow",
-    "fitz": "PyMuPDF",
     "requests": "requests",
 }
 
 OPTIONAL = {
-    "marker": "marker-pdf (optional, local PDF parser)",
     "yaml": "pyyaml (optional)",
 }
 

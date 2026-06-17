@@ -101,7 +101,7 @@ if [[ "$CREATE_ENV" == 1 ]]; then
   echo "  自检（pip check + 关键库 import）..."
   conda run -n "$ENV_NAME" pip check || yellow "  pip check 有告警（见上）"
   conda run -n "$ENV_NAME" python -c \
-    "import requests, rich, dotenv, fitz, PIL, openai, playwright, markitdown; print('  关键库 import OK')" \
+    "import requests, rich, dotenv, PIL, openai, playwright, markitdown; print('  关键库 import OK')" \
     || red "  关键库 import 失败 —— pip 可能 PARTIAL，按 README 单独补装后再 pip check"
 fi
 
@@ -121,8 +121,7 @@ check() {
 
 check "conda"       "conda"  "装 miniconda/anaconda"
 check "node"        "node"   "装 Node.js v20+（NodeSource）；paper2slides 渲染 PPT 用"
-check "pdfimages"   "pdfimages" "sudo apt install poppler-utils（paper2slides 取图）"
-check "pdftoppm"    "pdftoppm"  "sudo apt install poppler-utils"
+check "pdftoppm"    "pdftoppm"  "sudo apt install poppler-utils（paper2slides 整页渲染）"
 check "libreoffice" "soffice"   "sudo apt install libreoffice（paper2slides 视觉 QA）"
 
 # conda env

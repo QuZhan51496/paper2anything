@@ -1,13 +1,9 @@
 """
-Parse an academic PDF: extract Markdown text, metadata, figures, and tables.
-
-Parser priority:
-  1. MinerU Cloud API  (best quality, free daily quota, requires token)
-  2. marker-pdf         (good local alternative, needs GPU for speed)
-  3. PyMuPDF            (fast fallback, basic text + raw images)
+Parse an academic PDF via the MinerU Cloud API: extract Markdown text,
+metadata, figures, and tables.
 
 Usage:
-    python parse_pdf.py <pdf_path> --output-dir <output_dir> [--parser mineru|marker|pymupdf]
+    python parse_pdf.py <pdf_path> --output-dir <output_dir>
 
 Environment variables:
     MINERU_API_TOKEN  — Bearer token from https://mineru.net/apiManage/token
@@ -178,73 +174,6 @@ def extract_with_mineru(pdf_path: str, output_dir: str, token: str = None):
 
 
 # ================================================================
-# marker-pdf (local)
-# ================================================================
-
-def extract_with_marker(pdf_path: str, output_dir: str):
-    """Use marker-pdf for high-quality local extraction."""
-    from marker.converters.pdf import PdfConverter
-    from marker.models import create_model_dict
-    from marker.config.parser import ConfigParser
-
-    config_parser = ConfigParser({"output_format": "markdown"})
-    converter = PdfConverter(
-        config=config_parser.generate_config_dict(),
-        artifact_dict=create_model_dict(),
-    )
-    rendered = converter(pdf_path)
-    md_text = rendered.markdown
-
-    md_path = os.path.join(output_dir, "content.md")
-    with open(md_path, "w", encoding="utf-8") as f:
-        f.write(md_text)
-
-    figures_dir = os.path.join(output_dir, "figures")
-    os.makedirs(figures_dir, exist_ok=True)
-    for name, image in rendered.images.items():
-        img_path = os.path.join(figures_dir, name)
-        image.save(img_path)
-
-    return md_text
-
-
-# ================================================================
-# PyMuPDF (fallback)
-# ================================================================
-
-def extract_with_pymupdf(pdf_path: str, output_dir: str):
-    """Fallback: use PyMuPDF for basic text + raw image extraction."""
-    import fitz
-
-    doc = fitz.open(pdf_path)
-
-    full_text = []
-    for page in doc:
-        full_text.append(page.get_text("text"))
-    md_text = "\n\n".join(full_text)
-
-    md_path = os.path.join(output_dir, "content.md")
-    with open(md_path, "w", encoding="utf-8") as f:
-        f.write(md_text)
-
-    figures_dir = os.path.join(output_dir, "figures")
-    os.makedirs(figures_dir, exist_ok=True)
-    img_count = 0
-    for page_idx, page in enumerate(doc):
-        for img_idx, img in enumerate(page.get_images(full=True)):
-            xref = img[0]
-            pix = fitz.Pixmap(doc, xref)
-            if pix.n - pix.alpha > 3:
-                pix = fitz.Pixmap(fitz.csRGB, pix)
-            img_path = os.path.join(figures_dir, f"fig_p{page_idx}_{img_idx}.png")
-            pix.save(img_path)
-            img_count += 1
-
-    doc.close()
-    return md_text
-
-
-# ================================================================
 # Metadata extraction
 # ================================================================
 
@@ -291,23 +220,11 @@ def extract_metadata(md_text: str) -> dict:
 # Main
 # ================================================================
 
-PARSER_CHAIN = {
-    "mineru": [extract_with_mineru, extract_with_pymupdf],
-    "marker": [extract_with_marker, extract_with_pymupdf],
-    "pymupdf": [extract_with_pymupdf],
-}
-
-
 def main():
-    parser = argparse.ArgumentParser(description="Parse academic PDF")
+    parser = argparse.ArgumentParser(
+        description="Parse academic PDF via MinerU Cloud API")
     parser.add_argument("pdf_path", help="Path to the PDF file")
     parser.add_argument("--output-dir", required=True, help="Output directory")
-    parser.add_argument(
-        "--parser",
-        choices=list(PARSER_CHAIN.keys()),
-        default="mineru",
-        help="PDF parser (default: mineru). Each has automatic fallback chain.",
-    )
     parser.add_argument("--token", default=None, help="MinerU API token (or set MINERU_API_TOKEN env var)")
     args = parser.parse_args()
 
@@ -322,25 +239,15 @@ def main():
     os.makedirs(os.path.join(args.output_dir, "figures"), exist_ok=True)
     os.makedirs(os.path.join(args.output_dir, "tables"), exist_ok=True)
 
-    chain = PARSER_CHAIN[args.parser]
-    md_text = None
-
-    for func in chain:
-        name = func.__name__.replace("extract_with_", "")
-        print(f"Parsing with {name}...")
-        try:
-            md_text = func(args.pdf_path, args.output_dir)
-            if md_text and len(md_text.strip()) > 100:
-                print(f"  Success with {name}")
-                break
-            else:
-                print(f"  {name} returned insufficient content, trying next...")
-        except Exception as e:
-            print(f"  {name} failed: {e}")
-            print(f"  Trying next parser...")
+    print("Parsing with MinerU Cloud API...")
+    try:
+        md_text = extract_with_mineru(args.pdf_path, args.output_dir)
+    except Exception as e:
+        print(f"ERROR: MinerU parsing failed: {e}")
+        sys.exit(1)
 
     if not md_text or len(md_text.strip()) < 100:
-        print("ERROR: All parsers failed to extract meaningful content.")
+        print("ERROR: MinerU returned insufficient content.")
         sys.exit(1)
 
     # Extract and save metadata

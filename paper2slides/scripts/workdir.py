@@ -21,13 +21,12 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-STAGES = ("configure", "extract", "sectionize", "outline", "spec", "render", "qa")
+STAGES = ("configure", "extract", "outline", "spec", "render", "qa")
 
 # 每个阶段"已完成"的判据：相对 workdir 的产物路径存在即视为完成。
 STAGE_MARKERS = {
     "configure":  "config.json",   # Stage 0.5：AskUserQuestion 三项确认的落盘
     "extract":    "figures_index.json",
-    "sectionize": "paper_meta.json",
     "outline":    "slide_outline.json",
     "spec":       "slide_spec.json",
     "render":     "output.pptx",   # 渲染产物先落在 workdir，最后复制到 output_path
@@ -41,8 +40,6 @@ class Workspace:
     output_path: Path
     workdir: Path
 
-    @property
-    def raw_text_path(self) -> Path:      return self.workdir / "raw_text.txt"
     @property
     def paper_meta_path(self) -> Path:    return self.workdir / "paper_meta.json"
     @property
@@ -96,7 +93,7 @@ class Workspace:
             "output_path": str(self.output_path),
             "workdir":     str(self.workdir),
         }
-        for k in ("config_path", "raw_text_path", "paper_meta_path",
+        for k in ("config_path", "paper_meta_path",
                   "slide_outline_path",
                   "slide_spec_path", "figures_dir", "pages_dir",
                   "figures_index_path", "render_dir", "qa_dir",

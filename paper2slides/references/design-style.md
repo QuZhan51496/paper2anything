@@ -1,6 +1,6 @@
 # Design Style
 
-Stage 4 的你把 `slide_outline.json` 扩展成 `slide_spec.json` 时的视觉决策指南。**核心规则：本文件不复述官方 pptx skill 的设计指南，只补论文场景的特例与取舍**。
+Stage 3 的你把 `slide_outline.json` 扩展成 `slide_spec.json` 时的视觉决策指南。**核心规则：本文件不复述官方 pptx skill 的设计指南，只补论文场景的特例与取舍**。
 
 ## 必读：官方 pptx skill 的设计指南
 
@@ -73,19 +73,19 @@ PptxGenJS API、踩坑点与 **icon 生成**（react-icons → SVG → sharp →
 
 ## layout_kind 混用
 
-`layout_kind` 由 Stage 4 的你按 slide role + 内容形态自行决定，不预设强制配对。
+`layout_kind` 由 Stage 3 的你按 slide role + 内容形态自行决定，不预设强制配对。
 
 **反复同一种 layout 是 AI 生成的另一典型痕迹**——一组 slide 至少要混用 4 种以上 layout_kind。
 
 ## 0. 视觉一致性硬规则（**先于所有其他规则**遵守）
 
-下面 4 条是 Stage 4 写 spec 时**最优先**执行的硬约束。其他设计建议（palette、字体、版式选择）都是在满足这 4 条的前提下做的二阶选择。
+下面 4 条是 Stage 3 写 spec 时**最优先**执行的硬约束。其他设计建议（palette、字体、版式选择）都是在满足这 4 条的前提下做的二阶选择。
 
 ### 0.1 小标题字号、字体、位置 deck 内一致
 
 **所有非 title slide / 非 conclusion 类（含 qna） slide 的 `role: "title"` text element 必须用同一套样式**——`fontSize`、`fontFace`、`color`、`x`、`y`、`w`、`h`、`bold` 都相同。
 
-**具体值由 Stage 4 的你根据论文 / theme / 标题平均长度自行选定**（fontSize 在 28-40pt 区间内、y 在 0.3-0.5 内皆可），**但选定后整 deck 严格一致**：s02 用什么，s03 / s04 / s05 / ... / s11 都用同一组值。
+**具体值由 Stage 3 的你根据论文 / theme / 标题平均长度自行选定**（fontSize 在 28-40pt 区间内、y 在 0.3-0.5 内皆可），**但选定后整 deck 严格一致**：s02 用什么，s03 / s04 / s05 / ... / s11 都用同一组值。
 
 **实现要点**：写第一张非 title slide 的 subtitle 时定一个样式 dict（如 `{"fontFace": "Georgia", "fontSize": 32, "color": "<theme.primary>", "x": 0.5, "y": 0.4, "w": 9.0, "h": 0.9, "bold": true}`），后续每张非 title/conclusion slide 直接**复用同一个 dict 的字段**，不要每张单独估。
 
@@ -98,7 +98,7 @@ PptxGenJS API、踩坑点与 **icon 生成**（react-icons → SVG → sharp →
 
 ### 0.2 标题孤词避免
 
-PptxGenJS textbox 文字超长时自动换行；render_pptx.py 已自动给 `role: "title"` 的 text element 加 `autoFit: true`，多数情况会自动缩字号保持单行。即便如此，Stage 4 仍要主动避免孤词：
+PptxGenJS textbox 文字超长时自动换行；render_pptx.py 已自动给 `role: "title"` 的 text element 加 `autoFit: true`，多数情况会自动缩字号保持单行。即便如此，Stage 3 仍要主动避免孤词：
 
 - 标题字数与 textbox 宽度的搭配应让"绝大多数"标题单行装下；只对极少数特长标题靠 autoFit 兜底
 - **不要**为了某一张特长标题而专门改它的 `fontSize`——那会破坏 0.1 的一致性。长标题的处理是改写更短，或让 autoFit 自动缩
@@ -108,7 +108,7 @@ PptxGenJS textbox 文字超长时自动换行；render_pptx.py 已自动给 `rol
 
 `render_pptx.py` 在生成 `.pptx` 之前会**用 PIL 读每个 image 的真实尺寸**，把 spec 里给的 `(x, y, w, h)` 当作"最大框"，自动算出"按原图比例等比缩放后的实际占位 + 在原 box 内居中"，再喂给 PptxGenJS。这一步发生在渲染管线 Python 端，**与 PptxGenJS 的 sizing 字段无关**，所以**所有图永远不会被横向/纵向拉伸**——表格里的字母数字宽高比始终与原 PNG 一致。
 
-Stage 4 分配 image 的 `(w, h)` 时仍要尽量贴近原图比例（让等比缩放后空白最少）：
+Stage 3 分配 image 的 `(w, h)` 时仍要尽量贴近原图比例（让等比缩放后空白最少）：
 
 1. **先看原图实际宽高比**：`Image.open(path).size` 或目测整页 PNG 中 figure/table 的相对比例
 2. 选 layout 内可用 box（如 `image_half_bleed` 的右半区域、`grid_2x2` 的某格）
@@ -225,10 +225,6 @@ PptxGenJS 不擅长渲染数学。**优先看 `paper_meta.json/equations[]`**（
 
 **deck 上同一公式只表达一次（二选一）**：bullet 已写 Unicode → 不再加该公式的 image 元素，省下的空间用来放可视化；裁图 → bullet **不重复**写公式。
 
-#### Local 后端 fallback
-
-走 local 后端（`equations` 字段不存在）时，所有公式都靠你视觉估算 bbox + page_screenshot 裁——这种情况下"二选一"原则不变，bullet 与 image 仍只展示一次。`page_screenshot.py` 默认 +0.005 padding 兜底。
-
 ### 2. 论文 figure 的尺寸
 
 论文里的图通常 4:3 或更接近正方形。`LAYOUT_16x9` 的 slide 是 10×5.625"，把图
@@ -247,7 +243,7 @@ PptxGenJS 不擅长渲染数学。**优先看 `paper_meta.json/equations[]`**（
 - 整页 PNG 裁剪 result table 区域 → 当 image 元素
 - 旁边用一两句 bullet 高亮"我们的方法 +X.Y 优于 baseline"
 
-**裁切 bbox（figure 与 table 同规则）：第一刀必须是 mineru / pdfplumber 原框本身，QA 重裁也只在原框上动那一条边——全程不凭空目测整页**
+**裁切 bbox（figure 与 table 同规则）：第一刀必须是 mineru 原框本身，QA 重裁也只在原框上动那一条边——全程不凭空目测整页**
 
 > ⚠️ **本 skill 实测最常见的执行翻车**：Agent"自作主张"跳过下面第 1 步、在裁出
 > 第一版前就去看 `pages/page-NN.png` 估框 → figure 切标题、table 卷 caption / 缺
@@ -256,7 +252,7 @@ PptxGenJS 不擅长渲染数学。**优先看 `paper_meta.json/equations[]`**（
 > 不许先目测。** 觉得"原框肯定不准、先看页面再估更快"——这个念头本身就是翻车点，
 > 原框第一刀 + 单边微调几乎总比重估快且准。
 
-1. **第一刀＝原框原值（不准先目测）**：把 `figures_index.json/captions[i].bbox`（`mineru:vlm` 或 `pdfplumber` 检出）的四元组**原封不动**传 `page_screenshot.py` 裁第一版，**裁出这一版之前不许看 `pages/page-NN.png`**。**`bbox_confidence == high` 不等于边缘干净**——实测 mineru 常把 `y` 起点压在子图标题 / 图注行上，导致切标题或卷入 caption；这是预期内的，靠第 2 步对那一条边的微调解决，**不是丢开原框重估的理由**。
+1. **第一刀＝原框原值（不准先目测）**：把 `figures_index.json/captions[i].bbox`（`mineru:vlm` 检出）的四元组**原封不动**传 `page_screenshot.py` 裁第一版，**裁出这一版之前不许看 `pages/page-NN.png`**。**`bbox_confidence == high` 不等于边缘干净**——实测 mineru 常把 `y` 起点压在子图标题 / 图注行上，导致切标题或卷入 caption；这是预期内的，靠第 2 步对那一条边的微调解决，**不是丢开原框重估的理由**。
 2. **QA 发现裁不干净时——不要丢开原始框重新目测**。看 QA 渲染图判断**哪条边多了 / 少了**，只在原始 bbox 上对那条边做定向增量微调：
    - 顶部切了内容（子图标题、首行被切）→ `y` 调小、`h` 同步调大（向上扩）
    - 底部 / 某侧卷入 caption 或正文 → 对应 `h` / `w` 调小（向内收）

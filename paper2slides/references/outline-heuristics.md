@@ -1,6 +1,6 @@
 # Outline Heuristics
 
-Stage 3 的你把 `paper_meta.json` 转成 `slide_outline.json` 时使用的映射规则
+Stage 2 的你把 `paper_meta.json` 转成 `slide_outline.json` 时使用的映射规则
 与判断准则。本文件不是机械替换表——是给"理解论文 + 决策"用的脚手架。
 
 ## 总目标
@@ -12,7 +12,7 @@ Stage 3 的你把 `paper_meta.json` 转成 `slide_outline.json` 时使用的映�
 
 ### 页数档（`config.json/deck_length_target`）
 
-Stage 0.5 让用户选了页数档，Stage 3 进来前先读 `config.json/deck_length_target`：
+Stage 0.5 让用户选了页数档，Stage 2 进来前先读 `config.json/deck_length_target`：
 
 - **`null`（`自动` 档）**：上一段所述——张数纯由叙事+版面定，不设上下限。
   保持现状，本节其余约束不生效。
@@ -24,7 +24,7 @@ Stage 0.5 让用户选了页数档，Stage 3 进来前先读 `config.json/deck_l
      创新单独一张；精简档合并到 1–2 张总览。
 
   这是**软**目标：叙事完整性优先于落进区间。落不进就贴边，并在心里有数下一步
-  Stage 4 每页仍要被内容填满。**绝不**为压进精简档而砍**必含**核心角色
+  Stage 3 每页仍要被内容填满。**绝不**为压进精简档而砍**必含**核心角色
   （`title`/`introduction/motivation`/`method`/`experiment`/`result`/`conclusion`），
   也**绝不**为撑进详尽档把一个点稀释成半页留白——页数档只调"内容切多细"，
   **不**改每页"空间驱动、无留白无溢出"（见下方"内容塑形规则"与
@@ -125,13 +125,13 @@ Stage 0.5 让用户选了页数档，Stage 3 进来前先读 `config.json/deck_l
 
 ## 内容塑形规则
 
-- **文字量由版面决定，不设词数上限**。Stage 3 写 bullets 时心里有数：每页最终
+- **文字量由版面决定，不设词数上限**。Stage 2 写 bullets 时心里有数：每页最终
   要被"视觉元素 + 文字"填满——不留白也不溢出；**先想这页配什么视觉，剩下空间
   用文字补到刚好充实，不要预先把内容砍到撑不起一页**。下限/上限、字号红线、
   **每页必须有视觉元素（无纯文字页）** 等空间驱动细则的单一权威在
-  [design-style.md](design-style.md) §4（+ 0.4 节空间检查闭环），Stage 4 据此
+  [design-style.md](design-style.md) §4（+ 0.4 节空间检查闭环），Stage 3 据此
   最终填充，本节不复述
-- **bullet 是提炼后的要点，不是搬运**（Stage 3 写 bullets 的直接准则）：禁整段
+- **bullet 是提炼后的要点，不是搬运**（Stage 2 写 bullets 的直接准则）：禁整段
   抄摘要、禁完整句号 + 长定语堆叠；"够不够短"由"是不是一个清晰单点"判断，不由
   数词。完整原则见 [design-style.md](design-style.md) §4
 - **不重复 slide title 出现在 bullet 里**（title 是 "Method"，bullet 别再写 "Our method..."）
@@ -148,13 +148,13 @@ Stage 0.5 让用户选了页数档，Stage 3 进来前先读 `config.json/deck_l
 4. **ablation slide → 选 caption 含 "ablation"、"effect of"、"varying" 的 figure**
 5. 不放心时优先用 `pages/page-NN.png`（整页渲染）而非 `embedded_images`——后者可能是矢量图分解后的碎片
 
-`figure_ref` 写论文里的 figure id（如 `"figure2"`），让 Stage 4 的你决定具体怎么用（嵌入 vs. 整页裁）。
+`figure_ref` 写论文里的 figure id（如 `"figure2"`），让 Stage 3 的你决定具体怎么用（嵌入 vs. 整页裁）。
 
-> **bbox 是 Stage 4 的事**：当 `figures_index.json/captions[i]` 已带 `bbox` 字段（脚本检出的精确表格边界），Stage 4 会直接用；缺失才走视觉估算。Stage 3 不需要操心 bbox，只填 `figure_ref` 即可。
+> **bbox 是 Stage 3 的事**：当 `figures_index.json/captions[i]` 已带 `bbox` 字段（脚本检出的精确表格边界），Stage 3 会直接用；缺失才走视觉估算。Stage 2 不需要操心 bbox，只填 `figure_ref` 即可。
 
-> **公式同理**：mineru 后端会填 `paper_meta.equations[]`，每张 slide 也可填 `equation_ref: "eq_5"`（与 `figure_ref` 平行），Stage 4 据此决定 Unicode rewrite / 裁原图 / 仅入 speaker_notes。详见 `references/design-style.md` 的公式段。
+> **公式同理**：mineru 后端会填 `paper_meta.equations[]`，每张 slide 也可填 `equation_ref: "eq_5"`（与 `figure_ref` 平行），Stage 3 据此决定 Unicode rewrite / 裁原图 / 仅入 speaker_notes。详见 `references/design-style.md` 的公式段。
 
-> **附录 vs 正文（重要）**：每个 `figures[i]` / `tables[i]` / `equations[i]` 带 `is_appendix: bool` 字段。**Stage 3 默认只挑 `is_appendix == false` 的条目**——附录里的 figure（如 attention 论文 Figure 3-5 在 References 之后的 attention 可视化）通常是补充材料，标准 deck 通常不展示。例外：长篇 keynote、补充材料 talk、或你判断附录某 figure 对叙事关键时，可以显式挑 `is_appendix == true` 的条目，并在 speaker_notes 注明 "from appendix"。判定规则简单：page 在 References 章节之后即标 appendix；详见 `references/schemas.md` 的相关 Addendum。
+> **附录 vs 正文（重要）**：每个 `figures[i]` / `tables[i]` / `equations[i]` 带 `is_appendix: bool` 字段。**Stage 2 默认只挑 `is_appendix == false` 的条目**——附录里的 figure（如 attention 论文 Figure 3-5 在 References 之后的 attention 可视化）通常是补充材料，标准 deck 通常不展示。例外：长篇 keynote、补充材料 talk、或你判断附录某 figure 对叙事关键时，可以显式挑 `is_appendix == true` 的条目，并在 speaker_notes 注明 "from appendix"。判定规则简单：page 在 References 章节之后即标 appendix；详见 `references/schemas.md` 的相关 Addendum。
 
 ## 受众适配（`audience` 字段）
 
@@ -169,8 +169,8 @@ Stage 0.5 让用户选了页数档，Stage 3 进来前先读 `config.json/deck_l
 - 章节边界错位（method 被切碎）
 - abstract 含连字符污染
 
-进入 Stage 3 之前先做 [schemas.md](schemas.md) 末尾"你在 Stage 3 进入前应做的修订"列表里的 4 项校核。**校核结果不写回 paper_meta.json**，但用校核后的理解生成 outline。
+进入 Stage 2 之前先做 [schemas.md](schemas.md) 末尾"你在 Stage 2 进入前应做的修订"列表里的 4 项校核。**校核结果不写回 paper_meta.json**，但用校核后的理解生成 outline。
 
 ---
 
-> **Stage 4 视觉一致性硬规则**（字号 deck 内一致 / 孤词避免 / 图等比缩放 / 元素均衡分布）见 [design-style.md](design-style.md) 的 "0. 视觉一致性硬规则" 节，**先于所有其他设计建议遵守**。
+> **Stage 3 视觉一致性硬规则**（字号 deck 内一致 / 孤词避免 / 图等比缩放 / 元素均衡分布）见 [design-style.md](design-style.md) 的 "0. 视觉一致性硬规则" 节，**先于所有其他设计建议遵守**。

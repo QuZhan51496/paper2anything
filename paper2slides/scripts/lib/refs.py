@@ -5,7 +5,7 @@ lib/refs.py — 工具：剥离论文 References / Bibliography 内容
 时直接 strip_references(sections) 即可。
 
 同时提供 strip_text_after_refs(text)，用于尚未切分但需要快速去掉参考文献块的场景
-（如调试或 Stage 3 之前的临时文本预览）。
+（如调试或 Stage 2 之前的临时文本预览）。
 """
 from __future__ import annotations
 import re

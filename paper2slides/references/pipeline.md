@@ -59,7 +59,7 @@ python -m scripts.workdir resolve <paper.pdf> [--output <out.pptx>] --ensure
 |---|---|---|---|
 | 1 | `deck_length` | `精简` ~8–12 张（10 min 短讲/组会快过）/ `标准` ~13–18 张（12–20 min 会议 talk）/ `详尽` ~19–28 张（30–45 min keynote/job talk）/ `自动` 不设页数目标，由叙事+版面决定 | 默认 `自动`；`自动` 完全保留近期"张数不设上下限"哲学 |
 | 2 | `visual_qa` | `true` 跑 soffice→jpg→子代理 视觉闭环 / `false` 只跑便宜的 content QA | **默认 `true`**（采用视觉 QA）；注意它昂贵（token/时间近乎前面所有阶段总和），不需要时选 `false` 省开销 |
-| 3 | `color_scheme` | `自动` 由 Stage 4 按论文气质选 palette / `自定义` 用户用一句话描述配色偏好，写进 config | **默认 `自动`**；自定义只存用户原话，由 Stage 4 解析映射，本阶段不选定具体 palette |
+| 3 | `color_scheme` | `自动` 由 Stage 3 按论文气质选 palette / `自定义` 用户用一句话描述配色偏好，写进 config | **默认 `自动`**；自定义只存用户原话，由 Stage 3 解析映射，本阶段不选定具体 palette |
 
 ### config.json 写什么
 
@@ -75,7 +75,7 @@ python -m scripts.workdir resolve <paper.pdf> [--output <out.pptx>] --ensure
 
 - `deck_length_target`：`精简`→`[8,12]`、`标准`→`[13,18]`、`详尽`→`[19,28]`、
   `自动`→`null`。下游只需读这个区间（`null` = 不约束）。
-- `color_scheme`：选 `自动` 写 `null`；选 `自定义` 把用户原话存成字符串。Stage 4 据此选 palette，本阶段不解析、不定具体 palette。
+- `color_scheme`：选 `自动` 写 `null`；选 `自定义` 把用户原话存成字符串。Stage 3 据此选 palette，本阶段不解析、不定具体 palette。
 - 完整字段语义见 [schemas.md](schemas.md#configjsonstage-05-产物)。
 
 ### 复用与重配
@@ -89,90 +89,45 @@ python -m scripts.workdir resolve <paper.pdf> [--output <out.pptx>] --ensure
 
 ### 下游消费
 
-`deck_length_target` → **Stage 3**（大纲粒度软目标）、`color_scheme` → **Stage 4**
-（选 palette）、`visual_qa` → **Stage 6**（视觉 QA 开关）。各字段语义与消费细则见
+`deck_length_target` → **Stage 2**（大纲粒度软目标）、`color_scheme` → **Stage 3**
+（选 palette）、`visual_qa` → **Stage 5**（视觉 QA 开关）。各字段语义与消费细则见
 [schemas.md](schemas.md#configjsonstage-05-产物) 的"消费方"。
 
 ---
 
-## Stage 1: Extract（PDF → 文本 + 图 + 整页渲染）
+## Stage 1: Extract（PDF → MinerU 云解析 → 元数据 + 图 + 整页渲染）
 
-### Backend selection（推荐先看这个）
-
-| `--backend` | 何时用 | 失败行为 |
-|---|---|---|
-| `auto`（默认）| 见 `MINERU_API_TOKEN` env 走 mineru，否则 local | mineru 失败时 silent fallback 到 local |
-| `mineru` | 强制云端 | 失败 fallback 到 local + stderr 警告 |
-| `mineru-strict` | 强制云端，调试 API 时用 | 失败 SystemExit（不 fallback）|
-| `local` | 强制本地（旧路径），处理敏感论文时用 | 走 pdfplumber + pdfimages + sectionize |
-
-mineru 后端**一次性产出 paper_meta.json + figures_index.json + 高清裁图**，Stage 2 sectionize 自动跳过；local 后端只产 figures_index.json，仍需走 Stage 2。
+解析统一走 **MinerU 云 API**：上传 PDF 到 mineru.net，云端解析后下载结果。必填
+`MINERU_API_TOKEN`（包根 `.env`）；无 token 或解析失败**直接报错**，无本地 fallback。
 
 ```bash
-python -m scripts.extract_paper <paper.pdf> [--backend auto|mineru|mineru-strict|local] [--ocr]
+python -m scripts.extract_paper <paper.pdf> [--dpi 300]
 ```
 
 **输入**：`<paper.pdf>`（绝对路径或相对当前工作目录）
 
-**输出**（写到 workdir）：
+**输出**（写到 workdir，由 `lib/mineru_parser` 写）：
 
 | 产物 | 内容 |
 |---|---|
-| `raw_text.txt` | 按页分隔的纯文本，分隔符 `===== PAGE N =====` |
-| `figures/fig-NNN.png` | pdfimages -png 抽出的嵌入图（PNG 强制，避免 PptxGenJS 加载 PPM 失败）|
-| `pages/page-NN.png` | pdftoppm 整页渲染，**默认 300 dpi 含 `-hide-annotations`**（去掉 PDF 自带的 hyperlink 绿框）；可加 `--dpi 200` 降载 |
-| `figures_index.json` | 三个独立列表：captions（论文里识别出的图/表 caption；**有显式表线的 table caption 还会带上 bbox 字段**）、embedded_images（pdfimages 输出）、page_renders（每页 PNG）|
+| `paper_meta.json` | title / authors / sections / figures / tables / equations / references_count（结构化元数据，由 MinerU 直接给出）|
+| `figures_index.json` | captions（图/表 caption，table 带 `bbox` + `bbox_source: mineru:vlm`）、figures、page_renders 等列表 |
+| `figures/`、`tables/` | MinerU 抽出的图 / 表实体与高清裁图 |
+| `pages/page-NN.png` | pdftoppm 整页渲染，**默认 300 dpi 含 `-hide-annotations`**（去掉 PDF 自带 hyperlink 绿框）；`--dpi 200` 降载、`--dpi 400` 细公式 |
 
-**完成判定**：`figures_index.json` 存在。
-
-**已知不完美**：
-
-- pdfplumber 在某些字体下会**吃掉单词间空格**（"Model Architecture" → "ModelArchitecture"）。
-  下游 `sectionize.py` 已用 `\s*` 兼容这种情况
-- 嵌入图与 caption 不绑定（pdfimages 不带页号），交给 Stage 4 的你配对
-- 扫描版论文：若 `avg_text_density < 200` 字符/页，stderr 会建议 `--ocr`。
-  OCR 需 `pytesseract` + `pdf2image`，默认未装，按需 `pip install`
-- **表格 bbox 漏检**：`pdfplumber.find_tables(strategy="lines")` 对 booktabs 风格（仅水平线，无垂直线）会漏检；
-  漏检的 table caption **没有** `bbox` 字段，Stage 4 自动走你视觉估算 fallback（见 [schemas.md](schemas.md#captionsbbox-仅-kind--table)）
-
-**何时重跑**：换论文、PDF 改了、想重新抽 OCR。
-
----
-
-## Stage 2: Sectionize（文本 → 章节切分 + 论文元数据）
-
-> **mineru 后端时本阶段自动跳过** —— `extract_paper.py --backend mineru` 已在 Stage 1 一次性写完 `paper_meta.json`，`STAGE_MARKERS["sectionize"]` 已满足，重跑也不会触发 sectionize.py。本节描述的是 local 后端的行为。
-
-```bash
-python -m scripts.lib.sectionize <workdir>
-```
-
-**输入**：`workdir/raw_text.txt` + `workdir/figures_index.json`
-
-**输出**：`workdir/paper_meta.json`（schema 见 [schemas.md](schemas.md)）
-
-**完成判定**：`paper_meta.json` 存在。
-
-**算法摘要**：
-
-- TOP_LEVEL_KEYWORDS（abstract / references / appendix / acks）无需 numbering
-- NUMBERED_KEYWORDS（method / experiment / ...）必须配 `\d+(?:\.\d+)*` 等前缀
-- 关键词内的空白用 `\s*`，兼容 pdfplumber 的空格丢失
-- 抓 abstract / title / authors 用启发式（首页前若干行匹配模式）
+**完成判定**：`paper_meta.json` + `figures_index.json` 存在。
 
 **已知不完美**：
 
-- title 抓错率较高（首页常被 license 文本/水印占位）
-- authors 启发式可能漏行
-- 子章节会引入同 kind 多条（如 5 Training + 5.1 ...）。**不**自动合并；交给
-  你在 Stage 3 校订
+- table / figure 的 `bbox` 偶把 `y` 起点压在子图标题 / 图注行上 → 第一刀会切到标题或卷入
+  caption；按 [design-style.md](design-style.md) §3 在原框上对那一条边定向微调，别丢开原框重估。
+- 个别论文 MinerU 抽 title / authors 仍可能不全 → 进 Stage 2 前**必跑** [schemas.md 末尾 4 项校核](schemas.md#你在-stage-2-进入前应做的修订)（title / authors / 同 kind 合并 / 缺关键 kind）核对 `paper_meta.json`；**校核结果不写回 `paper_meta.json`**，直接体现在 outline 里。
 
-**你的职责**：进入 Stage 3 前必跑 [schemas.md 末尾的 4 项校核](schemas.md#你在-stage-3-进入前应做的修订)。
-**不要写回 `paper_meta.json`**——校订结果直接体现在 `slide_outline.json` 内容上。
+**何时重跑**：换论文、PDF 改了、想换 `--dpi`。
 
 ---
 
-## Stage 3: Outline（论文元数据 → slide 大纲）
+## Stage 2: Outline（论文元数据 → slide 大纲）
 
 **无脚本**。这是你的工作。
 
@@ -195,7 +150,7 @@ python -m scripts.lib.sectionize <workdir>
 
 **完成判定**：`slide_outline.json` 存在且 schema 合法。
 
-**Stage 3 常见错误**：
+**Stage 2 常见错误**：
 
 - 直接复制论文 abstract 当 bullets（违反提炼原则——bullet 是要点不是搬运）
 - 一张 method 把所有方法细节塞满
@@ -204,7 +159,7 @@ python -m scripts.lib.sectionize <workdir>
 
 ---
 
-## Stage 4: Spec（slide 大纲 → 渲染规格）
+## Stage 3: Spec（slide 大纲 → 渲染规格）
 
 **无脚本**。你工作。
 
@@ -223,7 +178,7 @@ python -m scripts.lib.sectionize <workdir>
    `scripts/page_screenshot.py` 裁剪 bbox）
 6. 序列化、JSON 校验
 
-**关键约束**（这些是 Stage 4 最易翻车的点）：
+**关键约束**（这些是 Stage 3 最易翻车的点）：
 
 - `slide.id` 与 `slide_outline.json` 保持一致
 - 元素坐标 + 尺寸 ≤ slide 尺寸（10 × 5.625 for 16:9）
@@ -236,7 +191,7 @@ python -m scripts.lib.sectionize <workdir>
 
 ---
 
-## Stage 5: Render（规格 → .pptx）
+## Stage 4: Render（规格 → .pptx）
 
 ```bash
 python -m scripts.render_pptx <slide_spec.json> <output.pptx>
@@ -257,7 +212,7 @@ python -m scripts.render_pptx <slide_spec.json> <output.pptx>
 
 **完成判定**：`workdir/output.pptx` 存在且 ≥ N 张 slide（N == `slide_spec.json/slides.length`）。
 
-**Stage 5 常见错误**：
+**Stage 4 常见错误**：
 
 - 字体名拼错（PptxGenJS 不报错，pptx 打开时回退默认字体）
 - 图片路径相对 workdir 但 render_pptx.py 没正确解析（render_pptx.py 必须 `cd workdir`
@@ -266,7 +221,7 @@ python -m scripts.render_pptx <slide_spec.json> <output.pptx>
 
 ---
 
-## Stage 6: QA
+## Stage 5: QA
 
 **直接套用官方 pptx skill 的 QA Loop**——不在本文件复述。读官方 pptx skill
 `SKILL.md` 的 "QA (Required)" 一节（绝对路径与 `find ~/.claude` 兜底见
@@ -298,7 +253,7 @@ python -m scripts.render_pptx <slide_spec.json> <output.pptx>
 输出 JSON 的 `qa_dir` 字段。
 
 4. **修问题**：在 `slide_spec.json` 里改对应字段，**不要直接改 .pptx**
-5. 重跑 Stage 5（`--from-stage render` 全量重渲）→ 再 QA，直到无新发现。**复检轮按官方
+5. 重跑 Stage 4（`--from-stage render` 全量重渲）→ 再 QA，直到无新发现。**复检轮按官方
    Verification Loop 收窄子代理范围**（第 1 轮全量；第 2 轮起只审 上轮 flagged ∪ 本轮
    spec 改动页；末轮全量 full pass 兜底），判定标准不变，细则见 [design-style.md](design-style.md) "QA 修问题原则" 第 5 步
 
@@ -325,12 +280,12 @@ python -m scripts.render_pptx <slide_spec.json> <output.pptx>
 
 | 症状 | 多半的根因 | 处理 |
 |---|---|---|
-| Stage 1 警告 sparse text | 扫描版论文 | 加 `--ocr` 重跑（先 `pip install pytesseract pdf2image`）|
-| Stage 2 章节数 < 5 | 关键词漏（怪异标题）| 你在 Stage 3 校核时手动补 |
-| Stage 2 章节数 > 15 | numbering 太宽松 | 检查 paper_meta.json/sections，由你合并 |
-| Stage 4 引用了不存在的 figure | figure_ref 写错 | 查 figures_index.json/captions，改 figure_ref 或改用 page_renders |
-| Stage 5 PptxGenJS 报 image not found | 路径相对 workdir 但 node 工作目录错 | render_pptx.py 内部 cd 到 workdir 或喂绝对路径 |
-| Stage 6 视觉 QA 报"lorem ipsum 残留" | Stage 4 的你用了占位 | 修 slide_spec.json 对应文本，从 render 重跑 |
-| Stage 6 报"table 底线被切" / "裁切带入下方正文" | bbox 太紧 / 你视觉估算偏差 | `page_screenshot.py` 默认已 +0.005 padding，仍丢手动加大 `--pad 0.01`；优先用 `figures_index.json/captions[i].bbox`（pdfplumber 检出）|
-| Stage 6 报"表/图里 `[N]` 引用出现绿色矩形框" | pdftoppm 默认渲染 PDF 自带的 hyperlink annotation | extract_paper.py 已默认 `-hide-annotations`；如仍出现，机器 poppler 太旧（< 0.69），升级或 `apt install -y poppler-utils` |
-| Stage 6 报"figure/table 字模糊" | dpi 太低 | 默认已 300 dpi；论文超长降到 `--dpi 200` 时如不够清晰，恢复 300 或升 `--dpi 400` |
+| Stage 1 MinerU 解析失败 / 超时 | token 失效 / 网络 / PDF 过大 | 核对 `MINERU_API_TOKEN`、能访问 mineru.net；PDF ≤200MB/200 页；重跑 |
+| `paper_meta.json` 章节数 < 5 | MinerU 章节切分不全 | 你在 Stage 2 校核时手动补 |
+| `paper_meta.json` 章节数 > 15 | 子章节过细 | 检查 paper_meta.json/sections，由你合并 |
+| Stage 3 引用了不存在的 figure | figure_ref 写错 | 查 figures_index.json/captions，改 figure_ref 或改用 page_renders |
+| Stage 4 PptxGenJS 报 image not found | 路径相对 workdir 但 node 工作目录错 | render_pptx.py 内部 cd 到 workdir 或喂绝对路径 |
+| Stage 5 视觉 QA 报"lorem ipsum 残留" | Stage 3 的你用了占位 | 修 slide_spec.json 对应文本，从 render 重跑 |
+| Stage 5 报"table 底线被切" / "裁切带入下方正文" | bbox 太紧 / 你视觉估算偏差 | `page_screenshot.py` 默认已 +0.005 padding，仍丢手动加大 `--pad 0.01`；优先用 `figures_index.json/captions[i].bbox`（mineru 检出）|
+| Stage 5 报"表/图里 `[N]` 引用出现绿色矩形框" | pdftoppm 默认渲染 PDF 自带的 hyperlink annotation | extract_paper.py 已默认 `-hide-annotations`；如仍出现，机器 poppler 太旧（< 0.69），升级或 `apt install -y poppler-utils` |
+| Stage 5 报"figure/table 字模糊" | dpi 太低 | 默认已 300 dpi；论文超长降到 `--dpi 200` 时如不够清晰，恢复 300 或升 `--dpi 400` |

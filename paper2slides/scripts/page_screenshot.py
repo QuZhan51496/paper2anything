@@ -1,7 +1,7 @@
 """
 page_screenshot.py — 从某页 PNG 裁剪指定 bbox 区域
 
-适合 Stage 4 的图表回退路径：当 figure 的嵌入图碎片化或不存在时，从 pages/
+适合 Stage 3 的图表回退路径：当 figure 的嵌入图碎片化或不存在时，从 pages/
 里的整页 PNG 裁出图所在区域当 image 元素用。
 
 输入 bbox 以**相对比例 0..1** 表达，便于你在不知道具体像素时也能下指令。
@@ -10,7 +10,7 @@ page_screenshot.py — 从某页 PNG 裁剪指定 bbox 区域
 设计要点：
   - 默认 `pad=0.005` 四边外扩，clamp 到 [0, 1]：救 booktabs 表底线被 1px 切掉的问题
   - 文件名按 `(page, x, y, w, h, pad)` 的 SHA1 前 8 位编码：同 bbox → 同名 → 自动幂等，
-    避免 Stage 4 改 bbox 重裁时 render/ 累积孤儿文件
+    避免 Stage 3 改 bbox 重裁时 render/ 累积孤儿文件
   - 同名已存在时，默认直接返回（不重写），加 `--replace` 才覆盖
 
 CLI:

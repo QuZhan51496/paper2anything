@@ -60,15 +60,14 @@ conda env create -f environment.yml
 conda activate paper2anything
 ```
 
-`environment.yml` 已合并 5 个 skill 的全部 Python 依赖（pdfplumber / pypdf / PyMuPDF /
-Pillow / markitdown / requests / openai / playwright / rich /
-python-dotenv / md2wechat …）。
+`environment.yml` 已合并 5 个 skill 的全部 Python 依赖（Pillow / markitdown /
+requests / openai / playwright / rich / python-dotenv / md2wechat …）。
 
 ### 系统级依赖（不在 conda 内，需另装）
 
 | 工具 | 用途 | 哪个 skill |
 | --- | --- | --- |
-| poppler-utils（`pdfimages` / `pdftoppm`） | PDF 取图 | paper2slides |
+| poppler-utils（`pdftoppm`） | PDF 整页渲染 | paper2slides |
 | libreoffice（`soffice`） | pptx → pdf（视觉 QA） | paper2slides |
 | Node.js + pptxgenjs（+ react-icons/react/react-dom/sharp） | PPT 渲染（icon 光栅仅 icon 元素需要） | paper2slides |
 | `playwright install chromium` | 浏览器渲染/截图 | paper2poster、paper2xhs |
@@ -90,7 +89,7 @@ cp .env.example .env          # 首次：复制后填入你的 key
 
 | Skill | 用到的 key |
 | --- | --- |
-| paper2slides | `MINERU_API_TOKEN`（云解析；`--backend local` 时不需要） |
+| paper2slides | `MINERU_API_TOKEN`（云解析，必填） |
 | paper2poster | `MINERU_API_TOKEN`（设计 / 视觉评审 / 内容自测由你与盲审子代理完成，不调用外部 VLM）|
 | paper2html | `MINERU_API_TOKEN`（页面设计与撰写由你亲自完成，不调用任何 LLM API） |
 | paper2xhs | `MINERU_API_TOKEN`（封面另需 `OPENAI_API_KEY`；半自动发布另需 `XHS_SKILLS_DIR`） |

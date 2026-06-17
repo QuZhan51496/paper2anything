@@ -150,7 +150,7 @@ Popular icon sets in react-icons:
 
 **命名规律**：导出名 = 库前缀（`Fa`/`Md`/`Hi`/`Bi`）+ PascalCase 英文语义词。
 不确定名字时按语义猜一个常见词即可——名错不会让渲染崩，`render_pptx.py`
-会 warn+skip 该 icon（Stage 6 视觉 QA 会发现"图标缺失"再改名重渲）。
+会 warn+skip 该 icon（Stage 5 视觉 QA 会发现"图标缺失"再改名重渲）。
 
 学术 deck 高频可用名（均为 `lib:"fa"`，已验证存在）：
 

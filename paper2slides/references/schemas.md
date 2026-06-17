@@ -14,7 +14,7 @@ paper2slides 各阶段产物的 schema 定义。所有 JSON 文件均带 `schema
 
 ---
 
-## config.json（Stage 0.5 产物，Stage 3 与 Stage 6 输入）
+## config.json（Stage 0.5 产物，Stage 2 与 Stage 5 输入）
 
 Stage 0.5 用 AskUserQuestion 与用户确认三项后由你写出。落在 workdir 根
 （`config_path` 字段，见 `workdir.py` 的 `STAGE_MARKERS["configure"]`）。
@@ -34,17 +34,17 @@ Stage 0.5 用 AskUserQuestion 与用户确认三项后由你写出。落在 work
 | `schema_version` | string | 是 | 固定 `"0.1"` |
 | `deck_length` | string | 是 | `精简` / `标准` / `详尽` / `自动` 之一 |
 | `deck_length_target` | `[int,int]` \| null | 是 | 页数软目标区间。`精简`→`[8,12]`、`标准`→`[13,18]`、`详尽`→`[19,28]`、`自动`→`null`。下游只读这个；`null` = 不约束张数 |
-| `visual_qa` | bool | 是 | `true`（默认）跑 Stage 6 的视觉 QA（soffice→jpg→子代理）；`false` 只跑 content QA |
-| `color_scheme` | string \| null | 是 | `null`（默认，"自动"）= Stage 4 按论文气质自动选 palette；字符串 = 用户对配色的描述，Stage 4 据此映射/约束 palette 选择 |
+| `visual_qa` | bool | 是 | `true`（默认）跑 Stage 5 的视觉 QA（soffice→jpg→子代理）；`false` 只跑 content QA |
+| `color_scheme` | string \| null | 是 | `null`（默认，"自动"）= Stage 3 按论文气质自动选 palette；字符串 = 用户对配色的描述，Stage 3 据此映射/约束 palette 选择 |
 
 **消费方**：
 
-- **Stage 3** 读 `deck_length_target`：`null` 时张数纯由叙事+版面定；非 `null`
+- **Stage 2** 读 `deck_length_target`：`null` 时张数纯由叙事+版面定；非 `null`
   时作大纲粒度软目标（详见 [outline-heuristics.md](outline-heuristics.md) 页数档节）。
   **不**作每页字数上限，**不**改每页"空间驱动"。
-- **Stage 4** 读 `color_scheme`：`null` 按论文气质自动选 palette；非 `null` 时把
+- **Stage 3** 读 `color_scheme`：`null` 按论文气质自动选 palette；非 `null` 时把
   用户描述当约束。选/自造 palette 细则见 [design-style.md](design-style.md)。
-- **Stage 6** 读 `visual_qa`：`false` 跳过视觉 QA，`qa_log.json` 记
+- **Stage 5** 读 `visual_qa`：`false` 跳过视觉 QA，`qa_log.json` 记
   `"visual_qa": false`。
 
 > `schema_version` 保持 `"0.1"`：config.json 为本仓库新增产物，与既有 schema 平行，
@@ -52,7 +52,7 @@ Stage 0.5 用 AskUserQuestion 与用户确认三项后由你写出。落在 work
 
 ---
 
-## paper_meta.json（Stage 2 产物，Stage 3-4 输入）
+## paper_meta.json（Stage 1 产物，Stage 2-3 输入）
 
 ```json
 {
@@ -90,11 +90,11 @@ Stage 0.5 用 AskUserQuestion 与用户确认三项后由你写出。落在 work
 |---|---|---|---|
 | `schema_version` | string | 是 | 当前固定 `"0.1"` |
 | `source_pdf` | string | 是 | 源 PDF 的绝对路径 |
-| `title` | string | 是 | 论文标题。脚本启发式抽取，**你在 Stage 3 必须校核**——首页常有 license/水印干扰 |
+| `title` | string | 是 | 论文标题。脚本启发式抽取，**你在 Stage 2 必须校核**——首页常有 license/水印干扰 |
 | `authors` | string[] | 否 | 启发式抽取，可能不全；你看到必要时补 |
 | `venue` / `year` | string\|null / int\|null | 否 | 短期不抽取（脚本不可靠），由你从原文判断或留空 |
 | `abstract` | string | 否 | 启发式抽到的 abstract 段，可能含连字符与换行污染 |
-| `sections[]` | array | 是 | 启发式切分结果。**Stage 3 的你修订边界**：合并被误切的子节、剔除明显错误 |
+| `sections[]` | array | 是 | 启发式切分结果。**Stage 2 的你修订边界**：合并被误切的子节、剔除明显错误 |
 | `sections[].kind` | enum | 是 | 见下方 `kind` 枚举 |
 | `sections[].text` | string | 是 | 章节正文（已剔除 PAGE 分隔符）|
 | `sections[].subsections` | array | 是 | 短期始终为空数组；中期可填子节 |
@@ -108,7 +108,7 @@ abstract | introduction | background | related | method | experiment |
 result | discussion | conclusion | references | other
 ```
 
-### 你在 Stage 3 进入前应做的修订
+### 你在 Stage 2 进入前应做的修订
 
 读完 `paper_meta.json` 后，**先**做以下校核（不要跳）：
 
@@ -124,7 +124,7 @@ result | discussion | conclusion | references | other
 
 ---
 
-## slide_outline.json（Stage 3 产物，Stage 4 输入）
+## slide_outline.json（Stage 2 产物，Stage 3 输入）
 
 ```json
 {
@@ -156,7 +156,7 @@ result | discussion | conclusion | references | other
 | `slides[].role` | enum | 是 | 见下方 |
 | `slides[].title` | string | 是 | 短句；不重复 deck_title |
 | `slides[].bullets` | string[] | 是 | 提炼后的要点（非整段搬运）；条数与长度由版面填充决定，见 [outline-heuristics.md](outline-heuristics.md)；title slide 等可空 |
-| `slides[].needs_figure` | bool | 是 | 是否需要论文 figure（method/result 通常 true）。**=false 不代表无视觉**——每页都须有视觉元素，Stage 4 用 icon/shape/chart 等承载 |
+| `slides[].needs_figure` | bool | 是 | 是否需要论文 figure（method/result 通常 true）。**=false 不代表无视觉**——每页都须有视觉元素，Stage 3 用 icon/shape/chart 等承载 |
 | `slides[].figure_ref` | string\|null | 是 | 引用 `paper_meta.json/figures[].id`（如 `"figure2"`），或 `null` |
 | `slides[].source_section_ids` | string[] | 是 | 哪些 paper section 提供了内容（便于追溯）|
 | `slides[].speaker_notes` | string | 是 | 1–3 句话，给讲者用 |
@@ -169,13 +169,13 @@ result | discussion | conclusion | qna
 ```
 
 > **角色的必含性、典型顺序、paper section→role 映射、每个角色的内容指南**都是
-> Stage 3 启发式，**单一权威在 [outline-heuristics.md](outline-heuristics.md)**
+> Stage 2 启发式，**单一权威在 [outline-heuristics.md](outline-heuristics.md)**
 > （"角色 → 必含性与顺序" / "论文 section → slide 角色映射" / "每个角色的内容
 > 指南" 三节）。本文件不复述，避免与之漂移。
 
 ---
 
-## slide_spec.json（Stage 4 产物，Stage 5 输入）
+## slide_spec.json（Stage 3 产物，Stage 4 输入）
 
 ```json
 {
@@ -293,7 +293,7 @@ title | two_column | icon_rows | image_half_bleed | stat_callout | grid_2x2 | co
  "x": 1, "y": 1, "w": 0.5, "h": 0.5, "z": 0}
 ```
 
-icon 在 Stage 5 由 react-icons → SVG → sharp 实时光栅成 PNG 嵌入，**不写磁盘**。
+icon 在 Stage 4 由 react-icons → SVG → sharp 实时光栅成 PNG 嵌入，**不写磁盘**。
 与 `image` 的区别：`image` 走磁盘 `path` 并被 `render_pptx.py` 等比缩放居中；
 `icon` 本就是方形矢量光栅，不进 `_normalize_image_boxes`，`w/h` 直接生效（用等值如 `0.5×0.5`）。
 依赖缺失 / `icon` 名拼错 / 光栅失败时该 icon 自动 warn+skip，不阻断整 deck。
@@ -316,26 +316,21 @@ icon 在 Stage 5 由 react-icons → SVG → sharp 实时光栅成 PNG 嵌入，
 
 ---
 
-## figures_index.json（Stage 1 产物，本身不是阶段标志，但 sectionize 与 Stage 4 都要读）
+## figures_index.json（Stage 1 产物，本身不是阶段标志，但 sectionize 与 Stage 3 都要读）
 
 ```json
 {
   "schema_version": "0.1",
   "source_pdf": "absolute/path",
   "n_pages": 15,
-  "avg_text_density": 2367.4,
-  "ocr_used": false,
   "captions": [
     {"id": "figure1", "kind": "figure|table", "num": 1,
      "page": 3, "caption": "string"},
     {"id": "table3", "kind": "table", "num": 3, "page": 9,
      "caption": "...",
      "bbox": [0.229, 0.164, 0.420, 0.321],
-     "bbox_source": "pdfplumber:lines",
+     "bbox_source": "mineru:vlm",
      "bbox_confidence": "high"}
-  ],
-  "embedded_images": [
-    {"path": "figures/fig-001.png"}
   ],
   "page_renders": [
     {"page": 1, "path": "pages/page-1.png"}
@@ -343,49 +338,43 @@ icon 在 Stage 5 由 react-icons → SVG → sharp 实时光栅成 PNG 嵌入，
 }
 ```
 
-`captions` 与 `embedded_images` 故意分两列：pdfimages 输出不带页号，强行配对会
-出错。Stage 4 的你看到完整候选自己挑——例如某 figure 在原文中是矢量图，
-`embedded_images` 里没有对应文件，就回退用 `page_renders` 同页 PNG 裁剪
-（`scripts/page_screenshot.py` 提供）。
+> `avg_text_density` / `ocr_used` / `embedded_images` 是旧 local 后端字段，MinerU 路径
+> 不再产出——图实体由 MinerU 写入 `figures/`。某 figure 在原文是矢量图、`figures/` 里没有
+> 清晰实体时，回退用 `page_renders` 同页 PNG 裁剪（`scripts/page_screenshot.py` 提供）。
 
 ### `captions[].bbox`（仅 `kind == "table"`）
 
-`extract_paper.py` 用 `pdfplumber.find_tables()` 的 `lines` 策略检测表格区域，匹配到
-caption 的就把 bbox 写到该 caption 上：
+MinerU 解析时给检测到的表格区域附 bbox，匹配到 caption 的就把 bbox 写到该 caption 上：
 
 | 字段 | 含义 |
 |---|---|
 | `bbox` | 4 元素数组 `[x, y, w, h]`，**相对页面 0..1，top-origin** —— 与 `page_screenshot.py` 接口一致 |
-| `bbox_source` | `"pdfplumber:lines"` —— 来源标识 |
-| `bbox_confidence` | `"high"` —— lines 策略 = 几何边界精确 |
+| `bbox_source` | `"mineru:vlm"` —— 来源标识 |
+| `bbox_confidence` | `"high"` / `"medium"` 等 |
 
 **字段缺失语义**：当某 table caption 没有 `bbox` 字段（即 `bbox not in caption`），表示
-脚本未能定位（最常见原因：booktabs 风格只有水平线、无垂直线，pdfplumber `lines` 策略
-失效）。Stage 4 在这种情况下走视觉估算 fallback。**约定使用"字段省略"而非 `null`**，
-方便 `if "bbox" in c: ...` 形式的判断。
+MinerU 未能定位该表。Stage 3 在这种情况下走视觉估算 fallback。**约定使用"字段省略"而非
+`null`**，方便 `if "bbox" in c: ...` 形式的判断。
 
-我们故意**不**保留 `text` 策略产出的低质量 bbox：实测它常把整列正文识别成"1 列 N 行的
-伪表"，覆盖整页 — 比缺 bbox 更糟（让 Stage 4 拿到错误的"精确"信号）。
+`schema_version` 保持 `"0.1"`。
 
-`schema_version` 保持 `"0.1"`：本次为纯加性变更（仅添加可选字段），向后兼容。
+### Addendum: mineru 字段
 
-### Addendum: mineru backend additions
-
-当 Stage 1 走 MinerU 云 API（`extract_paper.py --backend mineru`）时，产物包含以下**新增可选字段**。`schema_version` 仍为 `"0.1"`——所有新字段都是可选，下游用 `.get(default)` 读取兼容旧 figures_index.json。
+Stage 1 走 MinerU 云 API（现为唯一解析路径），`figures_index.json` 顶层含以下字段。`schema_version` 仍为 `"0.1"`——下游用 `.get(default)` 读取，兼容旧 figures_index.json。
 
 **`figures_index.json` 顶层**：
 
 | 字段 | 类型 | 说明 |
 |---|---|---|
-| `extract_backend` | `"mineru"` \| `"local"` | Stage 1 实际走的后端。下游硬要兼容旧文件用 `.get("extract_backend", "local")` |
-| `mineru_task_id` | string \| null | MinerU 任务 ID（仅 mineru 后端，便于复跑诊断；写入 `run.log`）|
+| `extract_backend` | `"mineru"` | Stage 1 实际走的后端（现恒为 `"mineru"`）|
+| `mineru_task_id` | string \| null | MinerU 任务 ID（便于复跑诊断；写入 `run.log`）|
 
 **`figures_index.json/captions[i]`**（mineru 后端时所有 caption 都带）：
 
 | 字段 | 含义 |
 |---|---|
 | `bbox_source` | 新枚举值 `"mineru:vlm"`（VLM 模型识别，`bbox_confidence == "high"`）|
-| `html` | 仅 `kind == "table"` 有；MinerU 把表识别成 HTML，可供 Stage 4 选择直接渲染或裁图 |
+| `html` | 仅 `kind == "table"` 有；MinerU 把表识别成 HTML，可供 Stage 3 选择直接渲染或裁图 |
 | `high_res_crop_path` | `"figures/<id>.png"`，`extract_paper` 已用 PIL 从 150 dpi 整页 PNG 裁出高清版 |
 | `subfigures` | `[{page, bbox}]` 子图列表（如论文 Figure 2 是两个并排子图，无编号 caption 的 image 会被归并到下一个有编号 figure）|
 
@@ -401,7 +390,7 @@ caption 的就把 bbox 写到该 caption 上：
 ]
 ```
 
-`latex` 是 `clean_latex` 清洗后的字串（VLM 在字母间错插的空格已合并）；`latex_raw` 保留原始供调试。Stage 4 可三选一处理，详见 [design-style.md](design-style.md) 的 "Equations" 一节。
+`latex` 是 `clean_latex` 清洗后的字串（VLM 在字母间错插的空格已合并）；`latex_raw` 保留原始供调试。Stage 3 可三选一处理，详见 [design-style.md](design-style.md) 的 "Equations" 一节。
 
 `paper_meta.json/figures[]` 与 `tables[]` 自动继承 captions 的新字段（`html` / `high_res_crop_path` / `bbox` / `bbox_source` / `bbox_confidence` / `subfigures`）。
 
@@ -410,5 +399,5 @@ caption 的就把 bbox 写到该 caption 上：
 每个 figure / table / equation 都附带 `is_appendix: bool`，由两条后端各自计算：
 
 - **判定规则**：找到 `sections[]` 中 `kind == "references"` 的章节，记其 `page_start` 为 `T`；该条目的 `page > T` 即视为附录。无 references 章节时 fallback 到"最后一个非 references section 的 page_end"。
-- **目的**：保留全部识别结果（**Stage 1 不丢弃任何 figure/table**，附录数据可能在长 talk / 补充材料场景仍有用），但让 Stage 3 在选 `figure_ref` / `equation_ref` 时**默认只挑 `is_appendix == false`**。详见 [outline-heuristics.md](outline-heuristics.md)。
-- **何时手工启用附录条目**：长篇 keynote、补充材料、reviewer presentation 等场景下，Stage 3 可显式挑选 `is_appendix == true` 的内容；这是个判断决定，不是规则。
+- **目的**：保留全部识别结果（**Stage 1 不丢弃任何 figure/table**，附录数据可能在长 talk / 补充材料场景仍有用），但让 Stage 2 在选 `figure_ref` / `equation_ref` 时**默认只挑 `is_appendix == false`**。详见 [outline-heuristics.md](outline-heuristics.md)。
+- **何时手工启用附录条目**：长篇 keynote、补充材料、reviewer presentation 等场景下，Stage 2 可显式挑选 `is_appendix == true` 的内容；这是个判断决定，不是规则。

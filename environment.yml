@@ -9,13 +9,12 @@
 #     conda env update -f environment.yml --prune
 #
 # 系统依赖（不在此文件管理，需另装；详见 README.md）：
-#     poppler-utils（pdfimages / pdftoppm）............................ paper2slides
+#     poppler-utils（pdftoppm，整页渲染）............................... paper2slides
 #     libreoffice（pptx → pdf，视觉 QA 用）............................. paper2slides
 #     Node.js + pptxgenjs（PPT 渲染）+ react-icons/react/react-dom/sharp
 #       （icon 光栅，仅 icon 元素需要）................................. paper2slides
 #     playwright 浏览器内核（装好后跑一次 `playwright install chromium`） paper2poster / paper2xhs
 #     md2wechat（已在下方 pip 装；如需源码版见 paper2wechat/SKILL.md）.... paper2wechat
-#     可选 tesseract-ocr（扫描版论文 OCR）.............................. paper2slides
 name: paper2anything
 channels:
   - defaults
@@ -23,10 +22,6 @@ dependencies:
   - python=3.13
   - pip
   - pip:
-      # ---- PDF 解析 ----
-      - pdfplumber          # paper2slides
-      - pypdf               # paper2slides
-      - PyMuPDF             # paper2poster
       # ---- 图像处理（全 skill 通用）----
       - Pillow>=10.0.0
       # ---- 视觉 QA 链路：pptx 文本提取 ----
@@ -41,6 +36,3 @@ dependencies:
       - python-dotenv>=1.0.0
       # ---- 公众号格式化（paper2wechat Stage 7）----
       - md2wechat
-      # ---- 可选 OCR（paper2slides 扫描版论文）：取消注释以启用 ----
-      # - pytesseract
-      # - pdf2image

@@ -1,5 +1,5 @@
 """
-render_pptx.py — Stage 5: slide_spec.json → output.pptx 桥
+render_pptx.py — Stage 4: slide_spec.json → output.pptx 桥
 
 把结构化的 spec 翻译成 PptxGenJS 程序（`build.js`），用 node 跑出 .pptx。
 为什么不直接用 python-pptx？官方 pptx skill 的"从零生成"路径就是 PptxGenJS，
@@ -330,7 +330,7 @@ def render(spec_path: Path, out_path: Path,
             "node failed:\n--- stdout ---\n" + proc.stdout +
             "\n--- stderr ---\n" + proc.stderr)
     # 成功时也透传 node 的 stderr：icon 降级 / unknown shape|kind 等 [warn] 是
-    # Stage 6 QA 与 smoke 断言要依赖的诊断信号，不能因 rc==0 被吞。
+    # Stage 5 QA 与 smoke 断言要依赖的诊断信号，不能因 rc==0 被吞。
     if proc.stderr:
         sys.stderr.write(proc.stderr)
     sys.stdout.write(proc.stdout)
@@ -338,7 +338,7 @@ def render(spec_path: Path, out_path: Path,
 
 
 def main() -> None:
-    p = argparse.ArgumentParser(description="paper2slides Stage 5: render pptx")
+    p = argparse.ArgumentParser(description="paper2slides Stage 4: render pptx")
     p.add_argument("spec", type=Path, help="slide_spec.json 路径")
     p.add_argument("output", type=Path, help="输出 .pptx 路径")
     p.add_argument("--dry-run", action="store_true",

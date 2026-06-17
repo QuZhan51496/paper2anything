@@ -14,14 +14,13 @@ description: "Turn an academic paper PDF into a presentation deck (.pptx) end-to
 | 阶段 | 输入 | 产物 | 责任方 |
 |---|---|---|---|
 | 0.5. configure | 用户对话 | `<workdir>/config.json` | **你**（AskUserQuestion 三项确认：页数档 + 是否做视觉 QA + 配色）|
-| 1. extract    | `paper.pdf` | `figures_index.json` + `figures/` + `pages/`（mineru 后端**还顺手产出** `paper_meta.json`+`equations`+高清 figure/table 裁图）| `scripts/extract_paper.py` |
-| 2. sectionize | `raw_text.txt` | `paper_meta.json` | `scripts/lib/sectionize.py` + 你修订（**mineru 后端时本阶段自动跳过**）|
-| 3. outline    | `paper_meta.json` | `slide_outline.json` | **你**（按 `references/outline-heuristics.md`）|
-| 4. spec       | `slide_outline.json` + 图 | `slide_spec.json` | **你**（按 `references/design-style.md`） |
-| 5. render     | `slide_spec.json` | `output.pptx` | `scripts/render_pptx.py`（PptxGenJS 桥）|
-| 6. qa         | `output.pptx` | pass / fail + 修复列表 | content QA 始终跑；**视觉 QA 由 Stage 0.5 的 `config.json/visual_qa` 门控**|
+| 1. extract    | `paper.pdf` | `paper_meta.json` + `figures_index.json` + `figures/` + `pages/` + `equations` + 高清 figure/table 裁图（MinerU 云 API 一次性产出）| `scripts/extract_paper.py` |
+| 2. outline    | `paper_meta.json` | `slide_outline.json` | **你**（按 `references/outline-heuristics.md`）|
+| 3. spec       | `slide_outline.json` + 图 | `slide_spec.json` | **你**（按 `references/design-style.md`） |
+| 4. render     | `slide_spec.json` | `output.pptx` | `scripts/render_pptx.py`（PptxGenJS 桥）|
+| 5. qa         | `output.pptx` | pass / fail + 修复列表 | content QA 始终跑；**视觉 QA 由 Stage 0.5 的 `config.json/visual_qa` 门控**|
 
-阶段详细协议见 `references/pipeline.md`。
+阶段详细协议见 `references/pipeline.md`。（原独立的 sectionize 步骤已并入 Stage 1 的 MinerU 解析，阶段相应重编号。）
 
 ## Invocation Contract
 
@@ -58,7 +57,7 @@ conda run -n paper2anything --no-capture-output python -m scripts.workdir resolv
 | `--force` | 忽略所有 marker，全跑 |
 | `--from-stage <name>` | 从指定阶段开始重跑（长期"交互模式"的入口）|
 
-`<name>` ∈ `{configure, extract, sectionize, outline, spec, render, qa}`。
+`<name>` ∈ `{configure, extract, outline, spec, render, qa}`。
 **重新走一遍开工前三项询问**用 `--from-stage configure`（覆盖旧 `config.json`）。
 
 ## Pipeline
@@ -75,7 +74,7 @@ Stage 0 解析完 workspace 后、Stage 1 之前，用 [AskUserQuestion] 与用�
 
 1. **`deck_length`**：精简 / 标准 / 详尽 / 自动（不设页数目标，推荐）
 2. **`visual_qa`**：`true`（默认，加 soffice→jpg→子代理 视觉闭环）/ `false`（只跑便宜 content QA）
-3. **`color_scheme`**：`自动`（默认，Stage 4 按论文气质匹配 palette）/ `自定义`（用户一句话描述偏好，存进 config 由 Stage 4 解析）
+3. **`color_scheme`**：`自动`（默认，Stage 3 按论文气质匹配 palette）/ `自定义`（用户一句话描述偏好，存进 config 由 Stage 3 解析）
 
 - **复用即跳过**：`config.json` 已存在且未带 `--from-stage configure` / `--force` 时不再问，沿用上次配置。
 - 用户初始请求已表达偏好时把对应项设为 AskUserQuestion 首选项（仍展示确认）。
@@ -83,34 +82,23 @@ Stage 0 解析完 workspace 后、Stage 1 之前，用 [AskUserQuestion] 与用�
 
 ### Stage 1 — Extract（脚本）
 
-**默认走 MinerU 云 API**（见环境变量 `MINERU_API_TOKEN` 即走；该 key 统一在 paper2anything 包根 `.env` 配置）：
+**走 MinerU 云 API**（必填 `MINERU_API_TOKEN`，统一在 paper2anything 包根 `.env` 配置；无 token 直接报错）：
 
 ```bash
 set -a; source <paper2anything 包根>/.env; set +a   # 导出统一 .env（含 MINERU_API_TOKEN）
 conda run -n paper2anything --no-capture-output python -m scripts.extract_paper <paper.pdf>
 ```
 
-mineru 后端一次性产出 `paper_meta.json` + `figures_index.json` + `pages/` + 高清裁图，**Stage 2 自动跳过**。
+一次性产出 `paper_meta.json` + `figures_index.json` + `pages/` + 高清裁图（结构化元数据由 MinerU 直接给出，**无独立 sectionize 步骤**）。
 
-> ⚠️ **隐私陷阱**：mineru 把 PDF 上传 mineru.net 云端解析。**未发表手稿/敏感论文必须加 `--backend local`**。
-
-backend（`auto`/`mineru`/`mineru-strict`/`local`）选择、`--dpi` 调节（默认 300）、
-local 后端 sparse-text/吃空格/嵌入图未绑定等已知不完美，见
+`--dpi` 调节（默认 300）、MinerU 解析的已知不完美（如 bbox 偶把 `y` 起点压在子图标题上），见
 [references/pipeline.md](references/pipeline.md) §Stage 1。
 
-### Stage 2 — Sectionize（脚本 + 你校核）
+> **陷阱**：进 Stage 2 前你 **必跑** [references/schemas.md](references/schemas.md) 末尾的
+> **4 项校核**（title/authors/同 kind 合并/缺关键 kind）核对 `paper_meta.json`，**校核结果不写回
+> `paper_meta.json`**，直接体现在 Stage 2 的 outline 里。
 
-```bash
-conda run -n paper2anything --no-capture-output python -m scripts.lib.sectionize <workdir>
-```
-
-产物 `paper_meta.json`（mineru 后端已在 Stage 1 产出，本阶段自动跳过）。**陷阱**：
-进 Stage 3 前你 **必跑** [references/schemas.md](references/schemas.md) 末尾的
-**4 项校核**（title/authors/同 kind 合并/缺关键 kind），**校核结果不写回
-`paper_meta.json`**，直接体现在 Stage 3 的 outline 里。算法与已知不完美见
-[references/pipeline.md](references/pipeline.md) §Stage 2。
-
-### Stage 3 — Outline（你）
+### Stage 2 — Outline（你）
 
 输入 `paper_meta.json` + `figures_index.json` + `config.json` → 产物
 `slide_outline.json`（schema 见 [references/schemas.md](references/schemas.md)）。
@@ -127,9 +115,9 @@ conda run -n paper2anything --no-capture-output python -c \
     <workdir>/slide_outline.json
 ```
 
-完整协议与常见错误见 [references/pipeline.md](references/pipeline.md) §Stage 3。
+完整协议与常见错误见 [references/pipeline.md](references/pipeline.md) §Stage 2。
 
-### Stage 4 — Spec（你）
+### Stage 3 — Spec（你）
 
 输入 `slide_outline.json` + `figures_index.json` + figures/ + pages/ → 产物
 `slide_spec.json`。按 [references/design-style.md](references/design-style.md) 选
@@ -150,10 +138,10 @@ bbox 用相对比例 0..1，输出相对路径填到对应 image 元素 `path`�
 第一次调用 bbox 必须**逐值等于** `figures_index.json/captions[i].bbox`，**裁出
 第一版前不许目测整页**——完整基准与 QA 重裁循环见
 [references/design-style.md](references/design-style.md) §3（**跳过第一刀直接目测
-＝违反 §3**）。Stage 4 关键约束（坐标≤画布 / `margin:0` 等）见
-[references/pipeline.md](references/pipeline.md) §Stage 4。
+＝违反 §3**）。Stage 3 关键约束（坐标≤画布 / `margin:0` 等）见
+[references/pipeline.md](references/pipeline.md) §Stage 3。
 
-### Stage 5 — Render（脚本）
+### Stage 4 — Render（脚本）
 
 ```bash
 conda run -n paper2anything --no-capture-output python -m scripts.render_pptx \
@@ -163,9 +151,9 @@ conda run -n paper2anything --no-capture-output python -m scripts.render_pptx \
 产物 `<workdir>/output.pptx`，渲染成功后复制到 Stage 0 给出的最终 `output_path`。
 **陷阱**：依赖 `node`+`pptxgenjs`（全局装），node 不在 PATH 脚本会报错；失败先
 `--dry-run` 只生成 `render/build.js` 定位 spec 问题。前置依赖与常见错误见
-[references/pipeline.md](references/pipeline.md) §Stage 5。
+[references/pipeline.md](references/pipeline.md) §Stage 4。
 
-### Stage 6 — QA
+### Stage 5 — QA
 
 按下方 [QA](#qa) 一节执行：content QA 始终跑，视觉 QA 由 `config.json/visual_qa`
 门控。
@@ -190,12 +178,12 @@ conda run -n paper2anything --no-capture-output python -m scripts.render_pptx \
 
 | 症状 | 处理 |
 |---|---|
-| Stage 2 章节数 < 5 或 > 15 | 你在 Stage 3 校核时手动补 / 合并 |
-| Stage 6 报"卡片下半空 / 栏不均衡 / 底部留白" | **不是 soft**——按 `references/design-style.md` "QA 修问题原则" **3 杠杆模型**（调文字量 > 调 bullet 间隔 > 调图片大小，可叠加）修，`--from-stage render` 重跑 |
+| Stage 1 章节数 < 5 或 > 15 | 你在 Stage 2 校核时手动补 / 合并 |
+| Stage 5 报"卡片下半空 / 栏不均衡 / 底部留白" | **不是 soft**——按 `references/design-style.md` "QA 修问题原则" **3 杠杆模型**（调文字量 > 调 bullet 间隔 > 调图片大小，可叠加）修，`--from-stage render` 重跑 |
 | 用户/QA 报"引导符与文字没对齐" | 按 `references/design-style.md` "视觉丰富度建议 A" 对齐公式批量重置 icon_y + 收尾自检，`--from-stage render` 重跑 |
 | 触发了 skill 但用户只要"读 PDF" | 误触发——让用户走官方 `pdf` skill，不要继续走 paper2slides |
 
-完整错误恢复（Stage 1/5 技术类、annotation 绿框、dpi、figure_ref 等）见
+完整错误恢复（Stage 1/4 技术类、annotation 绿框、dpi、figure_ref 等）见
 [references/pipeline.md](references/pipeline.md) "错误恢复速查" 一节。
 
 ## QA
@@ -211,7 +199,7 @@ conda run -n paper2anything --no-capture-output python -m scripts.render_pptx \
 - **留白 / 栏不均衡 / 引导符未对齐不是 soft，是 hard issue，必须修**——本 skill 最常误判处，复审子代理报告时不要拿 "soft" 打发。
 
 完整 A/B 协议、`qa_log.json` 结构、产物统一放 `<workdir>/qa/` 等存放约定见
-[references/pipeline.md](references/pipeline.md) §Stage 6；视觉子代理 prompt（加段
+[references/pipeline.md](references/pipeline.md) §Stage 5；视觉子代理 prompt（加段
 A/B）、3 杠杆修复模型、复检收窄细则见 [references/design-style.md](references/design-style.md)
 "QA 时的视觉子代理 prompt" + "QA 修问题原则" 两节。
 
