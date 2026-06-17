@@ -27,7 +27,9 @@ PDF
    ```bash
    WORKDIR="$(dirname "$pdf_path")/.paper2anything/html"
    ```
-   `$pdf_path` 是用户给的论文 PDF（每块重设一次）。脚本在 `/data/quzhan/.claude/skills/paper2html/scripts`。
+   `$pdf_path` 是用户给的论文 PDF（每块重设一次）。脚本在 `${CLAUDE_SKILL_DIR}/scripts`——`CLAUDE_SKILL_DIR`
+   是**本 skill 的目录**（见本 skill 顶部注入的 "Base directory for this skill: …"）；各 Bash 块独立 shell，
+   用到它的块开头按需 `export CLAUDE_SKILL_DIR=<那个目录>` 一次（和 `WORKDIR` 一样每块现设）。
 3. **决策点用 `AskUserQuestion` 暂停**：读懂论文后确认**设计方向**（设计语言 / 主色 / 重点）；成稿后可再确认。
 4. **忠实于 manifest，空缺由你兜底**：只用 `manifest.json` 的真实素材，不编造数字/作者/链接；manifest 抽空的字段
    （authors/abstract/links 等）据 `clean.md` 全文补全——你是主笔，确定性抽取只是脚手架。
@@ -62,7 +64,7 @@ conda run -n paper2anything --no-capture-output python -c "import requests, rich
 pdf_path="/path/to/paper.pdf"          # ← 用户的论文 PDF
 WORKDIR="$(dirname "$pdf_path")/.paper2anything/html"
 conda run -n paper2anything --no-capture-output \
-  python "/data/quzhan/.claude/skills/paper2html/scripts/stage1_parse.py" "$pdf_path" --workdir "$WORKDIR"
+  python "${CLAUDE_SKILL_DIR}/scripts/stage1_parse.py" "$pdf_path" --workdir "$WORKDIR"
 ```
 
 产出（`$WORKDIR` 下）：
@@ -113,7 +115,7 @@ conda run -n paper2anything --no-capture-output \
 pdf_path="/path/to/paper.pdf"
 WORKDIR="$(dirname "$pdf_path")/.paper2anything/html"
 conda run -n paper2anything --no-capture-output \
-  python "/data/quzhan/.claude/skills/paper2html/scripts/stage2_validate.py" --workdir "$WORKDIR"
+  python "${CLAUDE_SKILL_DIR}/scripts/stage2_validate.py" --workdir "$WORKDIR"
 ```
 
 校验你写的 `index.html` → `validation.json` + `qa_report.md`。`Read` `qa_report.md`：
