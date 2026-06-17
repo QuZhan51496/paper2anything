@@ -394,9 +394,11 @@ def run(pdf_path: str, workdir: str) -> dict:
         print_error("MinerU 未生成输出目录")
         return {"status": "failed", "error": "MinerU 未生成输出"}
 
-    # ── 验证 ──
+    # ── 验证（参考 slides：摘要交给下游 Claude 兜底，不作为 abort 条件）──
+    # 很多论文（含本测试论文）摘要是作者行后的无标题段落，确定性抽取会落空；
+    # 这本是 Claude 在 understanding/文案 阶段亲自填的内容，不应在此把整个解析 abort。
     checks = _validate(meta, sections)
-    if not checks["title"] or not checks["abstract"] or not checks["sections"]:
+    if not checks["title"] or not checks["sections"]:
         print_error("解析验证失败")
         for k, v in checks.items():
             status = "[green]✓[/green]" if v else "[red]✗[/red]"
@@ -406,6 +408,8 @@ def run(pdf_path: str, workdir: str) -> dict:
             "error": "解析验证失败",
             "validation": checks,
         }
+    if not checks["abstract"]:
+        print_warning("未抽到摘要（论文可能无 Abstract 标题）；留空交给下游 Claude 兜底")
 
     # ── 保存 PIR ──
     save_json(meta, parsed_dir / "paper_meta.json")
