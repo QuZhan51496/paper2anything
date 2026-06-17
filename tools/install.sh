@@ -73,7 +73,7 @@ for name in "${SKILLS[@]}"; do link_skill "$name" || fail=1; done
 
 echo
 if [[ -f "$repo_root/.env" ]]; then
-  green ".env 已存在（skill 运行时会自动从包根 .env 加载凭据，无需手动 source）"
+  green ".env 已存在"
 elif [[ -f "$repo_root/.env.example" ]]; then
   cp "$repo_root/.env.example" "$repo_root/.env"
   green ".env 已从 .env.example 复制 —— 填入你的 key（至少 MINERU_API_TOKEN）"
