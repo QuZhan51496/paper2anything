@@ -3477,7 +3477,10 @@ def _clean_path_prompt(value: str) -> str:
         positions = [m.start() for m in re.finditer(r"[A-Za-z]:[\\/]", value)]
         if len(positions) > 1:
             value = value[positions[-1] :]
-    if value.startswith(("\\", "/")) and not value.startswith(("\\\\", "//")):
+    # A leading single backslash is a Windows drive-relative path → relativize it.
+    # POSIX absolute paths (leading '/') are valid as-is and must NOT be touched:
+    # prepending '.' turned '/data/x.pdf' into './data/x.pdf' and broke resolution.
+    if value.startswith("\\") and not value.startswith("\\\\"):
         value = "." + value
     return value
 
