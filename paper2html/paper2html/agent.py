@@ -805,33 +805,6 @@ def render_site(
     .component { padding-top: 10px; border-top: 1px solid var(--line); }
     .component strong { display: block; margin-bottom: 4px; }
     .abstract { color: var(--muted); }
-    .attention-demo {
-      display: grid;
-      gap: 18px;
-      background:
-        linear-gradient(135deg, color-mix(in srgb, var(--accent) 18%, transparent), color-mix(in srgb, var(--accent-2) 12%, transparent)),
-        var(--paper);
-      color: var(--ink);
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      padding: 22px;
-      overflow: hidden;
-    }
-    .token-row { display: flex; flex-wrap: wrap; gap: 8px; }
-    .token {
-      padding: 8px 10px;
-      border-radius: 6px;
-      border: 1px solid var(--line);
-      background: var(--paper);
-      font-size: 13px;
-    }
-    .matrix { display: grid; grid-template-columns: repeat(6, minmax(22px, 1fr)); gap: 6px; }
-    .matrix span {
-      aspect-ratio: 1;
-      border-radius: 4px;
-      background: color-mix(in srgb, var(--accent) var(--weight), var(--bg) 20%);
-      border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
-    }
     .result-spotlight {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -1852,7 +1825,7 @@ def _infer_figure_role(caption: str) -> str:
     lower = caption.lower()
     if any(word in lower for word in ["architecture", "pipeline", "model"]):
         return "architecture"
-    if any(word in lower for word in ["attention", "visualization", "example"]):
+    if any(word in lower for word in ["visualization", "example", "qualitative"]):
         return "qualitative"
     if any(word in lower for word in ["result", "comparison"]):
         return "result"
@@ -2404,7 +2377,7 @@ def _render_gallery(manifest: PaperManifest, plan: SitePlan) -> str:
     )
     return (
         '<section id="gallery"><div class="section-head"><div class="eyebrow">Figures</div>'
-        '<h2>Attention patterns and supporting figures.</h2>'
+        '<h2>Supporting figures.</h2>'
         '<p class="lead">Figures are capped to a readable size and kept on a white canvas for inspection.</p></div>'
         f'<div class="gallery">{cards}</div></section>'
     )
@@ -2640,7 +2613,7 @@ def _print_figures(manifest: PaperManifest, image_roots: list[Path] | None = Non
                     hint = "  [portrait - may be rotated]"
         caption = _limit_text(fig.caption, 70)
         print(f"  #{i}  [{fig.role}]{dims}{hint}  {caption}")
-    print("Tip: paper attention/visualization figures stored sideways usually need 'rotate <n> 90'.")
+    print("Tip: wide/visualization figures stored sideways usually need 'rotate <n> 90'.")
     print("")
 
 
