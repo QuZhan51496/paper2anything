@@ -42,6 +42,13 @@ def extract_with_mineru(pdf_path: str, output_dir: str, token: str = None):
     """
     import requests
 
+    # 强制无代理直连 mineru.net / 阿里云 OSS。env 里的 ALL_PROXY=socks5h 会让 requests 走
+    # SOCKS（无 pysocks 即报错）；而 proxies={"http":None} 会被 requests 的 merge_setting 当作
+    # None 键剥掉、压不住 all_proxy —— 必须用 trust_env=False 的 Session 才真正绕过。
+    session = requests.Session()
+    session.trust_env = False
+    session.proxies = {"http": None, "https": None}
+
     token = token or os.environ.get("MINERU_API_TOKEN", "")
     if not token:
         raise RuntimeError(
@@ -66,7 +73,7 @@ def extract_with_mineru(pdf_path: str, output_dir: str, token: str = None):
         "enable_table": True,
         "model_version": "vlm",
     }
-    resp = requests.post(batch_url, headers=headers, json=batch_payload, timeout=30)
+    resp = session.post(batch_url, headers=headers, json=batch_payload, timeout=30)
     if resp.status_code != 200:
         raise RuntimeError(f"Batch request failed ({resp.status_code}): {resp.text[:500]}")
 
@@ -85,11 +92,7 @@ def extract_with_mineru(pdf_path: str, output_dir: str, token: str = None):
 
     # Step 2: PUT the file to the presigned URL (no extra headers — OSS signature sensitive)
     with open(pdf_path, "rb") as f:
-        put_resp = requests.put(
-            upload_url, data=f,
-            timeout=120,
-            proxies={"http": None, "https": None},
-        )
+        put_resp = session.put(upload_url, data=f, timeout=120)
     if put_resp.status_code not in (200, 201):
         raise RuntimeError(f"File upload failed ({put_resp.status_code}): {put_resp.text[:300]}")
 
@@ -106,7 +109,7 @@ def extract_with_mineru(pdf_path: str, output_dir: str, token: str = None):
         time.sleep(MINERU_POLL_INTERVAL)
         elapsed += MINERU_POLL_INTERVAL
 
-        resp = requests.get(result_url, headers=headers, timeout=30)
+        resp = session.get(result_url, headers=headers, timeout=30)
         result = resp.json()
 
         if result.get("code") != 0:
@@ -139,7 +142,7 @@ def extract_with_mineru(pdf_path: str, output_dir: str, token: str = None):
         raise RuntimeError(f"No zip URL in result: {extract_results}")
 
     print(f"  Downloading results...")
-    resp = requests.get(zip_url, timeout=120, proxies={"http": None, "https": None})
+    resp = session.get(zip_url, timeout=120)
     resp.raise_for_status()
 
     # Step 5: Extract zip contents

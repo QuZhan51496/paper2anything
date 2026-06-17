@@ -38,6 +38,13 @@ API_BASE = os.environ.get("MINERU_API_BASE", "https://mineru.net")
 DEFAULT_TIMEOUT_S = 300
 DEFAULT_INTERVAL_S = 5
 
+# 提交/轮询也强制无代理直连（与下方 download_zip 的 _no_proxy_session 同配置）。原本 submit/
+# poll 用裸 requests，env 挂 ALL_PROXY=socks5h 时上传 OSS 会报 SOCKS 失败；download 早已绕过，
+# 这里补齐：trust_env=False 才能真正压住 all_proxy（proxies={"http":None} 会被 merge 剥掉）。
+_SESSION = requests.Session()
+_SESSION.trust_env = False
+_SESSION.proxies = {"http": None, "https": None}
+
 
 # --------------------------------------------------------------------------- #
 # 提交任务
@@ -55,7 +62,7 @@ def submit_url_task(pdf_url: str, token: str, *,
         "enable_table": enable_table,
         "enable_formula": enable_formula,
     }
-    r = requests.post(
+    r = _SESSION.post(
         f"{API_BASE}/api/v4/extract/task",
         headers={"Authorization": f"Bearer {token}",
                  "Content-Type": "application/json"},
@@ -84,7 +91,7 @@ def submit_local_pdf(pdf_path: Path, token: str, *,
         "enable_table": enable_table,
         "enable_formula": enable_formula,
     }
-    r = requests.post(
+    r = _SESSION.post(
         f"{API_BASE}/api/v4/file-urls/batch",
         headers={"Authorization": f"Bearer {token}",
                  "Content-Type": "application/json"},
@@ -103,7 +110,7 @@ def submit_local_pdf(pdf_path: Path, token: str, *,
 
     # 2) PUT 上传文件到签名 URL（24h 有效）。**不要**带 Authorization header（OSS 会拒）
     with open(pdf_path, "rb") as f:
-        put_resp = requests.put(upload_url, data=f, timeout=120)
+        put_resp = _SESSION.put(upload_url, data=f, timeout=120)
     put_resp.raise_for_status()
 
     # 3) 用 batch_id 拿到的任务，已与文件绑定，状态可直接通过 batch 查
@@ -133,7 +140,7 @@ def poll_task(task_id: str, token: str, *,
     ]
     while time.time() < deadline:
         for url in endpoints:
-            r = requests.get(
+            r = _SESSION.get(
                 url, headers={"Authorization": f"Bearer {token}"},
                 timeout=30,
             )

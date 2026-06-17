@@ -39,6 +39,13 @@ MINERU_API_BASE = os.environ.get("MINERU_API_BASE", "https://mineru.net")
 MINERU_POLL_INTERVAL = 5
 MINERU_POLL_TIMEOUT = 600  # 10 分钟
 
+# 强制无代理直连 mineru.net / 阿里云 OSS。env 里的 ALL_PROXY=socks5h 会让 requests 走
+# SOCKS（无 pysocks 即报 "Missing dependencies for SOCKS support"）；而 proxies={"http":None}
+# 会被 requests 的 merge_setting 当作 None 键剥掉、压不住 all_proxy —— 必须 trust_env=False。
+_MINERU = requests.Session()
+_MINERU.trust_env = False
+_MINERU.proxies = {"http": None, "https": None}
+
 
 def _mineru_headers() -> dict:
     token = os.environ.get("MINERU_API_TOKEN")
@@ -57,7 +64,7 @@ def _request_upload_url(pdf_name: str, model_version: str = "vlm") -> tuple[str,
         "files": [{"name": pdf_name}],
         "model_version": model_version,
     }
-    r = requests.post(url, headers=_mineru_headers(), json=payload, timeout=30)
+    r = _MINERU.post(url, headers=_mineru_headers(), json=payload, timeout=30)
     r.raise_for_status()
     body = r.json()
     if body.get("code") not in (0, 200):
@@ -73,7 +80,7 @@ def _request_upload_url(pdf_name: str, model_version: str = "vlm") -> tuple[str,
 def _upload_pdf(upload_url: str, pdf_path: Path) -> None:
     """PUT 上传 PDF 到预签名地址。注意：不要带 Authorization 头。"""
     with open(pdf_path, "rb") as f:
-        r = requests.put(upload_url, data=f, timeout=300)
+        r = _MINERU.put(upload_url, data=f, timeout=300)
     r.raise_for_status()
 
 
@@ -84,7 +91,7 @@ def _poll_batch(batch_id: str) -> dict:
     deadline = time.time() + MINERU_POLL_TIMEOUT
     last_state = None
     while time.time() < deadline:
-        r = requests.get(url, headers=headers, timeout=30)
+        r = _MINERU.get(url, headers=headers, timeout=30)
         r.raise_for_status()
         body = r.json()
         if body.get("code") not in (0, 200):
@@ -110,7 +117,7 @@ def _poll_batch(batch_id: str) -> dict:
 
 def _download_and_unzip(zip_url: str, output_dir: Path) -> None:
     """下载结果 zip 并解压到 output_dir"""
-    r = requests.get(zip_url, timeout=300)
+    r = _MINERU.get(zip_url, timeout=300)
     r.raise_for_status()
     with zipfile.ZipFile(io.BytesIO(r.content)) as zf:
         zf.extractall(output_dir)

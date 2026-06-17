@@ -14,6 +14,13 @@ from paper2html.config import (
     LANGUAGE,
 )
 
+# 强制无代理直连 mineru.net / 阿里云 OSS。env 里的 ALL_PROXY=socks5h 会让 requests 走
+# SOCKS（无 pysocks 即报 "Missing dependencies for SOCKS support"）；而 proxies={"http":None}
+# 会被 requests 的 merge_setting 当作 None 键剥掉、压不住 all_proxy —— 必须 trust_env=False。
+_session = requests.Session()
+_session.trust_env = False
+_session.proxies = {"http": None, "https": None}
+
 
 class MineruClient:
     """Client for MinerU Precision API (v4) - supports local file upload."""
@@ -70,7 +77,7 @@ class MineruClient:
             "language": LANGUAGE,
         }
 
-        resp = requests.post(url, headers=self.headers, json=payload)
+        resp = _session.post(url, headers=self.headers, json=payload)
         resp.raise_for_status()
         result = resp.json()
 
@@ -84,7 +91,7 @@ class MineruClient:
     def _upload_file(self, pdf_path: Path, upload_url: str):
         """Upload local file to presigned URL via PUT."""
         with open(pdf_path, "rb") as f:
-            resp = requests.put(upload_url, data=f)
+            resp = _session.put(upload_url, data=f)
         resp.raise_for_status()
 
     def _poll_batch(self, batch_id: str, timeout: int = 600, interval: int = 5) -> str:
@@ -93,7 +100,7 @@ class MineruClient:
         start = time.time()
 
         while time.time() - start < timeout:
-            resp = requests.get(url, headers=self.headers)
+            resp = _session.get(url, headers=self.headers)
             resp.raise_for_status()
             result = resp.json()
 
@@ -121,7 +128,7 @@ class MineruClient:
 
     def _download_result(self, zip_url: str, output_dir: Path) -> dict:
         """Download and extract the result ZIP file."""
-        resp = requests.get(zip_url)
+        resp = _session.get(zip_url)
         resp.raise_for_status()
 
         # Save and extract ZIP
@@ -182,7 +189,7 @@ class MineruClientLite:
         print(f"[MinerU-Lite] Parsing complete.")
 
         # Step 3: Download markdown
-        resp = requests.get(md_url)
+        resp = _session.get(md_url)
         resp.raise_for_status()
         markdown_content = resp.text
 
@@ -200,7 +207,7 @@ class MineruClientLite:
         url = f"{self.base_url}/api/v1/agent/parse/file"
         with open(pdf_path, "rb") as f:
             files = {"file": (pdf_path.name, f, "application/pdf")}
-            resp = requests.post(url, files=files)
+            resp = _session.post(url, files=files)
 
         resp.raise_for_status()
         result = resp.json()
@@ -212,7 +219,7 @@ class MineruClientLite:
         start = time.time()
 
         while time.time() - start < timeout:
-            resp = requests.get(url)
+            resp = _session.get(url)
             resp.raise_for_status()
             result = resp.json()
 
