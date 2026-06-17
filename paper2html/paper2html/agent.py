@@ -28,7 +28,6 @@ HEADING_RE = re.compile(r"^(#{1,6})\s+(.+?)\s*$", re.MULTILINE)
 IMAGE_RE = re.compile(r"!\[[^\]]*\]\(([^)]+)\)")
 URL_RE = re.compile(r"https?://[^\s\]\)<>]+")
 TABLE_RE = re.compile(r"(Table\s+\d+\s*:[^\n]+)\s*(<table.*?</table>)", re.IGNORECASE | re.DOTALL)
-ARXIV_ID_RE = re.compile(r"(?P<id>\d{4}\.\d{4,5})(?P<version>v\d+)?")
 
 
 STYLE_REFERENCES = [
@@ -329,7 +328,6 @@ def normalize_markdown(markdown: str) -> str:
     """Apply conservative cleanup before extraction."""
     text = markdown.replace("\r\n", "\n").replace("\r", "\n")
     text = re.sub(r"https://github\.com/\s+", "https://github.com/", text)
-    text = re.sub(r"https://arxiv\.org/\s+", "https://arxiv.org/", text)
     replacements = {
         "Englishto-German": "English-to-German",
         "Englishto-French": "English-to-French",
@@ -393,7 +391,7 @@ def extract_manifest(
     author_block = _extract_author_block(markdown)
     authors = _extract_authors(author_block)
     affiliations = _extract_affiliations(author_block)
-    abstract = _extract_section_text(markdown, "Abstract") or _first_paragraph(markdown)
+    abstract = _extract_section_text(markdown, "Abstract") or _lead_abstract(markdown)
     links = _extract_links(markdown, source, paper_url=paper_url, code_url=code_url)
 
     # Exclude appendix/supplementary content from figures/tables/claims/method by feeding
@@ -1748,20 +1746,38 @@ def _first_paragraph(markdown: str) -> str:
     return ""
 
 
+def _lead_abstract(markdown: str) -> str:
+    """Recover the abstract when the paper has no ``## Abstract`` heading.
+
+    The abstract always precedes Section 1, so we scan the region before the
+    first ``## `` section heading and pick the longest prose paragraph. Author /
+    affiliation / contact lines living in that same region are short and lose to
+    the real abstract. If nothing is abstract-length we return "" rather than
+    fall back to the first paragraph (which would grab the author line — the old
+    bug); the empty slot is left for the downstream curation layer to fill.
+    """
+    first_section = re.search(r"^##\s+", markdown, re.MULTILINE)
+    head = markdown[: first_section.start()] if first_section else markdown[:4000]
+    best = ""
+    for block in head.split("\n\n"):
+        text = block.strip()
+        if not text or text.startswith("#") or text.startswith("!"):
+            continue
+        if len(text.split()) > len(best.split()):
+            best = text
+    return best if len(best.split()) >= 40 else ""
+
+
 def _extract_links(markdown: str, source: Path, paper_url: str | None, code_url: str | None) -> Links:
     cleaned = normalize_markdown(markdown)
     urls = [url.rstrip(".,;") for url in URL_RE.findall(cleaned)]
     links = Links()
 
-    arxiv = next((url for url in urls if "arxiv.org" in url.lower()), "")
     if paper_url:
         links.paper = paper_url
-    elif arxiv:
-        links.paper = arxiv
-    else:
-        arxiv_id = _infer_arxiv_id(source)
-        if arxiv_id:
-            links.paper = f"https://arxiv.org/abs/{arxiv_id}"
+    # Don't auto-guess the paper's own link from body URLs: those are almost always
+    # cited papers / external resources, so any pick links to the wrong thing. There is
+    # no reliable canonical-link heuristic — supply it via --paper-url, else leave empty.
 
     github = next((url for url in urls if "github.com" in url.lower()), "")
     if code_url:
@@ -1778,13 +1794,6 @@ def _extract_links(markdown: str, source: Path, paper_url: str | None, code_url:
         if not links.video and any(word in lower for word in ["youtube", "youtu.be", "video"]):
             links.video = url
     return links
-
-
-def _infer_arxiv_id(source: Path) -> str:
-    match = ARXIV_ID_RE.search(source.stem)
-    if not match:
-        return ""
-    return match.group("id") + (match.group("version") or "")
 
 
 def _extract_figures(markdown: str, image_roots: list[Path], headings: list[tuple[int, int, str]]) -> list[Figure]:
@@ -1863,6 +1872,24 @@ def _extract_tables(
                 page=image_info.get("page"),
             )
         )
+    # MinerU usually renders result tables as images, so the markdown carries no
+    # <table> pipe-tables for TABLE_RE to match and `tables` stays empty even though
+    # the table crops exist. Fall back to the extracted images directly so the
+    # results section isn't silently dropped (the old `tables: []` bug).
+    if not tables and table_images:
+        for item in table_images:
+            image = str(item.get("image", ""))
+            if not image:
+                continue
+            tables.append(
+                TableBlock(
+                    caption=_clean_inline(str(item.get("caption", ""))) or "Table",
+                    html="",
+                    section="",
+                    image=image,
+                    page=item.get("page") if isinstance(item.get("page"), int) else None,
+                )
+            )
     return tables[:4]
 
 
@@ -1997,6 +2024,17 @@ def _rank_claim_labels(labels: list[str], sentence: str) -> list[str]:
     return normalized[:2]
 
 
+def _strip_markdown_structure(text: str) -> str:
+    # Drop heading / image / structural lines so section titles ("## 2 Methods",
+    # "## 1 Introduction"), image refs, and stray markdown (e.g. "# Contact: ...")
+    # are never mined as claims. A heading like "1 Introduction" otherwise matches
+    # the "<number> <ProperNoun>" metric pattern and surfaces as a bogus claim.
+    return "\n".join(
+        line for line in text.splitlines()
+        if line.strip() and not line.lstrip().startswith(("#", "!"))
+    )
+
+
 def _text_for_claims(markdown: str) -> str:
     # Pull from common result-bearing sections by generic name, then fall back to the
     # document head. Section names are matched leniently by _extract_section_text.
@@ -2008,7 +2046,7 @@ def _text_for_claims(markdown: str) -> str:
         _extract_section_text(markdown, "Evaluation"),
         markdown[:12000],
     ]
-    return "\n".join(chunk for chunk in chunks if chunk)
+    return _strip_markdown_structure("\n".join(chunk for chunk in chunks if chunk))
 
 
 def _add_claim(claims: list[Claim], label: str, description: str, evidence: str) -> None:
@@ -2055,6 +2093,8 @@ def _is_method_heading(title: str) -> bool:
 
 
 def _make_bibtex(title: str, authors: list[str], source: Path) -> str:
+    # Take the year only if the filename carries one, else leave it empty. Emit @misc
+    # (no venue) rather than hardcoding a journal — the publication venue is unknown.
     year_match = re.search(r"(19|20)\d{2}", source.stem)
     year = year_match.group(0) if year_match else ""
     key_author = "paper"
@@ -2065,10 +2105,9 @@ def _make_bibtex(title: str, authors: list[str], source: Path) -> str:
     author_field = " and ".join(authors) if authors else "Unknown"
     return "\n".join(
         [
-            f"@article{{{key},",
+            f"@misc{{{key},",
             f"  title={{{title}}},",
             f"  author={{{author_field}}},",
-            "  journal={arXiv preprint},",
             f"  year={{{year}}}",
             "}",
         ]
