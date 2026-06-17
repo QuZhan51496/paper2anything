@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# tools/install.sh — 把 paper2anything 的 5 个 skill 注册到 Claude Code
+# tools/install-macos.sh — 把 paper2anything 的 5 个 skill 注册到 Claude Code（macOS 版）
 #
 # 做的事：
 #   1. 确保 ~/.claude/skills/ 存在
@@ -12,10 +12,14 @@
 #   --create-env   顺手创建/更新 conda 环境并装 playwright chromium，
 #                  再跑 pip check + 关键库 import 自检（conda env create 退出 0
 #                  不代表 pip 全装上，故务必自检——见 README 排错）。
+#   --shell-init   把 .env 自动导出写进 shell 启动文件（默认 ~/.zshrc；登录 shell 是
+#                  bash 时写 ~/.bash_profile），新开 shell 即加载凭据（幂等；不加只打印建议）。
 #
-# 不做的事（需 sudo / 系统级，按提示手动装）：
-#   - 不装系统包（poppler-utils / libreoffice / nodejs）
+# 不做的事（需手动用 Homebrew 装；先装 brew：https://brew.sh）：
+#   - 不装系统包（brew install poppler；brew install --cask libreoffice；brew install node）
 #   - 不装 npm 全局包（pptxgenjs）
+#
+# Linux 用户请改用 tools/install-linux.sh（用 apt、缓存/路径不同）。
 
 set -euo pipefail
 
@@ -29,9 +33,11 @@ yellow() { printf '\033[33m%s\033[0m\n' "$*"; }
 red()    { printf '\033[31m%s\033[0m\n' "$*"; }
 
 CREATE_ENV=0
+SHELL_INIT=0
 for arg in "$@"; do
   case "$arg" in
     --create-env) CREATE_ENV=1 ;;
+    --shell-init) SHELL_INIT=1 ;;
     -h|--help)
       awk 'NR==1{next} /^#/{sub(/^# ?/,""); print; next} {exit}' "${BASH_SOURCE[0]}"
       exit 0 ;;
@@ -81,6 +87,38 @@ else
   yellow ".env 与 .env.example 都不存在，跳过"
 fi
 
+# ---------- 2.5（可选 --shell-init）把 .env 自动导出写进 shell 启动文件 ----------
+# 凭据优先级：已 export 的环境变量 > .env。写进启动文件后每个新 shell 自动 source 包根 .env，
+# 凭据对所有进程（python / node / soffice …）可见，比仅靠脚本内 load_dotenv 更可靠。
+# macOS 默认 zsh→~/.zshrc；登录 shell 是 bash 时写 ~/.bash_profile。
+detect_shell_rc() {
+  case "${SHELL:-}" in
+    *bash) echo "$HOME/.bash_profile" ;;
+    *)     echo "$HOME/.zshrc" ;;
+  esac
+}
+rc_file="$(detect_shell_rc)"
+env_marker="# >>> paper2anything env >>>"
+
+echo
+if [[ "$SHELL_INIT" == 1 ]]; then
+  if [[ -f "$rc_file" ]] && grep -qF "$env_marker" "$rc_file"; then
+    green "shell 自动导出已在 $rc_file（跳过，幂等）"
+  else
+    {
+      printf '\n%s\n' "$env_marker"
+      printf 'if [ -f "%s/.env" ]; then set -a; source "%s/.env"; set +a; fi\n' "$repo_root" "$repo_root"
+      printf '%s\n' "# <<< paper2anything env <<<"
+    } >> "$rc_file"
+    green "已写入 $rc_file —— 新开 shell 生效；当前 shell 先手动 source 一次："
+    echo "    set -a; source \"$repo_root/.env\"; set +a"
+  fi
+else
+  yellow "提示：把 .env 导出写进 $rc_file（每个新 shell 自动加载凭据、对所有进程可见）："
+  echo "    set -a; source \"$repo_root/.env\"; set +a"
+  yellow "  一键自动写入：重跑本脚本加 --shell-init。"
+fi
+
 # ---------- 3.（可选）创建/更新 conda 环境 ----------
 
 if [[ "$CREATE_ENV" == 1 ]]; then
@@ -119,10 +157,20 @@ check() {
   fi
 }
 
-check "conda"       "conda"  "装 miniconda/anaconda"
-check "node"        "node"   "装 Node.js v20+（NodeSource）；paper2slides 渲染 PPT 用"
-check "pdftoppm"    "pdftoppm"  "sudo apt install poppler-utils（paper2slides 整页渲染）"
-check "libreoffice" "soffice"   "sudo apt install libreoffice（paper2slides 视觉 QA）"
+check "conda"    "conda"     "装 miniconda/anaconda"
+check "node"     "node"      "brew install node（Node.js v20+）；paper2slides 渲染 PPT 用"
+check "pdftoppm" "pdftoppm"  "brew install poppler（paper2slides 整页渲染）"
+
+# libreoffice（macOS：cask 装的 soffice 默认不在 PATH，额外查 app 包）
+mac_soffice="/Applications/LibreOffice.app/Contents/MacOS/soffice"
+if command -v soffice >/dev/null 2>&1; then
+  green "  [ok] libreoffice → $(command -v soffice)"
+elif [[ -x "$mac_soffice" ]]; then
+  green "  [ok] libreoffice → $mac_soffice"
+  yellow "       （不在 PATH；如 slides 视觉 QA 找不到 soffice，可: sudo ln -s \"$mac_soffice\" /usr/local/bin/soffice）"
+else
+  yellow "  [missing] libreoffice — brew install --cask libreoffice（paper2slides 视觉 QA）"
+fi
 
 # conda env
 if command -v conda >/dev/null 2>&1; then
@@ -133,18 +181,18 @@ if command -v conda >/dev/null 2>&1; then
   fi
 fi
 
-# pptxgenjs（npm 全局，paper2slides）
+# pptxgenjs（npm 全局，paper2slides）—— brew 装的 node 全局目录用户可写，无需 sudo
 if command -v npm >/dev/null 2>&1; then
   if npm list -g --depth=0 2>/dev/null | grep -q pptxgenjs; then
     green "  [ok] pptxgenjs (npm global)"
   else
-    yellow "  [missing] pptxgenjs (npm global) — 跑: sudo npm install -g pptxgenjs react-icons react react-dom sharp"
+    yellow "  [missing] pptxgenjs (npm global) — 跑: npm install -g pptxgenjs react-icons react react-dom sharp"
   fi
 fi
 
-# playwright chromium（paper2poster / paper2xhs）—— 查浏览器缓存目录，避免 conda run playwright 卡超时
-if compgen -G "$HOME/.cache/ms-playwright/chromium-*" >/dev/null 2>&1; then
-  green "  [ok] playwright chromium (~/.cache/ms-playwright)"
+# playwright chromium（paper2poster / paper2xhs）—— macOS 缓存在 ~/Library/Caches/ms-playwright
+if compgen -G "$HOME/Library/Caches/ms-playwright/chromium-*" >/dev/null 2>&1; then
+  green "  [ok] playwright chromium (~/Library/Caches/ms-playwright)"
 else
   yellow "  [missing] playwright chromium — 跑: conda run -n $ENV_NAME python -m playwright install chromium"
 fi

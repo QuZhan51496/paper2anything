@@ -9,4 +9,4 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 # 包根 = 本文件上溯两级：__init__.py → scripts → paper2slides → 包根（parents[2]）。
-load_dotenv(Path(__file__).resolve().parents[2] / ".env")
+load_dotenv(Path(__file__).resolve().parents[2] / ".env", override=False)

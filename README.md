@@ -49,7 +49,7 @@ paper2anything/
 5 个 skill 共用一个 conda 环境 `paper2anything`，所有 `python` 命令都以
 `conda run -n paper2anything --no-capture-output` 为前缀（或先 `conda activate paper2anything`）。
 
-**一键注册 + 自检**：在包根跑 `bash tools/install.sh` —— 把 5 个 skill 符号链接进
+**一键注册 + 自检**：在包根跑对应系统的脚本（Linux `bash tools/install-linux.sh`，macOS `bash tools/install-macos.sh`）—— 把 5 个 skill 符号链接进
 `~/.claude/skills/`、没有 `.env` 时从 `.env.example` 引导一份、并检查 conda 环境与系统依赖
 （缺啥只提示、不阻塞）；加 `--create-env` 还会顺手 `conda env create` + 装 playwright chromium +
 跑 pip 自检。下面是等价的手动步骤。
@@ -83,6 +83,19 @@ requests / openai / playwright / rich / python-dotenv / md2wechat …）。
 
 ```bash
 cp .env.example .env          # 首次：复制后填入你的 key
+```
+
+**推荐（更可靠）**：把导出写进 shell 启动文件，每个新 shell 自动加载凭据——凭据成为真正的环境变量，对所有进程（python / node / soffice / md2wechat …）可见，且优先级高于 `.env`（已 export 的同名变量不被 `.env` 覆盖）。用对应系统的安装脚本一键写入（幂等）：
+
+```bash
+bash tools/install-linux.sh --shell-init   # Linux（默认写 ~/.bashrc，zsh 则 ~/.zshrc）
+bash tools/install-macos.sh --shell-init   # macOS（默认写 ~/.zshrc，bash 则 ~/.bash_profile）
+```
+
+或手动把这一行加进你的 shell 启动文件（Linux `~/.bashrc`、macOS `~/.zshrc`）：
+
+```bash
+set -a; source <paper2anything 包根>/.env; set +a
 ```
 
 各 skill 实际用到的 key（不用的留空即可）：
