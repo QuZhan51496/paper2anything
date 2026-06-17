@@ -22,7 +22,7 @@
   全跑，`--force` 全部重跑。`config.json`（Stage 0.5 产物）同此语义——已存在则
   跳过提问沿用上次配置，`--from-stage configure` 重新问。
 
-- **失败处理**：脚本出错时 stderr 给出诊断；Claude 应读 `run.log`（如果脚本写了），
+- **失败处理**：脚本出错时 stderr 给出诊断；你应读 `run.log`（如果脚本写了），
   不要盲目重试。
 
 ---
@@ -36,14 +36,14 @@ python -m scripts.workdir resolve <paper.pdf> [--output <out.pptx>] --ensure
 输出 JSON 含：`paper_path` / `output_path` / `workdir` / 各产物路径 / 各阶段
 `stage_status`。
 
-**Claude 的职责**：读这份 JSON，决定哪些阶段已完成、哪些要跑。后续所有命令引用
+**你的职责**：读这份 JSON，决定哪些阶段已完成、哪些要跑。后续所有命令引用
 此处给出的路径，不要拼字符串。
 
 ---
 
 ## Stage 0.5: Configure（用户对话 → config.json）
 
-**无脚本**。Claude 用 [AskUserQuestion] 工具在 Stage 0 之后、Stage 1 之前与用户
+**无脚本**。你用 [AskUserQuestion] 工具在 Stage 0 之后、Stage 1 之前与用户
 确认三项关键参数，把答案用 Write 工具落到 Stage 0 JSON 给出的 `config_path`
 （`<workdir>/config.json`，schema 见 [schemas.md](schemas.md#configjsonstage-05-产物)）。
 
@@ -129,11 +129,11 @@ python -m scripts.extract_paper <paper.pdf> [--backend auto|mineru|mineru-strict
 
 - pdfplumber 在某些字体下会**吃掉单词间空格**（"Model Architecture" → "ModelArchitecture"）。
   下游 `sectionize.py` 已用 `\s*` 兼容这种情况
-- 嵌入图与 caption 不绑定（pdfimages 不带页号），交给 Stage 4 的 Claude 配对
+- 嵌入图与 caption 不绑定（pdfimages 不带页号），交给 Stage 4 的你配对
 - 扫描版论文：若 `avg_text_density < 200` 字符/页，stderr 会建议 `--ocr`。
   OCR 需 `pytesseract` + `pdf2image`，默认未装，按需 `pip install`
 - **表格 bbox 漏检**：`pdfplumber.find_tables(strategy="lines")` 对 booktabs 风格（仅水平线，无垂直线）会漏检；
-  漏检的 table caption **没有** `bbox` 字段，Stage 4 自动走 Claude 视觉估算 fallback（见 [schemas.md](schemas.md#captionsbbox-仅-kind--table)）
+  漏检的 table caption **没有** `bbox` 字段，Stage 4 自动走你视觉估算 fallback（见 [schemas.md](schemas.md#captionsbbox-仅-kind--table)）
 
 **何时重跑**：换论文、PDF 改了、想重新抽 OCR。
 
@@ -165,16 +165,16 @@ python -m scripts.lib.sectionize <workdir>
 - title 抓错率较高（首页常被 license 文本/水印占位）
 - authors 启发式可能漏行
 - 子章节会引入同 kind 多条（如 5 Training + 5.1 ...）。**不**自动合并；交给
-  Claude 在 Stage 3 校订
+  你在 Stage 3 校订
 
-**Claude 的职责**：进入 Stage 3 前必跑 [schemas.md 末尾的 4 项校核](schemas.md#claude-在-stage-3-进入前应做的修订)。
+**你的职责**：进入 Stage 3 前必跑 [schemas.md 末尾的 4 项校核](schemas.md#你在-stage-3-进入前应做的修订)。
 **不要写回 `paper_meta.json`**——校订结果直接体现在 `slide_outline.json` 内容上。
 
 ---
 
 ## Stage 3: Outline（论文元数据 → slide 大纲）
 
-**无脚本**。这是 Claude 的工作。
+**无脚本**。这是你的工作。
 
 **输入**：`workdir/paper_meta.json`（read-only）+ `workdir/figures_index.json`
 + `workdir/config.json`（read-only）
@@ -206,7 +206,7 @@ python -m scripts.lib.sectionize <workdir>
 
 ## Stage 4: Spec（slide 大纲 → 渲染规格）
 
-**无脚本**。Claude 工作。
+**无脚本**。你工作。
 
 **输入**：`workdir/slide_outline.json` + `workdir/figures_index.json` + 各种 PNG
 
@@ -326,11 +326,11 @@ python -m scripts.render_pptx <slide_spec.json> <output.pptx>
 | 症状 | 多半的根因 | 处理 |
 |---|---|---|
 | Stage 1 警告 sparse text | 扫描版论文 | 加 `--ocr` 重跑（先 `pip install pytesseract pdf2image`）|
-| Stage 2 章节数 < 5 | 关键词漏（怪异标题）| Claude 在 Stage 3 校核时手动补 |
-| Stage 2 章节数 > 15 | numbering 太宽松 | 检查 paper_meta.json/sections，由 Claude 合并 |
+| Stage 2 章节数 < 5 | 关键词漏（怪异标题）| 你在 Stage 3 校核时手动补 |
+| Stage 2 章节数 > 15 | numbering 太宽松 | 检查 paper_meta.json/sections，由你合并 |
 | Stage 4 引用了不存在的 figure | figure_ref 写错 | 查 figures_index.json/captions，改 figure_ref 或改用 page_renders |
 | Stage 5 PptxGenJS 报 image not found | 路径相对 workdir 但 node 工作目录错 | render_pptx.py 内部 cd 到 workdir 或喂绝对路径 |
-| Stage 6 视觉 QA 报"lorem ipsum 残留" | Stage 4 的 Claude 用了占位 | 修 slide_spec.json 对应文本，从 render 重跑 |
-| Stage 6 报"table 底线被切" / "裁切带入下方正文" | bbox 太紧 / Claude 视觉估算偏差 | `page_screenshot.py` 默认已 +0.005 padding，仍丢手动加大 `--pad 0.01`；优先用 `figures_index.json/captions[i].bbox`（pdfplumber 检出）|
+| Stage 6 视觉 QA 报"lorem ipsum 残留" | Stage 4 的你用了占位 | 修 slide_spec.json 对应文本，从 render 重跑 |
+| Stage 6 报"table 底线被切" / "裁切带入下方正文" | bbox 太紧 / 你视觉估算偏差 | `page_screenshot.py` 默认已 +0.005 padding，仍丢手动加大 `--pad 0.01`；优先用 `figures_index.json/captions[i].bbox`（pdfplumber 检出）|
 | Stage 6 报"表/图里 `[N]` 引用出现绿色矩形框" | pdftoppm 默认渲染 PDF 自带的 hyperlink annotation | extract_paper.py 已默认 `-hide-annotations`；如仍出现，机器 poppler 太旧（< 0.69），升级或 `apt install -y poppler-utils` |
 | Stage 6 报"figure/table 字模糊" | dpi 太低 | 默认已 300 dpi；论文超长降到 `--dpi 200` 时如不够清晰，恢复 300 或升 `--dpi 400` |

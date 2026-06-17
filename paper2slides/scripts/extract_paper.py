@@ -9,7 +9,7 @@ extract_paper.py — Stage 1: PDF 解析（文本 + 嵌入图 + 整页渲染 + c
   - figures_index.json        captions / embedded_images / page_renders 三个独立列表
 
 为什么 captions 与 embedded_images 分两列：pdfimages 不带页码信息，强行配对会出错。
-让 Stage 4 的 Claude 看到完整候选自己挑——这是"协调器路线"的体现。
+让 Stage 4 的你看到完整候选自己挑——这是"协调器路线"的体现。
 
 CLI:
     python scripts/extract_paper.py <paper.pdf> [--output <out.pptx>] [--ocr]
@@ -102,14 +102,14 @@ def find_captions(pages_text: list[str]) -> list[dict]:
     return out
 
 
-# Stage 4 让 Claude 视觉估表格 bbox 误差 ±5%（实测 attention.pdf 上 Table 1 底线被切，
+# Stage 4 让你视觉估表格 bbox 误差 ±5%（实测 attention.pdf 上 Table 1 底线被切，
 # Tables 2-4 第一次裁带入正文）。改用 pdfplumber.find_tables 精确定位。
 #
 # 设计取舍：只用 lines 策略，不上 text 策略。
 #   - lines 策略：精确边界（rule-based），漏检 booktabs 风格（无垂直线，仅 \toprule/\midrule/\bottomrule）
 #   - text 策略：实测在 booktabs 上把整列正文圈成 "1 列 N 行的伪表"，bbox 覆盖几乎整页 — 比缺
 #     bbox 还糟（让 Stage 4 拿到错误的"精确"信号）。所以宁可漏检也不要假阳性。
-#   - 漏检的表（如 booktabs）通过缺失 bbox 字段告知 Stage 4，让 Claude 走视觉估算 fallback
+#   - 漏检的表（如 booktabs）通过缺失 bbox 字段告知 Stage 4，让你走视觉估算 fallback
 def detect_tables(pdf_path: Path) -> list[dict]:
     """返回 [{page, bbox: [x,y,w,h] in 0..1, rows, cols, confidence}, ...]，按 (page, top, left) 排序。"""
     try:

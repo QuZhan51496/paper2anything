@@ -2,13 +2,13 @@
 """stage1_parse —— 解析 + 确定性抽取（机械，闸门1）。
 
 PDF → MinerU 解析 → normalize → extract_manifest（title/authors/abstract/links/claims/
-figures/tables/method/bibtex，附录过滤，抽不到留空交 Claude 兜底）→ 复制页面图。
+figures/tables/method/bibtex，附录过滤，抽不到留空交你兜底）→ 复制页面图。
 
 产物（落在 --workdir，即 <pdf目录>/.paper2anything/html/）：
-  clean.md       normalize 后的 markdown（Claude 通读全文用）
-  manifest.json  确定性抽取的事实（Claude 创作只能用这里的真实素材）
+  clean.md       normalize 后的 markdown（你通读全文用）
+  manifest.json  确定性抽取的事实（你创作只能用这里的真实素材）
   parsed/        MinerU 原始解析（含 full.md 供重跑复用、images/ 所有裁图）
-  images/        页面引用的图（Claude 以 images/<name> 引用，与 index.html 同级）
+  images/        页面引用的图（你以 images/<name> 引用，与 index.html 同级）
   logs/stage1_parse_result.json
 
 用法：
@@ -60,7 +60,7 @@ def run(input_path: str, workdir: str, *, paper_url=None, code_url=None,
         paper_url=paper_url, code_url=code_url, parsed_dir=parsed_dir,
     )
 
-    # 复制页面引用的图到 root/images/，使 Claude 写的 images/<name> 能解析、QA 不报缺图
+    # 复制页面引用的图到 root/images/，使你写的 images/<name> 能解析、QA 不报缺图
     copied = set()
     if copy_images:
         copied = core.copy_manifest_images(manifest, root, image_roots, parsed_images)
@@ -69,12 +69,12 @@ def run(input_path: str, workdir: str, *, paper_url=None, code_url=None,
 
     save_json(asdict(manifest), root / "manifest.json")
 
-    # ── 摘要（抽不到的字段留空，交 Claude 在创作阶段兜底，不报错）──
+    # ── 摘要（抽不到的字段留空，交你在创作阶段兜底，不报错）──
     print_success(f"论文标题: {manifest.title}")
     if not manifest.abstract:
-        print_warning("未抽到摘要（论文可能无 Abstract 标题）；留空交给 Claude 兜底")
+        print_warning("未抽到摘要（论文可能无 Abstract 标题）；留空交给你兜底")
     if not manifest.authors:
-        print_warning("未抽到作者（确定性抽取局限）；留空交给 Claude 兜底")
+        print_warning("未抽到作者（确定性抽取局限）；留空交给你兜底")
     if not manifest.links.paper:
         print_info("未自动确定论文链接（不假设 arxiv）；如需可重跑加 --paper-url")
     print_info(f"作者 {len(manifest.authors)} | 摘要 {len(manifest.abstract)} 字 | "

@@ -1,13 +1,13 @@
 ---
 name: paper2html
-description: 将学术论文（PDF 或 MinerU 解析后的 Markdown）转换为可直接发布的、自包含的单页**项目主页**（self-contained index.html）——就是研究者常基于 GitHub Pages 做的那种论文宣传网页。当用户提到"把论文做成项目主页/网页"、"paper2html"、"生成论文 landing page / project page"、"把这篇 PDF 变成 HTML 网页"、"论文转网页"、"做一个论文主页"时触发。Claude 主导的协调式：机械步骤（MinerU 解析 + 确定性事实抽取闸门1 + 生成后 QA 闸门2）调 scripts，**index.html 的设计与撰写由 Claude 亲手完成**（不调用任何 LLM API），可选多种设计语言。
+description: 将学术论文（PDF 或 MinerU 解析后的 Markdown）转换为可直接发布的、自包含的单页**项目主页**（self-contained index.html）——就是研究者常基于 GitHub Pages 做的那种论文宣传网页。当用户提到"把论文做成项目主页/网页"、"paper2html"、"生成论文 landing page / project page"、"把这篇 PDF 变成 HTML 网页"、"论文转网页"、"做一个论文主页"时触发。你主导的协调式：机械步骤（MinerU 解析 + 确定性事实抽取闸门1 + 生成后 QA 闸门2）调 scripts，**index.html 的设计与撰写由你亲手完成**（不调用任何 LLM API），可选多种设计语言。
 allowed-tools: Bash, Read, Write, Glob, Grep
 ---
 
-# paper2html — 论文转单页项目主页（Claude 主导的协调式）
+# paper2html — 论文转单页项目主页（你主导的协调式）
 
 把一篇论文 PDF 转成**自包含、可直接发布的单页项目网站**——研究者常基于 GitHub Pages 做的那种论文主页。
-**Claude（你）是主笔**：这份文件是配方，不是全自动脚本——没有 `main.py`、没有渲染器。机械步骤
+**你是主笔**：这份文件是配方，不是全自动脚本——没有 `main.py`、没有渲染器。机械步骤
 （解析/抽取/QA）调用 `scripts/` 下的小工具；**论文理解、页面设计、index.html 撰写由你亲自完成**
 （用 Read 看材料和图、用 Write 落 `index.html`），并在关键点用 `AskUserQuestion` 与用户确认。
 
@@ -20,16 +20,16 @@ PDF
  → 单页项目主页 index.html（+ images/，可直接部署）
 ```
 
-## How Claude runs this skill
+## How you run this skill
 
 1. **一步步来**：机械步骤用 `Bash` 调脚本（绝对路径，无需 cd），设计与撰写你自己用 `Read`/`Write` 做。
 2. **每个 Bash 块开头就地算 `WORKDIR`**（各 Bash 调用是独立 shell、不共享变量）：
    ```bash
    WORKDIR="$(dirname "$pdf_path")/.paper2anything/html"
    ```
-   `$pdf_path` 是用户给的论文 PDF（每块重设一次）。脚本在 `${CLAUDE_SKILL_DIR}/scripts`——`CLAUDE_SKILL_DIR`
+   `$pdf_path` 是用户给的论文 PDF（每块重设一次）。脚本在 `${SKILL_DIR}/scripts`——`SKILL_DIR`
    是**本 skill 的目录**（见本 skill 顶部注入的 "Base directory for this skill: …"）；各 Bash 块独立 shell，
-   用到它的块开头按需 `export CLAUDE_SKILL_DIR=<那个目录>` 一次（和 `WORKDIR` 一样每块现设）。
+   用到它的块开头按需 `export SKILL_DIR=<那个目录>` 一次（和 `WORKDIR` 一样每块现设）。
 3. **决策点用 `AskUserQuestion` 暂停**：读懂论文后确认**设计方向**（设计语言 / 主色 / 重点）；成稿后可再确认。
 4. **忠实于 manifest，空缺由你兜底**：只用 `manifest.json` 的真实素材，不编造数字/作者/链接；manifest 抽空的字段
    （authors/abstract/links 等）据 `clean.md` 全文补全——你是主笔，确定性抽取只是脚手架。
@@ -47,7 +47,7 @@ PDF
 set -a; source <paper2anything 包根>/.env; set +a
 ```
 
-本 skill **只需 `MINERU_API_TOKEN`**（解析 PDF）。**页面设计与撰写是你 Claude 亲自做的，不调用任何 LLM API**，
+本 skill **只需 `MINERU_API_TOKEN`**（解析 PDF）。**页面设计与撰写是你亲自做的，不调用任何 LLM API**，
 故无需 OPENAI/LLM 等 key。
 
 依赖自检：
@@ -64,7 +64,7 @@ conda run -n paper2anything --no-capture-output python -c "import requests, rich
 pdf_path="/path/to/paper.pdf"          # ← 用户的论文 PDF
 WORKDIR="$(dirname "$pdf_path")/.paper2anything/html"
 conda run -n paper2anything --no-capture-output \
-  python "${CLAUDE_SKILL_DIR}/scripts/stage1_parse.py" "$pdf_path" --workdir "$WORKDIR"
+  python "${SKILL_DIR}/scripts/stage1_parse.py" "$pdf_path" --workdir "$WORKDIR"
 ```
 
 产出（`$WORKDIR` 下）：
@@ -88,7 +88,7 @@ conda run -n paper2anything --no-capture-output \
    终端/海报/极简/看板；定主色、结构、什么元素主导）。不同论文应长得不一样，别复用上一篇的风格。
 3. 用 `AskUserQuestion` 与用户确认**设计方向**（设计语言 / 主色调 / 突出什么）。带着确认结果再写页面。
 
-补全空缺：若 manifest 的 authors/abstract/links 为空，据 `clean.md` 全文自己补（这是 Claude 兜底）。
+补全空缺：若 manifest 的 authors/abstract/links 为空，据 `clean.md` 全文自己补（这是你兜底）。
 
 ---
 
@@ -115,7 +115,7 @@ conda run -n paper2anything --no-capture-output \
 pdf_path="/path/to/paper.pdf"
 WORKDIR="$(dirname "$pdf_path")/.paper2anything/html"
 conda run -n paper2anything --no-capture-output \
-  python "${CLAUDE_SKILL_DIR}/scripts/stage2_validate.py" --workdir "$WORKDIR"
+  python "${SKILL_DIR}/scripts/stage2_validate.py" --workdir "$WORKDIR"
 ```
 
 校验你写的 `index.html` → `validation.json` + `qa_report.md`。`Read` `qa_report.md`：
@@ -134,7 +134,7 @@ conda run -n paper2anything --no-capture-output \
 | `clean.md` | normalize 后的全文 markdown | stage1_parse |
 | `manifest.json` | 确定性抽取的事实（闸门1） | stage1_parse |
 | `images/` | 页面引用的图 + 结果表截图 | stage1_parse |
-| `index.html` | 自包含单页项目主页 | **你（Claude）** |
+| `index.html` | 自包含单页项目主页 | **你** |
 | `validation.json` `qa_report.md` | QA 结果（闸门2） | stage2_validate |
 | `parsed/` `logs/` | MinerU 原始解析 / 各步骤 *_result.json | 脚本 |
 
@@ -148,7 +148,7 @@ conda run -n paper2anything --no-capture-output \
 - **manifest 字段空（authors/abstract/links）**：确定性抽取局限（如论文无 `## Abstract` 标题、非 arxiv 论文无链接）——
   **正常**，据 `clean.md` 全文由你补全；不是 bug。
 - **QA 报缺图**：只引用 `images/` 下真实存在的文件，文件名照抄 manifest，别拼错哈希名。
-- **设计/撰写不需要 API key**：这两步是你（Claude）亲自做的，不调用任何 LLM API。
+- **设计/撰写不需要 API key**：这两步是你亲自做的，不调用任何 LLM API。
 
 ---
 

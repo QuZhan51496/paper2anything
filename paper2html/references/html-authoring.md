@@ -5,7 +5,7 @@
 只用 `manifest.json` 里**已核实的素材**（title/authors/abstract/links/claims/figures/tables/
 method_components/bibtex）。**不要编造**数字、作者、机构或论文里没有的链接。manifest 里抽空的
 字段（如 authors=[]、abstract=""、links.paper=""）是确定性抽取的局限——**由你据 `clean.md`
-全文补全**（这正是"Claude 兜底"：你才是主笔，抽取器只是脚手架）。附录/补充材料的图表已在闸门1
+全文补全**（这正是"你来兜底"：你才是主笔，抽取器只是脚手架）。附录/补充材料的图表已在闸门1
 过滤，不会进 manifest。
 
 ## 自包含、可部署

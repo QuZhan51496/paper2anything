@@ -4,7 +4,7 @@ auto_outline.py — Build a structured digest of a paper from MinerU output.
 Reads `parsed/mineru_raw.json` + `parsed/metadata.json` and produces a
 compact `digest.json` that groups blocks by section heading, attaches each
 figure/table to its nearest section, and exposes captions, list items, and
-plain text. Claude then writes outline.json from this digest instead of
+plain text. You then write outline.json from this digest instead of
 slogging through the full markdown.
 
 Usage:

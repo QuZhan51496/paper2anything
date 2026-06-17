@@ -1,6 +1,6 @@
 # Design Style
 
-Stage 4 的 Claude 把 `slide_outline.json` 扩展成 `slide_spec.json` 时的视觉决策指南。**核心规则：本文件不复述官方 pptx skill 的设计指南，只补论文场景的特例与取舍**。
+Stage 4 的你把 `slide_outline.json` 扩展成 `slide_spec.json` 时的视觉决策指南。**核心规则：本文件不复述官方 pptx skill 的设计指南，只补论文场景的特例与取舍**。
 
 ## 必读：官方 pptx skill 的设计指南
 
@@ -73,7 +73,7 @@ PptxGenJS API、踩坑点与 **icon 生成**（react-icons → SVG → sharp →
 
 ## layout_kind 混用
 
-`layout_kind` 由 Stage 4 Claude 按 slide role + 内容形态自行决定，不预设强制配对。
+`layout_kind` 由 Stage 4 的你按 slide role + 内容形态自行决定，不预设强制配对。
 
 **反复同一种 layout 是 AI 生成的另一典型痕迹**——一组 slide 至少要混用 4 种以上 layout_kind。
 
@@ -85,7 +85,7 @@ PptxGenJS API、踩坑点与 **icon 生成**（react-icons → SVG → sharp →
 
 **所有非 title slide / 非 conclusion 类（含 qna） slide 的 `role: "title"` text element 必须用同一套样式**——`fontSize`、`fontFace`、`color`、`x`、`y`、`w`、`h`、`bold` 都相同。
 
-**具体值由 Stage 4 Claude 根据论文 / theme / 标题平均长度自行选定**（fontSize 在 28-40pt 区间内、y 在 0.3-0.5 内皆可），**但选定后整 deck 严格一致**：s02 用什么，s03 / s04 / s05 / ... / s11 都用同一组值。
+**具体值由 Stage 4 的你根据论文 / theme / 标题平均长度自行选定**（fontSize 在 28-40pt 区间内、y 在 0.3-0.5 内皆可），**但选定后整 deck 严格一致**：s02 用什么，s03 / s04 / s05 / ... / s11 都用同一组值。
 
 **实现要点**：写第一张非 title slide 的 subtitle 时定一个样式 dict（如 `{"fontFace": "Georgia", "fontSize": 32, "color": "<theme.primary>", "x": 0.5, "y": 0.4, "w": 9.0, "h": 0.9, "bold": true}`），后续每张非 title/conclusion slide 直接**复用同一个 dict 的字段**，不要每张单独估。
 
@@ -124,7 +124,7 @@ Stage 4 分配 image 的 `(w, h)` 时仍要尽量贴近原图比例（让等比�
 > **QA 阶段强制执行**：本节 0.4.a / 0.4.b / 0.4.c 列的任何一项被违反在 QA 阶段
 > 都按 **hard issue** 处理——必须改 `slide_spec.json` 修掉，不允许标 soft / 略过。
 > 子代理 prompt 已要求按 hard 报告（见本文件末"QA 时的视觉子代理 prompt"节），
-> Claude 自己复审子代理报告时也不要把这些塞进 "soft" 桶——一句"看起来 OK / 略
+> 你自己复审子代理报告时也不要把这些塞进 "soft" 桶——一句"看起来 OK / 略
 > 空属软问题"就跳过的判断是本 skill **最常翻车的错误**。详见末节"QA 修问题原则"。
 
 #### 0.4.a 整页 bbox 检查
@@ -227,7 +227,7 @@ PptxGenJS 不擅长渲染数学。**优先看 `paper_meta.json/equations[]`**（
 
 #### Local 后端 fallback
 
-走 local 后端（`equations` 字段不存在）时，所有公式都靠 Claude 视觉估算 bbox + page_screenshot 裁——这种情况下"二选一"原则不变，bullet 与 image 仍只展示一次。`page_screenshot.py` 默认 +0.005 padding 兜底。
+走 local 后端（`equations` 字段不存在）时，所有公式都靠你视觉估算 bbox + page_screenshot 裁——这种情况下"二选一"原则不变，bullet 与 image 仍只展示一次。`page_screenshot.py` 默认 +0.005 padding 兜底。
 
 ### 2. 论文 figure 的尺寸
 
@@ -316,7 +316,7 @@ title/conclusion slide 用 `shape` 全屏 fill 主色作为背景即可。
 
 > 此外特别检查：所有数字（百分比、提升量、模型规模）是否在 caption 或 paper
 > 原文里能找到对应？bullet 措辞是否与论文 abstract / contributions 一致（不要
-> Claude 自己编造）？
+> 自己编造）？
 
 **加段 B：留白 / 栏均衡 / 引导符对齐（按本文件 0.4 节 + A 节对齐铁律，必须按 hard issue 报告）**
 
@@ -336,7 +336,7 @@ title/conclusion slide 用 `shape` 全屏 fill 主色作为背景即可。
 >    的对齐铁律；逐个配对报数值，别只看一两条）
 >
 > 这些 **全部当 hard issue 上报**，**禁止**写 "soft / 略 / 看着可接受 / 大致 OK"
-> 等模糊措辞——这些用语会让 Claude 在复审时跳过修复。
+> 等模糊措辞——这些用语会让你在复审时跳过修复。
 
 ## QA 修问题原则（重读 0.4 节）
 

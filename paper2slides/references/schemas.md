@@ -16,7 +16,7 @@ paper2slides 各阶段产物的 schema 定义。所有 JSON 文件均带 `schema
 
 ## config.json（Stage 0.5 产物，Stage 3 与 Stage 6 输入）
 
-Stage 0.5 用 AskUserQuestion 与用户确认三项后由 Claude 写出。落在 workdir 根
+Stage 0.5 用 AskUserQuestion 与用户确认三项后由你写出。落在 workdir 根
 （`config_path` 字段，见 `workdir.py` 的 `STAGE_MARKERS["configure"]`）。
 
 ```json
@@ -90,11 +90,11 @@ Stage 0.5 用 AskUserQuestion 与用户确认三项后由 Claude 写出。落在
 |---|---|---|---|
 | `schema_version` | string | 是 | 当前固定 `"0.1"` |
 | `source_pdf` | string | 是 | 源 PDF 的绝对路径 |
-| `title` | string | 是 | 论文标题。脚本启发式抽取，**Claude 在 Stage 3 必须校核**——首页常有 license/水印干扰 |
-| `authors` | string[] | 否 | 启发式抽取，可能不全；Claude 看到必要时补 |
-| `venue` / `year` | string\|null / int\|null | 否 | 短期不抽取（脚本不可靠），由 Claude 从原文判断或留空 |
+| `title` | string | 是 | 论文标题。脚本启发式抽取，**你在 Stage 3 必须校核**——首页常有 license/水印干扰 |
+| `authors` | string[] | 否 | 启发式抽取，可能不全；你看到必要时补 |
+| `venue` / `year` | string\|null / int\|null | 否 | 短期不抽取（脚本不可靠），由你从原文判断或留空 |
 | `abstract` | string | 否 | 启发式抽到的 abstract 段，可能含连字符与换行污染 |
-| `sections[]` | array | 是 | 启发式切分结果。**Stage 3 的 Claude 修订边界**：合并被误切的子节、剔除明显错误 |
+| `sections[]` | array | 是 | 启发式切分结果。**Stage 3 的你修订边界**：合并被误切的子节、剔除明显错误 |
 | `sections[].kind` | enum | 是 | 见下方 `kind` 枚举 |
 | `sections[].text` | string | 是 | 章节正文（已剔除 PAGE 分隔符）|
 | `sections[].subsections` | array | 是 | 短期始终为空数组；中期可填子节 |
@@ -108,7 +108,7 @@ abstract | introduction | background | related | method | experiment |
 result | discussion | conclusion | references | other
 ```
 
-### Claude 在 Stage 3 进入前应做的修订
+### 你在 Stage 3 进入前应做的修订
 
 读完 `paper_meta.json` 后，**先**做以下校核（不要跳）：
 
@@ -344,7 +344,7 @@ icon 在 Stage 5 由 react-icons → SVG → sharp 实时光栅成 PNG 嵌入，
 ```
 
 `captions` 与 `embedded_images` 故意分两列：pdfimages 输出不带页号，强行配对会
-出错。Stage 4 的 Claude 看到完整候选自己挑——例如某 figure 在原文中是矢量图，
+出错。Stage 4 的你看到完整候选自己挑——例如某 figure 在原文中是矢量图，
 `embedded_images` 里没有对应文件，就回退用 `page_renders` 同页 PNG 裁剪
 （`scripts/page_screenshot.py` 提供）。
 

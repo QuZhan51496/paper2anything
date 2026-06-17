@@ -4,7 +4,7 @@ lib/sectionize.py — Stage 2: 启发式章节切分
 读 raw_text.txt（含页分隔），用正则识别已知章节标题，输出 paper_meta.json。
 
 为什么用启发式：论文章节结构高度规律（Abstract / Introduction / Method / ...），
-90% 用正则就够。剩 10% 边界 case 由 Claude 在 Stage 3 进入前修订。脚本快、稳定、
+90% 用正则就够。剩 10% 边界 case 由你在 Stage 3 进入前修订。脚本快、稳定、
 零 token，是合理的"前置过滤"。
 
 输出 paper_meta.json：
@@ -30,7 +30,7 @@ from pathlib import Path
 # 1) TOP_LEVEL_KEYWORDS — 不需要 numbering 也能识别（这些标题不容易在正文里独占一行）
 # 2) NUMBERED_KEYWORDS  — 必须配带 numbering 前缀才匹配（"3 Method" / "3.1 Encoder ..."）
 #
-# 漏检比误检容易补：Stage 3 的 Claude 可以补上少量被漏掉的章节，但难以剔除大量误识别。
+# 漏检比误检容易补：Stage 3 的你可以补上少量被漏掉的章节，但难以剔除大量误识别。
 
 TOP_LEVEL_KEYWORDS: list[tuple[str, str]] = [
     (r"abstract",                                          "abstract"),
@@ -123,7 +123,7 @@ def detect_sections(pages: list[tuple[int, str]]) -> list[dict]:
         last_pos = s["char_start"]
 
     # 子章节会引入同 kind 多条（如 "5 Training" + "5.1 ...")。短期：保留所有，
-    # Stage 3 的 Claude 视情况合并/挑选。给 id 加递增序号区分。
+    # Stage 3 的你视情况合并/挑选。给 id 加递增序号区分。
     for i, s in enumerate(deduped):
         n = 1 + sum(1 for ss in deduped[:i] if ss["kind"] == s["kind"])
         s["id"] = f"{s['kind']}{'' if n == 1 else n}"
@@ -152,7 +152,7 @@ def fill_section_bodies(sections: list[dict],
 
 
 def extract_title_authors(pages: list[tuple[int, str]]) -> tuple[str, list[str]]:
-    """从首页粗略抽 title 与 authors。失败时返回 ("", [])，让 Claude 在 Stage 3 补。"""
+    """从首页粗略抽 title 与 authors。失败时返回 ("", [])，让你在 Stage 3 补。"""
     if not pages:
         return "", []
     first = pages[0][1]

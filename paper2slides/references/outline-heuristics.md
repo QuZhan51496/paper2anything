@@ -1,6 +1,6 @@
 # Outline Heuristics
 
-Stage 3 的 Claude 把 `paper_meta.json` 转成 `slide_outline.json` 时使用的映射规则
+Stage 3 的你把 `paper_meta.json` 转成 `slide_outline.json` 时使用的映射规则
 与判断准则。本文件不是机械替换表——是给"理解论文 + 决策"用的脚手架。
 
 ## 总目标
@@ -148,13 +148,13 @@ Stage 0.5 让用户选了页数档，Stage 3 进来前先读 `config.json/deck_l
 4. **ablation slide → 选 caption 含 "ablation"、"effect of"、"varying" 的 figure**
 5. 不放心时优先用 `pages/page-NN.png`（整页渲染）而非 `embedded_images`——后者可能是矢量图分解后的碎片
 
-`figure_ref` 写论文里的 figure id（如 `"figure2"`），让 Stage 4 的 Claude 决定具体怎么用（嵌入 vs. 整页裁）。
+`figure_ref` 写论文里的 figure id（如 `"figure2"`），让 Stage 4 的你决定具体怎么用（嵌入 vs. 整页裁）。
 
 > **bbox 是 Stage 4 的事**：当 `figures_index.json/captions[i]` 已带 `bbox` 字段（脚本检出的精确表格边界），Stage 4 会直接用；缺失才走视觉估算。Stage 3 不需要操心 bbox，只填 `figure_ref` 即可。
 
 > **公式同理**：mineru 后端会填 `paper_meta.equations[]`，每张 slide 也可填 `equation_ref: "eq_5"`（与 `figure_ref` 平行），Stage 4 据此决定 Unicode rewrite / 裁原图 / 仅入 speaker_notes。详见 `references/design-style.md` 的公式段。
 
-> **附录 vs 正文（重要）**：每个 `figures[i]` / `tables[i]` / `equations[i]` 带 `is_appendix: bool` 字段。**Stage 3 默认只挑 `is_appendix == false` 的条目**——附录里的 figure（如 attention 论文 Figure 3-5 在 References 之后的 attention 可视化）通常是补充材料，标准 deck 通常不展示。例外：长篇 keynote、补充材料 talk、或 Claude 判断附录某 figure 对叙事关键时，可以显式挑 `is_appendix == true` 的条目，并在 speaker_notes 注明 "from appendix"。判定规则简单：page 在 References 章节之后即标 appendix；详见 `references/schemas.md` 的相关 Addendum。
+> **附录 vs 正文（重要）**：每个 `figures[i]` / `tables[i]` / `equations[i]` 带 `is_appendix: bool` 字段。**Stage 3 默认只挑 `is_appendix == false` 的条目**——附录里的 figure（如 attention 论文 Figure 3-5 在 References 之后的 attention 可视化）通常是补充材料，标准 deck 通常不展示。例外：长篇 keynote、补充材料 talk、或你判断附录某 figure 对叙事关键时，可以显式挑 `is_appendix == true` 的条目，并在 speaker_notes 注明 "from appendix"。判定规则简单：page 在 References 章节之后即标 appendix；详见 `references/schemas.md` 的相关 Addendum。
 
 ## 受众适配（`audience` 字段）
 
@@ -169,7 +169,7 @@ Stage 0.5 让用户选了页数档，Stage 3 进来前先读 `config.json/deck_l
 - 章节边界错位（method 被切碎）
 - abstract 含连字符污染
 
-进入 Stage 3 之前先做 [schemas.md](schemas.md) 末尾"Claude 在 Stage 3 进入前应做的修订"列表里的 4 项校核。**校核结果不写回 paper_meta.json**，但用校核后的理解生成 outline。
+进入 Stage 3 之前先做 [schemas.md](schemas.md) 末尾"你在 Stage 3 进入前应做的修订"列表里的 4 项校核。**校核结果不写回 paper_meta.json**，但用校核后的理解生成 outline。
 
 ---
 

@@ -2,8 +2,8 @@
 
 供 scripts/ 下的 stage 脚本调用：
   PDF/Markdown -> 解析 -> extract_manifest(闸门1:确定性事实)
-                       -> [Claude 亲手写 index.html] -> validate_site(闸门2:QA)
-本库不含任何 HTML 渲染器——页面的设计与撰写由 Claude 在 SKILL.md 的创作步骤完成。
+                       -> [你亲手写 index.html] -> validate_site(闸门2:QA)
+本库不含任何 HTML 渲染器——页面的设计与撰写由你在 SKILL.md 的创作步骤完成。
 """
 
 from __future__ import annotations
@@ -252,7 +252,7 @@ def extract_manifest(
 
 
 def validate_site(html: str, output_dir: Path, manifest: PaperManifest) -> QAResult:
-    # 闸门2：Claude 亲手写完 index.html 后校验。结构错误(缺 doctype / 缺图 / 空链)记 error，
+    # 闸门2：你亲手写完 index.html 后校验。结构错误(缺 doctype / 缺图 / 空链)记 error，
     # 内容保真(标题/图/表是否真进了页面)记 warning——renderer 无关，只看成品 HTML。
     errors: list[str] = []
     warnings: list[str] = []
@@ -295,7 +295,7 @@ def validate_site(html: str, output_dir: Path, manifest: PaperManifest) -> QARes
     if empty_alt:
         warnings.append(f"Found {len(empty_alt)} non-decorative images with empty alt text.")
 
-    # 内容保真：确认 manifest 的关键事实真的进了 Claude 写的页面（漏了记 warning）。
+    # 内容保真：确认 manifest 的关键事实真的进了你写的页面（漏了记 warning）。
     lower_html = html.lower()
     title_present = bool(manifest.title) and manifest.title.lower()[:40] in lower_html
     if manifest.title and not title_present:

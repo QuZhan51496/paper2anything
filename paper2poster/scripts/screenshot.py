@@ -1,6 +1,6 @@
 """Screenshot a self-contained HTML file to a PNG at exact pixel size.
 
-This is a pure instrument for the hand-authored poster path: Claude writes
+This is a pure instrument for the hand-authored poster path: you write
 `poster.html` with the Write tool, then calls this to get a `poster.png` it can
 Read and judge by eye. It renders whatever HTML you give it — it does NOT pick
 a template, parse an outline, or make any design decision. Use the poster's

@@ -13,11 +13,11 @@ description: "Turn an academic paper PDF into a presentation deck (.pptx) end-to
 
 | 阶段 | 输入 | 产物 | 责任方 |
 |---|---|---|---|
-| 0.5. configure | 用户对话 | `<workdir>/config.json` | **Claude**（AskUserQuestion 三项确认：页数档 + 是否做视觉 QA + 配色）|
+| 0.5. configure | 用户对话 | `<workdir>/config.json` | **你**（AskUserQuestion 三项确认：页数档 + 是否做视觉 QA + 配色）|
 | 1. extract    | `paper.pdf` | `figures_index.json` + `figures/` + `pages/`（mineru 后端**还顺手产出** `paper_meta.json`+`equations`+高清 figure/table 裁图）| `scripts/extract_paper.py` |
-| 2. sectionize | `raw_text.txt` | `paper_meta.json` | `scripts/lib/sectionize.py` + Claude 修订（**mineru 后端时本阶段自动跳过**）|
-| 3. outline    | `paper_meta.json` | `slide_outline.json` | **Claude**（按 `references/outline-heuristics.md`）|
-| 4. spec       | `slide_outline.json` + 图 | `slide_spec.json` | **Claude**（按 `references/design-style.md`） |
+| 2. sectionize | `raw_text.txt` | `paper_meta.json` | `scripts/lib/sectionize.py` + 你修订（**mineru 后端时本阶段自动跳过**）|
+| 3. outline    | `paper_meta.json` | `slide_outline.json` | **你**（按 `references/outline-heuristics.md`）|
+| 4. spec       | `slide_outline.json` + 图 | `slide_spec.json` | **你**（按 `references/design-style.md`） |
 | 5. render     | `slide_spec.json` | `output.pptx` | `scripts/render_pptx.py`（PptxGenJS 桥）|
 | 6. qa         | `output.pptx` | pass / fail + 修复列表 | content QA 始终跑；**视觉 QA 由 Stage 0.5 的 `config.json/visual_qa` 门控**|
 
@@ -68,7 +68,7 @@ conda run -n paper2anything --no-capture-output python -m scripts.workdir resolv
 的关键陷阱、(c) 指向 [references/pipeline.md](references/pipeline.md) 对应 Stage 的
 指针**。完整协议、前置依赖、常见错误、边界情况一律在 pipeline.md，本节不复述。
 
-### Stage 0.5 — Configure（Claude，AskUserQuestion 三项确认）
+### Stage 0.5 — Configure（你，AskUserQuestion 三项确认）
 
 Stage 0 解析完 workspace 后、Stage 1 之前，用 [AskUserQuestion] 与用户确认三项，
 答案 Write 到 Stage 0 JSON 的 `config_path`（`<workdir>/config.json`）：
@@ -98,19 +98,19 @@ backend（`auto`/`mineru`/`mineru-strict`/`local`）选择、`--dpi` 调节（�
 local 后端 sparse-text/吃空格/嵌入图未绑定等已知不完美，见
 [references/pipeline.md](references/pipeline.md) §Stage 1。
 
-### Stage 2 — Sectionize（脚本 + Claude 校核）
+### Stage 2 — Sectionize（脚本 + 你校核）
 
 ```bash
 conda run -n paper2anything --no-capture-output python -m scripts.lib.sectionize <workdir>
 ```
 
 产物 `paper_meta.json`（mineru 后端已在 Stage 1 产出，本阶段自动跳过）。**陷阱**：
-进 Stage 3 前 Claude **必跑** [references/schemas.md](references/schemas.md) 末尾的
+进 Stage 3 前你 **必跑** [references/schemas.md](references/schemas.md) 末尾的
 **4 项校核**（title/authors/同 kind 合并/缺关键 kind），**校核结果不写回
 `paper_meta.json`**，直接体现在 Stage 3 的 outline 里。算法与已知不完美见
 [references/pipeline.md](references/pipeline.md) §Stage 2。
 
-### Stage 3 — Outline（Claude）
+### Stage 3 — Outline（你）
 
 输入 `paper_meta.json` + `figures_index.json` + `config.json` → 产物
 `slide_outline.json`（schema 见 [references/schemas.md](references/schemas.md)）。
@@ -129,7 +129,7 @@ conda run -n paper2anything --no-capture-output python -c \
 
 完整协议与常见错误见 [references/pipeline.md](references/pipeline.md) §Stage 3。
 
-### Stage 4 — Spec（Claude）
+### Stage 4 — Spec（你）
 
 输入 `slide_outline.json` + `figures_index.json` + figures/ + pages/ → 产物
 `slide_spec.json`。按 [references/design-style.md](references/design-style.md) 选
@@ -186,11 +186,11 @@ conda run -n paper2anything --no-capture-output python -m scripts.render_pptx \
 
 ### 错误恢复速查
 
-只列需要 **Claude 判断/路由**的几类（技术类恢复全在 pipeline.md）：
+只列需要 **你判断/路由**的几类（技术类恢复全在 pipeline.md）：
 
 | 症状 | 处理 |
 |---|---|
-| Stage 2 章节数 < 5 或 > 15 | Claude 在 Stage 3 校核时手动补 / 合并 |
+| Stage 2 章节数 < 5 或 > 15 | 你在 Stage 3 校核时手动补 / 合并 |
 | Stage 6 报"卡片下半空 / 栏不均衡 / 底部留白" | **不是 soft**——按 `references/design-style.md` "QA 修问题原则" **3 杠杆模型**（调文字量 > 调 bullet 间隔 > 调图片大小，可叠加）修，`--from-stage render` 重跑 |
 | 用户/QA 报"引导符与文字没对齐" | 按 `references/design-style.md` "视觉丰富度建议 A" 对齐公式批量重置 icon_y + 收尾自检，`--from-stage render` 重跑 |
 | 触发了 skill 但用户只要"读 PDF" | 误触发——让用户走官方 `pdf` skill，不要继续走 paper2slides |
@@ -236,4 +236,4 @@ A/B）、3 杠杆修复模型、复检收窄细则见 [references/design-style.m
 ```
 
 阅读这两个 skill 是本 skill 的"基础课"——遇到底层细节优先查它们，本 skill 只提
-供论文领域的**编排**与**与 Claude 协同的判断指南**。
+供论文领域的**编排**与**判断指南**。

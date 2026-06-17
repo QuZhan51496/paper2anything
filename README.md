@@ -10,7 +10,7 @@
 | **paper2xhs** | 小红书帖子 | `xhs_post.json/md` + 封面 | "把这篇论文发小红书"、"论文转小红书" |
 | **paper2wechat** | 公众号推文 | `wechat_article.md/html` + 封面 | "把论文写成公众号文章"、"论文转公众号" |
 
-每个子目录都是一个独立、可被 Claude 自动触发的 skill（各有 `SKILL.md`）。它们共享同一个 conda 环境，但各自的工作流、产物与凭据相互独立。
+每个子目录都是一个独立、可自动触发的 skill（各有 `SKILL.md`）。它们共享同一个 conda 环境，但各自的工作流、产物与凭据相互独立。
 
 ---
 
@@ -32,14 +32,14 @@ paper2anything/
 │   └── scripts/             # parse_pdf / auto_outline / score_poster_visual / paper_quiz / ...
 ├── paper2html/              # 论文 → 单页项目主页
 │   ├── SKILL.md
-│   ├── paper2html/          # Python 包（agent/pipeline/html_generator/mineru_client/config + prompts/）
-│   └── briefs/
+│   ├── references/          # 设计语言、HTML 撰写规范、QA 清单
+│   └── scripts/             # stage1_parse / stage2_validate + lib/（解析/抽取/QA，无渲染器）
 ├── paper2xhs/               # 论文 → 小红书
 │   ├── SKILL.md
-│   └── scripts/             # main + stage1..7 + utils
+│   └── scripts/             # stage2_parse / stage6_cover / stage7_publish + utils
 └── paper2wechat/            # 论文 → 公众号
     ├── SKILL.md
-    └── scripts/             # main + stage1..7 + utils
+    └── scripts/             # stage2_parse / stage6_cover / stage7_publish + utils
 ```
 
 ---
@@ -94,7 +94,7 @@ set -a; source .env; set +a   # 每个新 shell 一次（或写进 ~/.bashrc 一
 | --- | --- |
 | paper2slides | `MINERU_API_TOKEN`（云解析；`--backend local` 时不需要） |
 | paper2poster | `MINERU_API_TOKEN`、`DASHSCOPE_API_KEY`(或 `API_KEY`) |
-| paper2html | `MINERU_API_TOKEN`、`OPENAI_API_KEY`、`LLM_BASE_URL`、`LLM_MODEL` |
+| paper2html | `MINERU_API_TOKEN`（页面设计与撰写由你亲自完成，不调用任何 LLM API） |
 | paper2xhs | `MINERU_API_TOKEN`（封面另需 `OPENAI_API_KEY`；半自动发布另需 `XHS_SKILLS_DIR`） |
 | paper2wechat | `MINERU_API_TOKEN`（封面另需 `OPENAI_API_KEY`；排版用 `md2wechat`，已在统一环境内） |
 
@@ -112,7 +112,7 @@ set -a; source .env; set +a   # 每个新 shell 一次（或写进 ~/.bashrc 一
 | --- | --- |
 | paper2slides | `<论文名>.pptx`（直接在论文目录，重名 `-v2/-v3`）；中间产物 `.paper2anything/slides/<论文名>/` |
 | paper2poster | `.paper2anything/poster/`（`poster.html` / `poster.png` + 全部中间产物） |
-| paper2html | `.paper2anything/html/<输入名>_agent/`（`index.html` 等；`-o` 可覆盖） |
+| paper2html | `.paper2anything/html/`（`index.html` + `images/` + `manifest.json` + `clean.md` 等） |
 | paper2xhs | `.paper2anything/xhs/`（`understanding/`、`xhs/xhs_post.json\|md`、`xhs/cover.png`） |
 | paper2wechat | `.paper2anything/wechat/`（`understanding/`、`wechat/wechat_article.md\|html`、`wechat/cover.jpg`） |
 
@@ -122,7 +122,7 @@ set -a; source .env; set +a   # 每个新 shell 一次（或写进 ~/.bashrc 一
 
 ## 怎么用
 
-直接对 Claude 说出你的意图，对应 skill 会被自动触发，例如：
+直接说出你的意图，对应 skill 会被自动触发，例如：
 
 - "把 `~/paper.pdf` 做成 PPT" → **paper2slides**
 - "用这篇论文做一张会议海报" → **paper2poster**

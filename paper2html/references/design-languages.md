@@ -1,6 +1,6 @@
-# 设计语言参考（Claude 创作 index.html 时用）
+# 设计语言参考（你创作 index.html 时用）
 
-paper2html 没有固定模板——**你（Claude）亲手写 index.html**。先为这篇论文**确立一个设计概念**
+paper2html 没有固定模板——**你亲手写 index.html**。先为这篇论文**确立一个设计概念**
 （视觉范式 + 叙事主线），再据此布局，而不是套固定区块清单。不同论文（NLP / agentic-RL /
 GUI-agent / systems）应当长得不一样。
 

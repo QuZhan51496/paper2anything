@@ -1,6 +1,6 @@
 ---
 name: paper2poster
-description: "Convert academic papers (PDF) into conference posters (HTML/PNG). Claude is the conductor: it decides what each section needs — an original paper figure or text — writes the outline, hand-authors the poster HTML, and iterates on the render using a VLM visual score and a content-fidelity quiz. Use when the user wants a poster from a paper PDF."
+description: "Convert academic papers (PDF) into conference posters (HTML/PNG). You are the conductor: you decide what each section needs — an original paper figure or text — write the outline, hand-author the poster HTML, and iterate on the render using a VLM visual score and a content-fidelity quiz. Use when the user wants a poster from a paper PDF."
 arguments: [pdf-path]
 allowed-tools:
   - Bash(python *)
@@ -15,18 +15,18 @@ disable-model-invocation: false
 effort: high
 ---
 
-# Paper2Poster — Conference Poster Skill (Claude as Conductor)
+# Paper2Poster — Conference Poster Skill (You as Conductor)
 
-Convert a paper PDF into an academic conference poster (HTML/PNG) by walking a small set of CLI scripts. **Claude is the conductor**: this file is the recipe, not an orchestrator. There is no `run_pipeline.py` — at each step you (Claude) run one Bash command, read the intermediate artifact, and ask the user for confirmation at the decision points below.
+Convert a paper PDF into an academic conference poster (HTML/PNG) by walking a small set of CLI scripts. **You are the conductor**: this file is the recipe, not an orchestrator. There is no `run_pipeline.py` — at each step you run one Bash command, read the intermediate artifact, and ask the user for confirmation at the decision points below.
 
 ```text
 PDF
   → parse_pdf.py            (MinerU → content.md + figures/)
-  → intake QA               (Claude asks size/venue/authors/visual policy)
+  → intake QA               (you ask size/venue/authors/visual policy)
   → auto_outline.py         (digest.json + assets[])
-  → choose visuals          (Claude reads parsed/figures/ + captions: which sections use an original figure, which use text)
-  → outline.json            (Claude writes from content.md; user confirms)
-  → poster.html             (Claude hand-authors the poster: original figures where they help, text elsewhere)
+  → choose visuals          (you read parsed/figures/ + captions: which sections use an original figure, which use text)
+  → outline.json            (you write from content.md; user confirms)
+  → poster.html             (you hand-author the poster: original figures where they help, text elsewhere)
   → render + score          (Playwright PNG → geometry check + VLM visual score + PaperQuiz content check)
   → iterate on poster.html  (edit + re-render + re-score until it reads like a real poster)
   → poster.png
@@ -36,11 +36,11 @@ PDF
 
 ---
 
-## How Claude runs this skill
+## How you run this skill
 
-This skill only works if Claude executes it as a sequence of small Bash + Read + AskUserQuestion turns. Do not try to short-circuit it.
+This skill only works if you execute it as a sequence of small Bash + Read + AskUserQuestion turns. Do not try to short-circuit it.
 
-1. **Run one step at a time** with the `Bash` tool, exactly as written below. Use absolute paths under `${CLAUDE_SKILL_DIR}` (the directory this skill lives in — e.g. `<…>/paper2anything/paper2poster`; set it once per shell with `export CLAUDE_SKILL_DIR=<…>/paper2anything/paper2poster`).
+1. **Run one step at a time** with the `Bash` tool, exactly as written below. Use absolute paths under `${SKILL_DIR}` (the directory this skill lives in — e.g. `<…>/paper2anything/paper2poster`; set it once per shell with `export SKILL_DIR=<…>/paper2anything/paper2poster`).
 2. **Read the intermediate artifact** before moving on:
    - after Step 3: the figures you considered, viewed in `parsed/figures/` (and their captions in `digest.json`), and which sections you decided to carry with text instead,
    - after Step 5: your rendered `poster.png`, plus its VLM visual score and PaperQuiz result.
@@ -61,7 +61,7 @@ This skill only works if Claude executes it as a sequence of small Bash + Read +
 > **统一环境**：本 skill 所有 `python` 命令都运行在 paper2anything 包的统一 conda 环境里（由顶层 `environment.yml` 创建），命令均以 `conda run -n paper2anything --no-capture-output` 为前缀。下面的 `pip install` 仅在统一环境缺依赖时兜底；`playwright install chromium` 仍需单独执行一次。
 
 ```bash
-conda run -n paper2anything --no-capture-output python ${CLAUDE_SKILL_DIR}/scripts/check_env.py
+conda run -n paper2anything --no-capture-output python ${SKILL_DIR}/scripts/check_env.py
 ```
 
 If anything is missing:
@@ -88,12 +88,12 @@ DashScope endpoint: `https://dashscope.aliyuncs.com/compatible-mode/v1`. Do not 
 
 ## Step 1: Parse the PDF
 
-产出统一落在**论文旁** `<pdf目录>/.paper2anything/poster/`（与 slides / html / xhs / wechat 一致）。下面每个步骤是**独立的 Bash 调用、互不共享 shell 变量**，所以每个用到运行目录的命令块都在开头就地从 `$pdf_path` 算出 `RUN_DIR`（和始终可用的 `${CLAUDE_SKILL_DIR}` 一样、每次都在；切勿只在某一步 `export` 一次就指望后续步骤还在）。脚本仍在 `${CLAUDE_SKILL_DIR}/scripts`。
+产出统一落在**论文旁** `<pdf目录>/.paper2anything/poster/`（与 slides / html / xhs / wechat 一致）。下面每个步骤是**独立的 Bash 调用、互不共享 shell 变量**，所以每个用到运行目录的命令块都在开头就地从 `$pdf_path` 算出 `RUN_DIR`（和始终可用的 `${SKILL_DIR}` 一样、每次都在；切勿只在某一步 `export` 一次就指望后续步骤还在）。脚本仍在 `${SKILL_DIR}/scripts`。
 
 ```bash
 RUN_DIR="$(dirname "$pdf_path")/.paper2anything/poster"
 mkdir -p "$RUN_DIR"
-conda run -n paper2anything --no-capture-output python ${CLAUDE_SKILL_DIR}/scripts/parse_pdf.py "$pdf_path" \
+conda run -n paper2anything --no-capture-output python ${SKILL_DIR}/scripts/parse_pdf.py "$pdf_path" \
   --output-dir "${RUN_DIR}/parsed"
 ```
 
@@ -121,7 +121,7 @@ The output is an HTML/PNG poster (`poster.html` + `poster.png`). If the user jus
 
 ```bash
 RUN_DIR="$(dirname "$pdf_path")/.paper2anything/poster"
-conda run -n paper2anything --no-capture-output python ${CLAUDE_SKILL_DIR}/scripts/auto_outline.py \
+conda run -n paper2anything --no-capture-output python ${SKILL_DIR}/scripts/auto_outline.py \
   --parsed-dir "${RUN_DIR}/parsed" \
   --output     "${RUN_DIR}/digest.json"
 ```
@@ -155,7 +155,7 @@ You don't need to copy files anywhere — just record each chosen figure's path 
 
 ## Step 4: Write the outline [INTERACT]
 
-You (Claude) read the **full parsed paper** (`parsed/content.md`) and write `outline.json` directly with the `Write` tool, following the per-section visual plan you set in Step 3 (which sections embed an original figure, which are carried by text). You are the conductor here — selecting and condensing the paper's content into poster form is a judgment task, not a mechanical extraction. Do **not** just copy `digest.json`'s auto-extracted sections (they are dense source prose); decide yourself what belongs on the poster and how to phrase it.
+You read the **full parsed paper** (`parsed/content.md`) and write `outline.json` directly with the `Write` tool, following the per-section visual plan you set in Step 3 (which sections embed an original figure, which are carried by text). You are the conductor here — selecting and condensing the paper's content into poster form is a judgment task, not a mechanical extraction. Do **not** just copy `digest.json`'s auto-extracted sections (they are dense source prose); decide yourself what belongs on the poster and how to phrase it.
 
 **Goal, not quota.** Make a poster that reads like a real conference poster — study the 8 real CVPR/ICLR examples in [`references/poster_examples/`](references/poster_examples/) for how much text, how many sections, and what density real posters use. Let the paper's own shape drive the structure: a method-heavy paper may need a long process section with a big diagram; a results paper may be one line plus a dominant table. There is **no fixed section count or bullet count** — use what the content and the real-poster aesthetic call for.
 
@@ -171,7 +171,7 @@ If the user wants an explicitly text-only poster, set `outline.poster_intake.vis
 
 ## Step 5: Design the poster — YOU hand-author the HTML
 
-**You (Claude) are the poster designer, not a template picker.** The best
+**You are the poster designer, not a template picker.** The best
 posters in this pipeline are the ones you write yourself: you have seen the
 paper, you know each section's visual plan (figure or text) and the real pixel
 dimensions of any figures you chose, and you can study real conference posters.
@@ -245,7 +245,7 @@ like your previous poster, that's a signal to rethink, not a shortcut to take.
 
    ```bash
    RUN_DIR="$(dirname "$pdf_path")/.paper2anything/poster"
-   conda run -n paper2anything --no-capture-output python ${CLAUDE_SKILL_DIR}/scripts/screenshot.py \
+   conda run -n paper2anything --no-capture-output python ${SKILL_DIR}/scripts/screenshot.py \
      "${RUN_DIR}/poster.html" \
      "${RUN_DIR}/poster.png" \
      --width 1920 --height 1440
@@ -351,7 +351,7 @@ render, not just once at the end:
 
 ```bash
 RUN_DIR="$(dirname "$pdf_path")/.paper2anything/poster"
-conda run -n paper2anything --no-capture-output python ${CLAUDE_SKILL_DIR}/scripts/score_poster_visual.py \
+conda run -n paper2anything --no-capture-output python ${SKILL_DIR}/scripts/score_poster_visual.py \
   --png       "${RUN_DIR}/poster.png" \
   --outline   "${RUN_DIR}/outline.json" \
   --output    "${RUN_DIR}/visual_score.json"
@@ -377,7 +377,7 @@ the iteration loop, not just as a final gate, so content gaps drive edits too.
 
 ```bash
 RUN_DIR="$(dirname "$pdf_path")/.paper2anything/poster"
-conda run -n paper2anything --no-capture-output python ${CLAUDE_SKILL_DIR}/scripts/paper_quiz.py \
+conda run -n paper2anything --no-capture-output python ${SKILL_DIR}/scripts/paper_quiz.py \
   --digest      "${RUN_DIR}/digest.json" \
   --poster-png  "${RUN_DIR}/poster.png" \
   --output      "${RUN_DIR}/paper_quiz.json" \

@@ -79,7 +79,7 @@ def run(workdir: str) -> dict:
     post = load_json(post_path)
     title = post.get("title", "")[:20]
     body = post.get("body", "")
-    tags = post.get("hashtags") or post.get("tags") or []  # Claude 写的产物用 hashtags
+    tags = post.get("hashtags") or post.get("tags") or []  # 你写的产物用 hashtags
 
     # 收集图片（目前只有封面，多图扩展在此处添加）
     images: list[str] = []

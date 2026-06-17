@@ -1,16 +1,16 @@
 """
 paper2html 工具函数模块
 
-协调式（Claude 主导）下的基础设施：日志、工作区解析、JSON 读写、Rich 输出。
+协调式（你主导）下的基础设施：日志、工作区解析、JSON 读写、Rich 输出。
 工作区固定落在论文旁 `<pdf目录>/.paper2anything/html/`，与 slides/poster/xhs/wechat
 的 .paper2anything/<skill>/ 方案一致（无 task_id 子目录）。
 
 布局（root = .paper2anything/html/）：
-  root/clean.md       normalize 后的 markdown（stage1 写，Claude 读）
+  root/clean.md       normalize 后的 markdown（stage1 写，你读）
   root/manifest.json  确定性抽取的事实（stage2 写，闸门1）
-  root/index.html     Claude 亲手写的单页网站
+  root/index.html     你亲手写的单页网站
   root/parsed/        MinerU 原始解析（含 parsed/images/ 所有裁图）
-  root/images/        页面引用的图（stage2 从 parsed 复制；Claude 以 images/<name> 引用）
+  root/images/        页面引用的图（stage2 从 parsed 复制；你以 images/<name> 引用）
   root/logs/          *_result.json + validation.json + qa_report.md
 """
 

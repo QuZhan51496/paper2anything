@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 """stage2_validate —— QA 校验（机械，闸门2）。
 
-Claude 亲手写完 index.html 后跑：校验成品页面（结构错误记 error，内容保真记 warning），
-产出报告供 Claude 据此修订。不改 HTML、不渲染——只看 Claude 写的 index.html + manifest.json。
+你亲手写完 index.html 后跑：校验成品页面（结构错误记 error，内容保真记 warning），
+产出报告供你据此修订。不改 HTML、不渲染——只看你写的 index.html + manifest.json。
 
 校验项：
   error  —— 缺 <!DOCTYPE html>/</html>、引用的 images/<x> 文件缺失、空 href="#"
@@ -38,7 +38,7 @@ def run(workdir: str) -> dict:
     index_html = root / "index.html"
     manifest_path = root / "manifest.json"
     if not index_html.exists():
-        print_error(f"未找到 {index_html}；请先让 Claude 写好 index.html 再跑 QA")
+        print_error(f"未找到 {index_html}；请先写好 index.html 再跑 QA")
         return {"status": "failed", "error": "index.html 不存在"}
     if not manifest_path.exists():
         print_error(f"未找到 {manifest_path}；请先跑 stage1_parse")
@@ -80,7 +80,7 @@ def main() -> int:
     ap.add_argument("--workdir", required=True, help="工作目录（<pdf目录>/.paper2anything/html）")
     args = ap.parse_args()
     result = run(args.workdir)
-    # QA FAIL 不算脚本错误（Claude 据报告修后重跑）；仅真正异常返回非零
+    # QA FAIL 不算脚本错误（你据报告修后重跑）；仅真正异常返回非零
     return 0 if result.get("status") in {"success", "qa_failed"} else 1
 
 

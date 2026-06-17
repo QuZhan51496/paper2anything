@@ -1,7 +1,7 @@
 """
 paper2xhs 工具函数模块
 
-协调式（Claude 主导）下的基础设施：日志、工作区解析、JSON 读写、Rich 输出。
+协调式（你主导）下的基础设施：日志、工作区解析、JSON 读写、Rich 输出。
 工作区不再用 task_id 子目录——固定落在论文旁 `<pdf目录>/.paper2anything/xhs/`，
 与 poster 的 RUN_DIR、slides 的 .paper2anything/slides/ 方案一致。
 """
@@ -44,8 +44,8 @@ def resolve_workspace(workdir: str | Path) -> dict[str, Path]:
         "root": base,
         "parsed": base / "parsed",            # MinerU 解析出的 PIR（脚本写）
         "figures": base / "figures",          # 论文插图实体（脚本写）
-        "understanding": base / "understanding",  # paper_understanding.json（Claude 写）
-        "xhs": base / "xhs",                  # xhs_post.json/md（Claude 写）+ cover.png（脚本写）
+        "understanding": base / "understanding",  # paper_understanding.json（你写）
+        "xhs": base / "xhs",                  # xhs_post.json/md（你写）+ cover.png（脚本写）
         "logs": base / "logs",                # 各步骤 *_result.json
     }
     for d in dirs.values():

@@ -1,12 +1,12 @@
 ---
 name: paper2xhs
-description: 把学术论文 PDF 转成小红书帖子（标题 + 正文 + 标签 + 封面）。Claude 主导设计的协调式：机械活（MinerU 解析 PDF、生成封面、半自动发布）交给 scripts/ 下的小工具，论文理解、选题角度、文案撰写由 Claude 亲自完成并在关键点与用户确认。当用户说“论文转小红书”、“paper2xhs”、“把这篇论文发小红书”、“论文转社交媒体”、“PDF 转小红书帖子”时触发。
+description: 把学术论文 PDF 转成小红书帖子（标题 + 正文 + 标签 + 封面）。你主导设计的协调式：机械活（MinerU 解析 PDF、生成封面、半自动发布）交给 scripts/ 下的小工具，论文理解、选题角度、文案撰写由你亲自完成并在关键点与用户确认。当用户说“论文转小红书”、“paper2xhs”、“把这篇论文发小红书”、“论文转社交媒体”、“PDF 转小红书帖子”时触发。
 allowed-tools: Bash, Read, Write, Glob, Grep, AskUserQuestion
 ---
 
-# paper2xhs — 论文转小红书（Claude 主导的协调式）
+# paper2xhs — 论文转小红书（你主导的协调式）
 
-把一篇论文 PDF 转成小红书帖子。**Claude（你）是主笔**：这份文件是配方，不是全自动脚本——
+把一篇论文 PDF 转成小红书帖子。**你是主笔**：这份文件是配方，不是全自动脚本——
 没有 `main.py`。机械步骤（解析 / 封面 / 发布）调用 `scripts/` 下的小工具；**论文理解、
 选题角度、文案撰写由你亲自完成**（用 Read 看材料、用 Write 落产物），并在关键点用
 `AskUserQuestion` 与用户确认。
@@ -21,14 +21,14 @@ PDF
  → 小红书帖子
 ```
 
-## How Claude runs this skill
+## How you run this skill
 
 1. **一步步来**：机械步骤用 `Bash` 调脚本，创作步骤你自己用 `Read` / `Write` 做。不要试图一条命令跑完。
 2. **每个 Bash 块开头就地算 `WORKDIR`**——各 Bash 调用是独立 shell、不共享变量，所以别指望 `export` 跨步存活：
    ```bash
    WORKDIR="$(dirname "$pdf_path")/.paper2anything/xhs"
    ```
-   其中 `$pdf_path` 是用户给的论文 PDF 路径（每个块都重新设一次）。脚本仍在 `${CLAUDE_SKILL_DIR}/scripts`。
+   其中 `$pdf_path` 是用户给的论文 PDF 路径（每个块都重新设一次）。脚本仍在 `${SKILL_DIR}/scripts`。
 3. **在两个决策点用 `AskUserQuestion` 暂停**：① 读懂论文后确认“选题角度”；② 文案成稿后确认。用户想改，可直接改产物 JSON/MD 或告诉你改。
 4. **小红书是“准确、不夸大的科普”**：忠实反映论文贡献，口语化、有钩子，但**绝不编造数据或夸大结论**。
 
@@ -44,7 +44,7 @@ PDF
 set -a; source <paper2anything 包根>/.env; set +a
 ```
 
-本 skill 用到的 key（**理解与文案由你 Claude 亲自做，不再调用 Anthropic API，故无需 `ANTHROPIC_API_KEY`**）：
+本 skill 用到的 key（**理解与文案由你亲自做，不调用任何 LLM API**）：
 - `MINERU_API_TOKEN` — 解析 PDF（必填）
 - `OPENAI_API_KEY`(+ `OPENAI_BASE_URL`) — 仅封面 AI 生成；无则自动跳过封面
 - `XHS_SKILLS_DIR` — 仅半自动发布（克隆 [xiaohongshu-skills](https://github.com/autoclaw-cc/xiaohongshu-skills)）；不发布可不配
@@ -63,7 +63,7 @@ conda run -n paper2anything --no-capture-output python -c "import requests, rich
 pdf_path="/path/to/paper.pdf"          # ← 用户的论文 PDF
 WORKDIR="$(dirname "$pdf_path")/.paper2anything/xhs"
 conda run -n paper2anything --no-capture-output \
-  python "${CLAUDE_SKILL_DIR}/scripts/stage2_parse.py" "$pdf_path" --workdir "$WORKDIR"
+  python "${SKILL_DIR}/scripts/stage2_parse.py" "$pdf_path" --workdir "$WORKDIR"
 ```
 
 产出（`$WORKDIR` 下）：
@@ -133,7 +133,7 @@ conda run -n paper2anything --no-capture-output \
 pdf_path="/path/to/paper.pdf"
 WORKDIR="$(dirname "$pdf_path")/.paper2anything/xhs"
 conda run -n paper2anything --no-capture-output \
-  python "${CLAUDE_SKILL_DIR}/scripts/stage6_cover.py" --workdir "$WORKDIR"
+  python "${SKILL_DIR}/scripts/stage6_cover.py" --workdir "$WORKDIR"
 ```
 
 逻辑：优先复用 `understanding.important_figures` 里 `suitable_for_cover` 最高分的论文原图；没有合适原图且配了 `OPENAI_API_KEY` 时用 `OPENAI_IMAGE_MODEL`（默认 `gpt-image-1`）按 `cover_text` 生成竖版封面；都没有则 `skipped`（不阻断流程）。产出 `xhs/cover.png`。
@@ -146,7 +146,7 @@ conda run -n paper2anything --no-capture-output \
 pdf_path="/path/to/paper.pdf"
 WORKDIR="$(dirname "$pdf_path")/.paper2anything/xhs"
 conda run -n paper2anything --no-capture-output \
-  python "${CLAUDE_SKILL_DIR}/scripts/stage7_publish.py" --workdir "$WORKDIR"
+  python "${SKILL_DIR}/scripts/stage7_publish.py" --workdir "$WORKDIR"
 ```
 
 读 `xhs/xhs_post.json`（title/body/hashtags）+ `xhs/cover.png`，通过外部 `xiaohongshu-skills` 填到发布页，**用户在浏览器确认后**才点发布。需 `XHS_SKILLS_DIR` + Chrome 扩展；未配置就跳过这步，把产物路径告诉用户让其手动发。
@@ -161,8 +161,8 @@ conda run -n paper2anything --no-capture-output \
 |---|---|---|
 | `parsed/` | MinerU PIR（meta/sections/figures_index/references） | stage2_parse |
 | `figures/` | 论文插图实体 | stage2_parse |
-| `understanding/paper_understanding.json` | 论文理解 + important_figures | **你（Claude）** |
-| `xhs/xhs_post.json` `xhs_post.md` | 小红书文案 | **你（Claude）** |
+| `understanding/paper_understanding.json` | 论文理解 + important_figures | **你** |
+| `xhs/xhs_post.json` `xhs_post.md` | 小红书文案 | **你** |
 | `xhs/cover.png` | 封面 | stage6_cover |
 | `logs/` | 各脚本 `*_result.json` | 脚本 |
 
@@ -175,4 +175,4 @@ conda run -n paper2anything --no-capture-output \
 - **MinerU 解析失败**：核对 `.env` 的 `MINERU_API_TOKEN`（在 https://mineru.net 申请）；PDF 应 ≤200MB / ≤200 页；能访问 `mineru.net`。重跑 Step 1 即可（覆盖）。
 - **封面没生成**：没配 `OPENAI_API_KEY` 会自动跳过（正常）；想要 AI 封面就配上，或确保 `understanding.important_figures` 有 `suitable_for_cover:true` 且 `image_path` 存在的图以复用原图。
 - **发布步骤报错**：多为 `XHS_SKILLS_DIR` 未配或 Chrome 扩展未装；不发布可跳过 Step 5，手动发产物。
-- **理解/文案不需要 API key**：这两步是你（Claude）亲自做的，不调用 Anthropic API。
+- **理解/文案不需要 API key**：这两步是你亲自做的，不调用任何 LLM API。
