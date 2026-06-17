@@ -1,6 +1,6 @@
 ---
 name: paper2poster
-description: "Convert academic papers (PDF) into conference posters (HTML/PNG). You are the conductor: you decide what each section needs — an original paper figure or text — write the outline, hand-author the poster HTML, and iterate on the render using a VLM visual score and a content-fidelity quiz. Use when the user wants a poster from a paper PDF."
+description: "Convert academic papers (PDF) into conference posters (HTML/PNG). You are the conductor: you decide what each section needs — an original paper figure or text — write the outline, hand-author the poster HTML, and iterate on the render using your own visual read and a blind-reader content quiz. Use when the user wants a poster from a paper PDF."
 arguments: [pdf-path]
 allowed-tools:
   - Bash(python *)
@@ -27,7 +27,7 @@ PDF
   → choose visuals          (you read parsed/figures/ + captions: which sections use an original figure, which use text)
   → outline.json            (you write from content.md; user confirms)
   → poster.html             (you hand-author the poster: original figures where they help, text elsewhere)
-  → render + score          (Playwright PNG → geometry check + VLM visual score + PaperQuiz content check)
+  → render + score          (Playwright PNG → deterministic geometry check + your own visual read + blind-reader content quiz)
   → iterate on poster.html  (edit + re-render + re-score until it reads like a real poster)
   → poster.png
 ```
@@ -43,14 +43,14 @@ This skill only works if you execute it as a sequence of small Bash + Read + Ask
 1. **Run one step at a time** with the `Bash` tool, exactly as written below. Use absolute paths under `${SKILL_DIR}` (the directory this skill lives in — e.g. `<…>/paper2anything/paper2poster`; set it once per shell with `export SKILL_DIR=<…>/paper2anything/paper2poster`).
 2. **Read the intermediate artifact** before moving on:
    - after Step 3: the figures you considered, viewed in `parsed/figures/` (and their captions in `digest.json`), and which sections you decided to carry with text instead,
-   - after Step 5: your rendered `poster.png`, plus its VLM visual score and PaperQuiz result.
+   - after Step 5: your rendered `poster.png`, plus your visual read and the blind-reader quiz result.
 3. **Pause for the user at the decision points** with `AskUserQuestion`:
    - After Step 2 — intake: size, venue, author block, visual policy.
    - After Step 3 — is your per-section visual plan (which sections use an original figure, which use text) acceptable?
    - After Step 4 — is the outline structure acceptable?
    - After Step 8 — accept the poster, or revise/restyle it?
 4. **Let the content decide whether a section gets a figure.** Use an original paper figure where one genuinely helps; carry a section with text when no figure earns its place. Don't pad the poster with weak figures to hit a count, and don't strip a figure that's doing real work. A text-only section — or a text-only poster — is fine.
-5. **Score every render, then iterate (Steps 5–7).** After each render, run the geometry check, the VLM visual score, and (for content fidelity) PaperQuiz; let what they surface drive the next edit. Don't ship the first render unscored. The geometry check is **two-sided**: not just "no overflow" but also a **fill ratio ≥ 0.95** — a poster that fits but leaves large whitespace (or shrinks text to do so) fails and must be iterated. Verify this gate yourself; how you reach it is your judgment.
+5. **Score every render, then iterate (Steps 5–7).** After each render, run the deterministic geometry check and **look at the PNG yourself** (your visual read — hierarchy/density/balance/readability); run the **blind-reader content quiz** (Step 7) at milestones rather than on every micro-edit (it spawns a subagent, so it costs more than reading a PNG). Let what they surface drive the next edit; don't ship the first render unscored. The geometry check is **two-sided**: not just "no overflow" but also a **fill ratio ≥ 0.95** — a poster that fits but leaves large whitespace (or shrinks text to do so) fails and must be iterated. Verify this gate yourself; how you reach it is your judgment.
 6. **Don't overwrite a good render — keep scored candidates.** Iteration is not always monotonic: an edit aimed at one issue can regress overall quality, and the version you had three edits ago may have read better. Before a non-trivial restyle or structural change, save the current render as a numbered candidate (e.g. copy `poster.html`/`poster.png` to `poster_candN.html`/`poster_candN.png`) and record its scores. Pick the final from the best-scoring candidate, not just the latest edit. Never let a higher-scoring intermediate be silently overwritten by a worse one.
 7. **On error, stop and diagnose.** Do not silently fall back to a degraded path to "make it run."
 
@@ -67,22 +67,15 @@ conda run -n paper2anything --no-capture-output python ${SKILL_DIR}/scripts/chec
 If anything is missing:
 
 ```bash
-pip install Pillow PyMuPDF requests openai playwright
+pip install Pillow PyMuPDF requests playwright
 playwright install chromium
 ```
 
-**Credentials (unified):** all keys live in the package-root `.env` (copy from `.env.example`, gitignored). Export once per shell before running any command below: `set -a; source <paper2anything 包根>/.env; set +a`. This skill uses `MINERU_API_TOKEN` and `DASHSCOPE_API_KEY`/`API_KEY`.
+**Credentials (unified):** all keys live in the package-root `.env` (copy from `.env.example`, gitignored). Export once per shell before running any command below: `set -a; source <paper2anything 包根>/.env; set +a`. This skill needs **only `MINERU_API_TOKEN`** (PDF parsing). Everything else — figure choice, design, the visual read (Step 6), and the content check (Step 7) — is done by you and a blind subagent, with **no external VLM / LLM API**.
 
 | Variable | Purpose | Default |
 |---|---|---|
 | `MINERU_API_TOKEN` | MinerU PDF parsing | — |
-| `DASHSCOPE_API_KEY` / `API_KEY` | Qwen LLM + Qwen3-VL | — |
-| `API_BASE_URL` | OpenAI-compatible base URL override | DashScope |
-| `VLM_MODEL` | Vision critic model | `qwen3-vl-plus` |
-| `PAPER2POSTER_VLM_FIGURE_SELECT` | VLM toggle for the optional figure selector (Step 3) | `1` (on) |
-| `PAPER2POSTER_ALLOW_NO_SELECTION` | Bypass figure gate (text-only papers) | unset |
-
-DashScope endpoint: `https://dashscope.aliyuncs.com/compatible-mode/v1`. Do not reuse Anthropic env vars from Claude Code — its proxy rejects non-CLI traffic.
 
 ---
 
@@ -149,8 +142,6 @@ Deciding what carries each section is the **same judgment you make when hand-aut
 
 You don't need to copy files anywhere — just record each chosen figure's path so you can reference it in `outline.json` (Step 4) and embed it in the HTML (Step 5).
 
-**Optional fallback — heuristic + VLM selector.** If you want a scripted short-list to start from (or a reproducible deterministic run), `scripts/select_poster_figures.py --digest … --figures-dir … --output-dir …` ranks candidates by caption/geometry heuristics and (with `--use-vlm`, the default) has Qwen3-VL suggest one per role, writing `selected_figures.json` + a preview composite. This is a convenience, not the primary path — its picks are a suggestion you still verify by eye, and you remain free to choose text over any of them.
-
 ---
 
 ## Step 4: Write the outline [INTERACT]
@@ -159,7 +150,7 @@ You read the **full parsed paper** (`parsed/content.md`) and write `outline.json
 
 **Goal, not quota.** Make a poster that reads like a real conference poster — study the 8 real CVPR/ICLR examples in [`references/poster_examples/`](references/poster_examples/) for how much text, how many sections, and what density real posters use. Let the paper's own shape drive the structure: a method-heavy paper may need a long process section with a big diagram; a results paper may be one line plus a dominant table. There is **no fixed section count or bullet count** — use what the content and the real-poster aesthetic call for.
 
-**The one hard constraint** is physical, not stylistic: every bullet and label must fit inside its panel and stay readable at 1–2 m — no overflow, no text shrunk to fit. The geometry check and VLM score in Step 5 measure this; if a panel overflows or is too sparse, that's your signal to cut, tighten, or add — not a reason to keep dense source text. Write each bullet as `**Bold lead**: short detail`, keep raw numbers inside worded sentences/lists rather than as standalone visual anchors, and for any section you decided gets an original figure (Step 3), reference it in that section's `figure` field. Sections you decided to carry with text simply have no `figure` field.
+**The one hard constraint** is physical, not stylistic: every bullet and label must fit inside its panel and stay readable at 1–2 m — no overflow, no text shrunk to fit. The geometry check and your visual read in Step 5 measure this; if a panel overflows or is too sparse, that's your signal to cut, tighten, or add — not a reason to keep dense source text. Write each bullet as `**Bold lead**: short detail`, keep raw numbers inside worded sentences/lists rather than as standalone visual anchors, and for any section you decided gets an original figure (Step 3), reference it in that section's `figure` field. Sections you decided to carry with text simply have no `figure` field.
 
 Then use `AskUserQuestion` to confirm structure with the user before continuing to the render step.
 
@@ -285,12 +276,12 @@ like your previous poster, that's a signal to rethink, not a shortcut to take.
        height), bump the body type scale (also helps legibility), or rebalance
        which sections share a column. The wrong fix is `space-between` /
        `margin:auto` / giant gaps, which just relocate the void. (A real run that
-       *filled* the voids with content rose from VLM 69→78, severe 2→0; the same
-       poster "fixed" with `space-between` stayed at 69.)
+       *filled* the voids with real content read markedly cleaner than the same
+       poster "fixed" with `space-between`, which only moved the whitespace around.)
      - **No distorted figures (aspect-ratio gate):** for every `<img>`, the
        rendered `width/height` must match `naturalWidth/naturalHeight` within
        ~0.02. A figure stretched to fill space (e.g. a forced `height:`) is an
-       obvious eyesore the VLM and any viewer catch instantly. (A real run
+       obvious eyesore you and any viewer catch instantly. (A real run
        squashed a 1.64:1 chart to 1.02:1.) If flagged, restore proportional
        scaling — see the figure-CSS rule in step 3, and fill the freed space with
        content, not a stretched image.
@@ -300,27 +291,28 @@ like your previous poster, that's a signal to rethink, not a shortcut to take.
      stop at "fits." After every edit, re-measure and confirm `0.95 ≤ fill ≤ 1.0`
      with no overflow — this is a pass/fail gate you verify yourself, not a
      suggestion, and how you reach it (what to resize, cut, reflow, or enlarge) is
-     your judgment. A VLM looking at a shrunk full-poster PNG repeatedly mis-reports
-     a full-bleed figure as "clipped" and misses both real bottom overflow and dead
-     whitespace — trust the pixel math over the VLM for anything geometric.
-   - **(b) VLM visual score — required.** Run `scripts/score_poster_visual.py`
-     (Qwen3-VL via DashScope; see Step 6 for the command). It returns `score`,
-     `verdict`, and `top_issues` for hierarchy, density, balance, and readability —
+     your judgment. Your eyes on a shrunk full-poster PNG can mis-read
+     a full-bleed figure as "clipped" and miss both real bottom overflow and dead
+     whitespace — trust the pixel math over your eyes for anything geometric.
+   - **(b) Your own visual read — required, every render.** `Read` the rendered
+     `poster.png` yourself and judge hierarchy, density, balance, and readability —
      the subjective read the geometry check can't give you. This is the standing
-     "eyes" of the loop, **especially** when your own `Read` can't surface the PNG
-     (some harnesses/proxies strip image blocks, so `Read` returns empty for a
-     valid image — sanity-check at run start by `Read`-ing one small known PNG; if
-     it's empty, lean entirely on the VLM rather than faking a visual judgment).
-     When `Read` does work, look at the PNG too and cross-check the VLM — but the
-     VLM score is run every render either way.
-   - **(c) PaperQuiz content check — required (Step 7).** A good-looking poster
-     can still fail to convey the paper. Run `scripts/paper_quiz.py`; it has a VLM
-     answer questions from the poster alone and flags which roles aren't landing.
+     "eyes" of the loop. **Caveat:** some harnesses/proxies strip image blocks, so
+     `Read` returns empty for a valid image — sanity-check at run start by
+     `Read`-ing one small known PNG. If it comes back empty you have no eyes here:
+     lean on the deterministic geometry check (a), keep the design conservative, and
+     tell the user the visual read was unavailable. Never fake a visual judgment on a
+     PNG you couldn't actually see.
+   - **(c) Blind-reader content check — at milestones (Step 7).** A good-looking
+     poster can still fail to convey the paper. You write questions from the paper,
+     then spawn a **blind subagent given only the rendered `poster.png`** (not the
+     paper) to answer them — which roles it gets wrong are the roles not landing.
+     Run this at milestones (it spawns an agent), not on every micro-edit.
 
 5. **Iterate until it reads like a real poster AND scores well.** Let the three
    checks drive each edit: the geometry check catches overflow/clipping/imbalance
-   *and underfill*; the VLM `top_issues` catch weak hierarchy, cramped or sparse
-   panels, a bare number used instead of a sentence, poor balance; PaperQuiz catches
+   *and underfill*; your visual read catches weak hierarchy, cramped or sparse
+   panels, a bare number used instead of a sentence, poor balance; the blind-reader quiz catches
    content that isn't getting through. When a check flags something, **edit the HTML
    and re-render** — shrink/cut overflowing text, enlarge a figure that reads as a
    thumbnail, fill or merge an empty panel with text, rewrite a number into a claim
@@ -330,7 +322,7 @@ like your previous poster, that's a signal to rethink, not a shortcut to take.
    so a regression doesn't destroy a version that read better — iteration isn't
    always monotonic, and you pick the final from the best-scoring candidate, not the
    latest edit. Repeat until the geometry check passes (no overflow **and fill ratio
-   ≥ 0.95**), the VLM score is clean, and PaperQuiz shows the key roles land. **Don't stop the
+   ≥ 0.95**), your visual read is clean, and the blind-reader quiz shows the key roles land. **Don't stop the
    moment content stops overflowing** — that only clears the ceiling; verify the
    fill gate too, or you ship a shrunk-down poster full of whitespace. This is open
    visual iteration — your judgment guided by the scores, not a fixed op set.
@@ -344,57 +336,46 @@ The final poster is `${RUN_DIR}/poster.png` (+ `poster.html` for editing).
 
 ---
 
-## Step 6: VLM visual score — run on every render
+## Step 6: Visual read — your own eyes, every render
 
-This is the "eyes" of the iteration loop (Step 5, check b) — run it after each
-render, not just once at the end:
-
-```bash
-RUN_DIR="$(dirname "$pdf_path")/.paper2anything/poster"
-conda run -n paper2anything --no-capture-output python ${SKILL_DIR}/scripts/score_poster_visual.py \
-  --png       "${RUN_DIR}/poster.png" \
-  --outline   "${RUN_DIR}/outline.json" \
-  --output    "${RUN_DIR}/visual_score.json"
-```
-
-Returns JSON with `score`, `verdict`, `top_issues`, `reading_order`, `repair_actions`.
-Use `score`/`top_issues` to decide what to fix next — this is the subjective read
-(hierarchy, density, balance, readability) that the geometry check can't give you,
-and the primary signal when your own `Read` can't surface the PNG. The
-`repair_actions` are a fixed enum the scorer emits — treat them as hints about
-*what* is off, not a vocabulary you must translate edits into; you still iterate by
-editing `poster.html` directly. Cross-check against your own eyes when `Read` works,
-but run the score every render regardless.
+This is the "eyes" of the iteration loop (Step 5, check b). After each render,
+`Read` `${RUN_DIR}/poster.png` yourself and judge it as a poster: visual hierarchy
+(does the title / claim / hero dominate?), density (any panel cramped or too
+sparse?), balance (columns even? whitespace intentional?), and readability at
+1–2 m. Note the top 2–3 issues and let them drive the next edit — exactly the
+subjective read the deterministic geometry check can't give you. No external model
+needed — this is your own judgment on the rendered PNG.
 
 ---
 
-## Step 7: PaperQuiz content fidelity — required content check
+## Step 7: Blind-reader content check — you orchestrate
 
-The VLM visual score (Step 6) tells you whether a poster *looks* right.
-**PaperQuiz** tells you whether a reader can actually answer questions about the
-paper from the poster (PosterAgent metric, arXiv:2505.21497) — run it as part of
-the iteration loop, not just as a final gate, so content gaps drive edits too.
+A good-looking poster can still fail to convey the paper. This is the PaperQuiz
+idea (PosterAgent metric, arXiv:2505.21497): its whole value is that the answerer
+is **blind** — it sees only the poster, never the paper — so a wrong answer means
+*the poster* didn't carry that content. You authored the poster and have the paper
+in context, so you **cannot** answer blind yourself (you'd score inflated). Keep the
+independence by splitting the roles:
 
-```bash
-RUN_DIR="$(dirname "$pdf_path")/.paper2anything/poster"
-conda run -n paper2anything --no-capture-output python ${SKILL_DIR}/scripts/paper_quiz.py \
-  --digest      "${RUN_DIR}/digest.json" \
-  --poster-png  "${RUN_DIR}/poster.png" \
-  --output      "${RUN_DIR}/paper_quiz.json" \
-  --language en --n 6
-```
+1. **You write the questions** (you know the paper). Draft 5–8 multiple-choice
+   questions across `problem` / `method` / `result` / `takeaway` (+ optional
+   `contribution` / `limitation`), with distractors pulled from sibling sections so
+   wrong options stay plausible. Keep the correct answers to yourself.
+2. **A blind subagent answers them.** Spawn one subagent (the `Agent` tool) whose
+   context contains **only** the rendered `poster.png` and the questions — **not**
+   the paper, digest, or outline. Ask it to answer each (single letter A/B/C/D + a
+   one-line "where on the poster I saw it", or `?` if absent). Because it has only
+   the poster, its answers measure what the poster actually communicates.
+3. **You score by role.** Compare its answers to your key; any role it misses
+   (miss rate ≥ 0.5) is content that isn't landing — make that role bigger, clearer,
+   or add the missing fact, then re-render.
 
-Pipeline:
+Run this at milestones (after the poster reads cleanly, and before user preview),
+not on every micro-edit — each round spawns an agent. Use it to: drive a repair
+round on a failing role; decide if it's good enough to ship (all key roles answered
+correctly); and re-rank candidates when you tried more than one layout.
 
-1. `qwen-plus` reads the digest and writes 5–8 multiple-choice questions across `problem` / `method` / `result` / `takeaway` (+ optional `contribution` / `limitation`). Distractors come from sibling sections so wrong options stay plausible.
-2. `qwen3-vl-plus` is shown only the rendered poster PNG and answers each question (single letter A/B/C/D + short evidence note, or `?`).
-3. The script scores correctness, breaks accuracy down by role, and flags any role with miss rate ≥ 0.5. It also emits a fixed `suggested_repair_actions` enum — treat these as advisory hints about *which content is not landing*, not a vocabulary you must translate edits into. You fix content fidelity by editing the outline / `poster.html` directly.
-
-Use it to:
-
-- Drive a repair round whenever a role's miss rate is high — that role's content isn't getting through, so make it bigger, clearer, or add the missing fact.
-- Decide whether the poster is good enough to ship (e.g., `quiz_score ≥ 80` with no role failing).
-- Re-rank candidates by `quiz_score` when you've tried more than one layout.
+You fix content fidelity by editing the outline / `poster.html` directly.
 
 ---
 
@@ -403,8 +384,9 @@ Use it to:
 Once your own iteration (Steps 5–7) has the poster reading cleanly and scoring
 well, show it to the user:
 
-1. **Get the current design into your context** — `Read` `${RUN_DIR}/poster.png`
-   if image read works; otherwise rely on the latest VLM `visual_score.json`.
+1. **Get the current design into your context** — `Read` `${RUN_DIR}/poster.png`.
+   If image read is unavailable in your harness, rely on the deterministic geometry
+   check (Step 5a) and say so when you present.
 2. Briefly describe the design choices you made (layout, what dominates, claim,
    which sections use a figure vs text).
 3. Use `AskUserQuestion` to offer:
@@ -461,8 +443,7 @@ Suggested starting palettes (pick whatever the design calls for — `color_schem
 
 - **MinerU 401**: token missing — set `MINERU_API_TOKEN` from `https://mineru.net/apiManage/token`.
 - **MinerU OSS download stalls**: requests through MinerU's presigned OSS URLs need `proxies={"http": None, "https": None}` to bypass system proxy (already handled in `parse_pdf.py`).
-- **DashScope 401 / 403**: confirm `DASHSCOPE_API_KEY` (or `API_KEY`) is set and base URL is `https://dashscope.aliyuncs.com/compatible-mode/v1`. Don't reuse Anthropic env vars from Claude Code — its proxy rejects non-CLI traffic.
 - **Playwright missing**: `pip install playwright && playwright install chromium`. The geometry check (Step 5, check a) and `screenshot.py` both need it.
-- **Offline / no DashScope**: the visual score (`score_poster_visual.py`) and PaperQuiz (`paper_quiz.py`) both call DashScope and have no offline switch — for an explicitly offline run, just skip those two steps and rely on the deterministic geometry check (Step 5, check a). If a VLM call fails, `score_poster_visual.py` returns an error verdict rather than crashing.
+- **No external VLM / LLM**: this skill calls no vision/LLM API. Figure choice, design, the visual read (Step 6), and the content check (Step 7, blind subagent) are all done by you; the geometry check (Step 5a) is pure pixel math. The only network dependency is MinerU for PDF parsing (Step 1) — for a fully offline run, pre-parse or use a local parser (`--parser marker` / `pymupdf`).
 
 For layout principles see [references/layout_guide.md](references/layout_guide.md) and [references/poster_design_guide.md](references/poster_design_guide.md). For agent-extracted design rules see [references/agent_design_rules_from_posters.md](references/agent_design_rules_from_posters.md).

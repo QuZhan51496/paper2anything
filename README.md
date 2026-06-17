@@ -93,7 +93,7 @@ set -a; source .env; set +a   # 每个新 shell 一次（或写进 ~/.bashrc 一
 | Skill | 用到的 key |
 | --- | --- |
 | paper2slides | `MINERU_API_TOKEN`（云解析；`--backend local` 时不需要） |
-| paper2poster | `MINERU_API_TOKEN`、`DASHSCOPE_API_KEY`(或 `API_KEY`) |
+| paper2poster | `MINERU_API_TOKEN`（设计 / 视觉评审 / 内容自测由你与盲审子代理完成，不调用外部 VLM）|
 | paper2html | `MINERU_API_TOKEN`（页面设计与撰写由你亲自完成，不调用任何 LLM API） |
 | paper2xhs | `MINERU_API_TOKEN`（封面另需 `OPENAI_API_KEY`；半自动发布另需 `XHS_SKILLS_DIR`） |
 | paper2wechat | `MINERU_API_TOKEN`（封面另需 `OPENAI_API_KEY`；排版用 `md2wechat`，已在统一环境内） |
