@@ -73,19 +73,17 @@ python-dotenv / md2wechat …）。
 | Node.js + pptxgenjs（+ react-icons/react/react-dom/sharp） | PPT 渲染（icon 光栅仅 icon 元素需要） | paper2slides |
 | `playwright install chromium` | 浏览器渲染/截图 | paper2poster、paper2xhs |
 | md2wechat（已在 conda 内 pip 装；源码版见 paper2wechat/SKILL.md） | Markdown → 公众号 HTML | paper2wechat |
-| 可选 tesseract-ocr | 扫描版论文 OCR | paper2slides |
 
 ---
 
 ## 凭据配置（统一）
 
 所有 skill 的凭据集中在**包根一个 `.env`**（从 `.env.example` 复制填写，应 gitignore）。
-每个新 shell 运行任何 skill 前，导出一次到环境变量——之后所有
-`conda run -n paper2anything ... python ...` 都能读到：
+复制后填入你的 key 即可——各 skill 的脚本启动时会自动 `load_dotenv` 包根 `.env`，
+`conda run -n paper2anything ... python ...` 都能读到，无需每个 shell 手动 source：
 
 ```bash
 cp .env.example .env          # 首次：复制后填入你的 key
-set -a; source .env; set +a   # 每个新 shell 一次（或写进 ~/.bashrc 一劳永逸）
 ```
 
 各 skill 实际用到的 key（不用的留空即可）：
@@ -99,8 +97,8 @@ set -a; source .env; set +a   # 每个新 shell 一次（或写进 ~/.bashrc 一
 | paper2wechat | `MINERU_API_TOKEN`（封面另需 `OPENAI_API_KEY`；排版用 `md2wechat`，已在统一环境内） |
 
 > 5 个 skill 统一用 `MINERU_API_TOKEN`。各脚本最终都从 `os.environ` 读取，故只需这一个
-> `.env` + 一次 `source`，无需各 skill 的局部配置文件；脚本启动时也会自动 `load_dotenv`
-> 包根 `.env`（忘了 `source` 也能跑，但已 export 的环境变量优先）。
+> `.env`、无需各 skill 的局部配置文件；脚本启动时会自动 `load_dotenv` 包根 `.env`
+> （已 export 的同名环境变量优先，不被覆盖）。
 
 ---
 
