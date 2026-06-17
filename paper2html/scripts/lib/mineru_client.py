@@ -5,7 +5,7 @@ import zipfile
 import requests
 from pathlib import Path
 
-from paper2html.config import (
+from .config import (
     MINERU_API_BASE,
     MINERU_API_TOKEN,
     ENABLE_TABLE,

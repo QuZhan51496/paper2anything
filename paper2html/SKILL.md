@@ -1,181 +1,157 @@
 ---
 name: paper2html
-description: 将学术论文（PDF 或 MinerU 解析后的 Markdown）转换为可直接发布的、自包含的单页**项目主页**（self-contained index.html）——就是研究者常基于 GitHub Pages 做的那种论文宣传网页。当用户提到"把论文做成项目主页/网页"、"paper2html"、"生成论文 landing page / project page"、"把这篇 PDF 变成 HTML 网页"、"论文转网页"、"做一个论文主页"时触发。manifest 驱动、双闸门（确定性事实抽取 + 生成后 QA 自修复），支持 template / llm 两种渲染路径与 6 种设计语言 variant。
+description: 将学术论文（PDF 或 MinerU 解析后的 Markdown）转换为可直接发布的、自包含的单页**项目主页**（self-contained index.html）——就是研究者常基于 GitHub Pages 做的那种论文宣传网页。当用户提到"把论文做成项目主页/网页"、"paper2html"、"生成论文 landing page / project page"、"把这篇 PDF 变成 HTML 网页"、"论文转网页"、"做一个论文主页"时触发。Claude 主导的协调式：机械步骤（MinerU 解析 + 确定性事实抽取闸门1 + 生成后 QA 闸门2）调 scripts，**index.html 的设计与撰写由 Claude 亲手完成**（不调用任何 LLM API），可选多种设计语言。
 allowed-tools: Bash, Read, Write, Glob, Grep
 ---
 
-# paper2html — 论文转单页项目主页
+# paper2html — 论文转单页项目主页（Claude 主导的协调式）
 
-把一篇学术论文（PDF 或 MinerU 解析后的 Markdown）转换成一个**自包含、可直接发布的单页项目网站**——研究者常基于 GitHub Pages 做的那种论文主页。
+把一篇论文 PDF 转成**自包含、可直接发布的单页项目网站**——研究者常基于 GitHub Pages 做的那种论文主页。
+**Claude（你）是主笔**：这份文件是配方，不是全自动脚本——没有 `main.py`、没有渲染器。机械步骤
+（解析/抽取/QA）调用 `scripts/` 下的小工具；**论文理解、页面设计、index.html 撰写由你亲自完成**
+（用 Read 看材料和图、用 Write 落 `index.html`），并在关键点用 `AskUserQuestion` 与用户确认。
 
-本版本是 **v7** 线：以 manifest 为核心、由 **Claude Opus 4.8**（或所配 LLM）驱动的生成器，夹在两道闸门之间（确定性事实抽取 + 生成后 QA 校验），重点优化**跨论文泛化性**与**版式多样性**。
+```text
+PDF
+ → 解析+抽取        (stage1_parse.py：MinerU → clean.md + manifest.json + images/，闸门1)
+ → 你读懂论文+定设计 (读 manifest + clean.md + 看图) → 选设计语言                 [确认设计方向]
+ → 你亲手写主页      (按 references/ 设计语言与撰写规范) → index.html              [可选确认]
+ → QA 校验          (stage2_validate.py：缺图/坏链/内容保真，闸门2) → 据报告修，循环
+ → 单页项目主页 index.html（+ images/，可直接部署）
+```
 
-## 你的职责
+## How Claude runs this skill
 
-当用户触发此 skill 时，你需要：
-
-1. 引导用户完成环境准备（统一 conda 环境 + LLM/MinerU 凭据）
-2. 确认输入（PDF 或已解析的 Markdown）与输出目录
-3. 选择渲染路径（`template` 确定性模板 / `llm` 设计整页）与可选的设计语言 `--variant`
-4. 执行生成命令，必要时用交互模式（`--interactive`）逐步走查
-5. 查看 QA 报告，处理缺图/坏链等问题
+1. **一步步来**：机械步骤用 `Bash` 调脚本（绝对路径，无需 cd），设计与撰写你自己用 `Read`/`Write` 做。
+2. **每个 Bash 块开头就地算 `WORKDIR`**（各 Bash 调用是独立 shell、不共享变量）：
+   ```bash
+   WORKDIR="$(dirname "$pdf_path")/.paper2anything/html"
+   ```
+   `$pdf_path` 是用户给的论文 PDF（每块重设一次）。脚本在 `/data/quzhan/.claude/skills/paper2html/scripts`。
+3. **决策点用 `AskUserQuestion` 暂停**：读懂论文后确认**设计方向**（设计语言 / 主色 / 重点）；成稿后可再确认。
+4. **忠实于 manifest，空缺由你兜底**：只用 `manifest.json` 的真实素材，不编造数字/作者/链接；manifest 抽空的字段
+   （authors/abstract/links 等）据 `clean.md` 全文补全——你是主笔，确定性抽取只是脚手架。
 
 ---
 
-## 双闸门架构 / 为什么这样设计
+## Step 0：环境与凭据
 
-流水线把**可靠性**与**创造力**解耦：
+> **统一环境**：所有 `python` 命令都在 paper2anything 的统一 conda 环境（顶层 `environment.yml`），
+> 以 `conda run -n paper2anything --no-capture-output` 为前缀。
 
-```
-PDF/MD ──▶ MinerU parse ──▶ extract_manifest ──▶ [renderer] ──▶ validate_site (QA) ──▶ index.html
-                            (确定性事实)                          (安全闸门)
-```
-
-- **闸门 1 — `extract_manifest`**：从解析后的 Markdown 确定性地抽取 title / authors / abstract / links / claims / figures / tables / method components。LLM **只能**使用这些真实素材，因此无法瞎编数字、也无法引用不存在的图。附录 / 补充材料内容会被自动过滤掉。
-- **闸门 2 — `validate_site`**：生成后检查 HTML 的缺图、坏链/空链、结构异常等。出错时把错误回灌 LLM 自修复（最多 2 次重试）。
-
-两条渲染路径共享这两道闸门：
-
-| Renderer | 说明 |
-| --- | --- |
-| `--renderer template` | 确定性 Python 模板。完全可复现、永不崩，但风格单一。 |
-| `--renderer llm` | LLM 据已核实的 manifest 设计整页。丰富、贴合论文、版式多样。 |
-
----
-
-## 第一步：定位 skill 目录与环境准备
-
-paper2html 的代码是一个名为 `paper2html` 的 Python 包，位于本 skill 目录下的 `paper2html/` 子目录。运行 `python -m paper2html.agent` **必须 `cd` 到本 skill 目录**（即包目录 `paper2html/` 的上一级），把 `<paper2anything 包根>` 换成本仓库实际所在目录：
-
-```bash
-cd <paper2anything 包根>/paper2html
-ls paper2html/agent.py 2>/dev/null && echo "目录正确" || echo "未找到 paper2html/agent.py"
-```
-
-> **统一环境**：本 skill 所有 `python` 命令都运行在 paper2anything 包的统一 conda 环境里（由顶层 `environment.yml` 创建），命令均以 `conda run -n paper2anything --no-capture-output` 为前缀；下面的 `pip install` 仅在统一环境缺依赖时兜底。
-
-```bash
-pip install requests openai Pillow
-```
-
-**统一凭据**：所有 key 集中在 paper2anything 包根的 `.env`（从 `.env.example` 复制填写，应 gitignore）。运行前在当前 shell 导出一次：
+凭据集中在包根 `.env`（从 `.env.example` 复制，已 gitignore），每个新 shell 先导出一次：
 
 ```bash
 set -a; source <paper2anything 包根>/.env; set +a
 ```
 
-本 skill 用到 `OPENAI_API_KEY` / `LLM_BASE_URL` / `LLM_MODEL`（LLM 渲染）与 `MINERU_API_TOKEN`（PDF 解析）。LLM 渲染器自动识别 OpenAI 兼容与 Anthropic 原生两种网关；缺配置时自动回退 `template`。
+本 skill **只需 `MINERU_API_TOKEN`**（解析 PDF）。**页面设计与撰写是你 Claude 亲自做的，不调用任何 LLM API**，
+故无需 OPENAI/LLM 等 key。
 
----
-
-## 第二步：执行生成
-
-```bash
-# 2a) 从已解析的 Markdown 生成（最快，不消耗 MinerU 额度）
-#     <解析目录> 通常是上一次 PDF 运行的输出目录：<pdf目录>/.paper2anything/html/<paper>_agent
-conda run -n paper2anything --no-capture-output python -m paper2html.agent <解析目录>/clean.md \
-  --images <解析目录>/images \
-  --renderer llm
-
-# 2b) 或直接从 PDF 生成（会先跑 MinerU 解析）
-conda run -n paper2anything --no-capture-output python -m paper2html.agent paper.pdf --renderer llm
-
-# 默认输出落在输入文件旁：<输入文件目录>/.paper2anything/html/<输入名>_agent/
-# 要自定义输出目录，加 -o <目录>
-```
-
-**交互式流程**按 Inspect → Ask → Sketch → Revise → Confirm → Build → QA 推进；确认后的意图存为 `project_brief.json`，可用 `--brief` 复用：
+依赖自检：
 
 ```bash
-conda run -n paper2anything --no-capture-output python -m paper2html.agent --interactive
-```
-
-`briefs/` 内附深色 / 蓝色用户指南风格的现成 brief。
-
----
-
-## CLI 命令行参数
-
-| 参数 | 说明 |
-| --- | --- |
-| `input` | 输入 PDF 或 Markdown 文件 |
-| `-o, --output DIR` | 输出目录 |
-| `--images DIR` | 解析后的图片目录（Markdown 输入时） |
-| `--renderer template\|llm` | 渲染方式，默认 `template`（`llm` = LLM 整页生成 + QA 自修复） |
-| `--variant N` | 仅 LLM：切换设计语言（1–6）。不传则使用稳定可复现的布局 |
-| `--mode showcase\|reader` | 页面模式，默认 `showcase` |
-| `--table-mode auto\|image\|html` | 表格呈现策略，默认 `auto` |
-| `--brief path.json` | 复用确认过的 `project_brief.json` |
-| `--rotate "3:90,5:90"` | 顺时针旋转校正侧向图片（角度 90/180/270；编号取自交互模式的 `figures` 列表） |
-| `--paper-url / --code-url` | 覆盖检测到的论文/代码链接 |
-| `-i, --interactive` | 交互式终端流程 |
-| `--lite` | 使用 MinerU 轻量解析 API |
-| `--no-reuse-parsed` | 不复用已有的 `parsed/full.md` |
-| `--no-copy-images` | 不把图片复制进输出目录 |
-
-### 设计语言 variant（仅 `--renderer llm`）
-
-LLM 渲染器被要求**先为这篇论文确立设计概念**（视觉范式 + 叙事主线）再布局，而不是套固定区块清单。用 `--variant N` 切换整体设计语言：
-
-| Variant | Design language |
-| --- | --- |
-| `--variant 1` | Editorial / magazine 杂志风 |
-| `--variant 2` | Product landing page 产品落地页 |
-| `--variant 3` | Terminal / technical 终端极客风 |
-| `--variant 4` | Academic poster 学术海报 |
-| `--variant 5` | Minimal archive 极简档案 |
-| `--variant 6` | Data dashboard 数据看板 |
-
-不传 `--variant` 则使用模型为该论文挑选的稳定可复现布局。
-
----
-
-## 主要特性（v7）
-
-1. **跨论文泛化**：无任何针对特定论文的硬编码（早期版本曾内置 Attention 论文的 claims/文案，v7 已全部移除）。在三篇不同领域论文（NLP / agentic-RL / GUI-agent）上验证，零跨论文串味。
-2. **版式多样性**：LLM 先立设计概念再布局，`--variant N` 切换整体设计语言。
-3. **附录过滤**：出现在 `Appendix` / `Supplementary` / `附录` 标题（或靠后的字母编号小节）之后的图、表、claims、方法组件不会进入页面。
-4. **图片表格按宽高比自适应**：每张图/表截图都带真实像素 `width`/`height`/`aspect`/`orientation`，渲染器据此合理控制尺寸（超宽→全宽或横向滚动、竖图→限宽、方图→网格），并统一进同一套 `<figure>` 边框体系；结果表优先重建为页面同风格的原生 HTML 表而非截图。
-5. **图片旋转校正**：部分解析出的图是侧向的。可在交互模式用 `figures` 列出、`rotate <编号> <角度>` 校正，或用 `--rotate "3:90,5:90"`（顺时针，90/180/270）。只改输出副本，不动源缓存。需安装 Pillow。
-6. **交互与 brief 驱动**：交互模式按 Inspect → Ask → Sketch → Revise → Confirm → Build → QA 推进；确认后的意图存为 `project_brief.json`，可用 `--brief` 复用。
-
----
-
-## 输出结构
-
-```
-<输入文件目录>/.paper2anything/html/<paper>_agent/
-├── index.html          # 可直接打开/部署的页面
-├── clean.md            # 清洗后的 Markdown
-├── manifest.json       # 抽取的事实
-├── site_plan.json      # theme / accent / primary figure
-├── style_reference.json# 样式规则 + 实际使用的 renderer
-├── project_brief.json  # （仅交互/brief 运行时）
-├── validation.json     # 机器可读的 QA 结果
-├── qa_report.md        # 人类可读的 QA 报告
-└── images/             # 页面实际引用的图片
+conda run -n paper2anything --no-capture-output python -c "import requests, rich, dotenv, PIL" 2>&1
 ```
 
 ---
 
-## 环境变量
-
-| Variable | 说明 | Default |
-| --- | --- | --- |
-| `MINERU_API_TOKEN` | MinerU API token | — |
-| `OPENAI_API_KEY` | LLM API key | — |
-| `LLM_MODEL` | 模型名 | `azure_openai/gpt-5.4` |
-| `LLM_BASE_URL` | OpenAI- 或 Anthropic-兼容的 base URL | `http://model.mify.ai.srv/v1` |
-| `LLM_REQUEST_TIMEOUT` | 请求超时（秒） | `900` |
-
-> **安全**：凭据统一在 paper2anything 包根的 `.env`（含真实密钥、应 gitignore，切勿提交）。用 `.env.example` 作模板，切勿提交真实 key。
-
----
-
-## 旧版直通流程 / Legacy pipeline
-
-原始的一次性 `PDF → MinerU → Markdown → LLM HTML` 路径仍然可用：
+## Step 1：解析 + 确定性抽取（脚本，闸门1）
 
 ```bash
-conda run -n paper2anything --no-capture-output python -m paper2html.pipeline paper.pdf -o ./out
+pdf_path="/path/to/paper.pdf"          # ← 用户的论文 PDF
+WORKDIR="$(dirname "$pdf_path")/.paper2anything/html"
+conda run -n paper2anything --no-capture-output \
+  python "/data/quzhan/.claude/skills/paper2html/scripts/stage1_parse.py" "$pdf_path" --workdir "$WORKDIR"
 ```
+
+产出（`$WORKDIR` 下）：
+- `clean.md` —— normalize 后的全文 markdown（你通读用）
+- `manifest.json` —— 确定性抽取的事实：title/authors/affiliations/abstract/links/claims/figures/tables/
+  method_components/bibtex（附录已过滤；抽不到的字段留空，交你兜底）
+- `images/` —— 页面引用的图实体（图 + 结果表截图），你以 `images/<name>` 引用
+- `parsed/`（MinerU 原始解析，含 full.md 供重跑复用）、`logs/`
+
+可选：知道论文规范链接时加 `--paper-url <URL>`（**不假设 arxiv**，不传则 `links.paper` 留空）；`--code-url` 同理。
+
+解析完，`Read` `manifest.json` 与 `clean.md` 通读全文。
+
+---
+
+## Step 2：读懂论文 + 定设计方向（你来做）[确认]
+
+1. `Read` `manifest.json`（已核实素材）+ `clean.md`（全文）；`Read` `images/` 下的关键图，**亲眼**判断哪张
+   适合做主图（hero）、哪些适合内嵌、哪些是结果表截图。
+2. 读 `references/design-languages.md`，为这篇论文**确立一个设计概念**（选一种设计语言或融合：杂志/产品页/
+   终端/海报/极简/看板；定主色、结构、什么元素主导）。不同论文应长得不一样，别复用上一篇的风格。
+3. 用 `AskUserQuestion` 与用户确认**设计方向**（设计语言 / 主色调 / 突出什么）。带着确认结果再写页面。
+
+补全空缺：若 manifest 的 authors/abstract/links 为空，据 `clean.md` 全文自己补（这是 Claude 兜底）。
+
+---
+
+## Step 3：亲手写 index.html（你来做）[可选确认]
+
+按确认的设计方向，**亲自用 `Write` 落 `$WORKDIR/index.html`**——一个自包含、可部署的单页网站。
+**先读 `references/html-authoring.md`**（硬约束与易错点），要点：
+
+- 自包含：图用相对路径 `images/<filename>`（取自 manifest 的 `figures[].file` / `tables[].image`，stage1 已复制进
+  `images/`）；CSS 内联或 CDN；每张 `<img>` 非空 `alt`；不留 `href="#"`。
+- 首屏轻盈（标题/作者/机构/资源按钮），主图作 teaser 一次性大图，再 abstract → claims → method → results →
+  支撑图 → BibTeX（按论文气质调整，非强制）。
+- 结果表**优先用截图**（`tables[].image`）。
+- **figure CSS 别让边框框住空白、绝不为填空白拉伸图片**（细则见 references/html-authoring.md）。
+- 忠实 manifest，不编造；空缺据全文补。
+
+写完用 `AskUserQuestion` 给用户看设计与结构（可选），按反馈直接改 `index.html`。
+
+---
+
+## Step 4：QA 校验与修订（脚本，闸门2）
+
+```bash
+pdf_path="/path/to/paper.pdf"
+WORKDIR="$(dirname "$pdf_path")/.paper2anything/html"
+conda run -n paper2anything --no-capture-output \
+  python "/data/quzhan/.claude/skills/paper2html/scripts/stage2_validate.py" --workdir "$WORKDIR"
+```
+
+校验你写的 `index.html` → `validation.json` + `qa_report.md`。`Read` `qa_report.md`：
+- **error 必须清零**（缺 doctype/`</html>`、引用的 `images/<x>` 缺失、空 `href="#"`）。
+- **warning 按需修**（标题/图/表未出现在页面、claims<3、空 alt 等）。
+修法见 `references/qa-checklist.md`。修完 `index.html` 后**重跑 stage2_validate**，循环至 error 清零、warning 可接受。
+
+---
+
+## 产物位置
+
+全部落在论文旁 `<pdf目录>/.paper2anything/html/`：
+
+| 路径 | 内容 | 谁写 |
+|---|---|---|
+| `clean.md` | normalize 后的全文 markdown | stage1_parse |
+| `manifest.json` | 确定性抽取的事实（闸门1） | stage1_parse |
+| `images/` | 页面引用的图 + 结果表截图 | stage1_parse |
+| `index.html` | 自包含单页项目主页 | **你（Claude）** |
+| `validation.json` `qa_report.md` | QA 结果（闸门2） | stage2_validate |
+| `parsed/` `logs/` | MinerU 原始解析 / 各步骤 *_result.json | 脚本 |
+
+重跑覆盖同一目录（无 task_id）。要留旧版本就先把 `index.html` 改名备份。stage1 重跑默认复用 `parsed/full.md`（不再调 MinerU）。
+
+---
+
+## 排错
+
+- **MinerU 解析失败**：核对 `MINERU_API_TOKEN`；PDF ≤200MB / ≤200 页；能访问 `mineru.net`。重跑 Step 1（覆盖）。
+- **manifest 字段空（authors/abstract/links）**：确定性抽取局限（如论文无 `## Abstract` 标题、非 arxiv 论文无链接）——
+  **正常**，据 `clean.md` 全文由你补全；不是 bug。
+- **QA 报缺图**：只引用 `images/` 下真实存在的文件，文件名照抄 manifest，别拼错哈希名。
+- **设计/撰写不需要 API key**：这两步是你（Claude）亲自做的，不调用任何 LLM API。
+
+---
+
+## references/
+
+- `design-languages.md` —— 六种设计语言 + 先立概念再布局 + 真实学术主页范式。
+- `html-authoring.md` —— 撰写硬约束、figure CSS 易错点、自包含/部署、表格策略。
+- `qa-checklist.md` —— QA 各检查项的含义与修法。
