@@ -259,7 +259,7 @@ title | two_column | icon_rows | image_half_bleed | stat_callout | grid_2x2 | co
  "sizing": {"type": "contain", "w": 4.5, "h": 3.5}}
 ```
 
-`sizing` 可省略（默认拉伸）；推荐 `contain` 保持比例。
+`sizing` 可省略——render 端用 PIL 按原比例缩放居中（见 [design-style.md](design-style.md) §0.3），写不写都不会变形。
 
 **shape**：
 

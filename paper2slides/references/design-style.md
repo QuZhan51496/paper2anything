@@ -9,7 +9,7 @@ Stage 3 的你把 `slide_outline.json` 扩展成 `slide_spec.json` 时的视觉�
 
 - 10 套 palette（命名调色板，每个有 primary/secondary/accent）
 - 字体配对（header + body）
-- 6 种 layout 选项（two-column、icon rows、image-half-bleed、stat callout、grid 2x2、timeline）
+- 6 种 layout 选项（two-column、icon rows、image-half-bleed、stat callout、grid 2x2、timeline）——官方 skill 的版式灵感；本 skill `slide_spec.json/layout_kind` 的合法值以 [schemas.md](schemas.md) 为准
 - 间距、字号、对齐规则
 - "Avoid (Common Mistakes)" 一节——尤其 **NEVER use accent lines under titles**
   这条，是 AI 生成 deck 的典型痕迹

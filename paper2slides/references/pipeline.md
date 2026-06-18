@@ -112,7 +112,7 @@ python -m scripts.parse_pdf <paper.pdf> [--dpi 300]
 |---|---|
 | `paper_meta.json` | title / authors / sections / figures / tables / equations / references_count（结构化元数据，由 MinerU 直接给出）|
 | `figures_index.json` | captions（图/表 caption，table 带 `bbox` + `bbox_source: mineru:vlm`）、figures、page_renders 等列表 |
-| `figures/`、`tables/` | MinerU 抽出的图 / 表实体与高清裁图 |
+| `figures/` | MinerU 抽出的图 / 表实体与高清裁图（表的高清裁图也落 `figures/`，无单独 `tables/` 目录）|
 | `pages/page-NN.png` | pdftoppm 整页渲染，**默认 300 dpi 含 `-hide-annotations`**（去掉 PDF 自带 hyperlink 绿框）；`--dpi 200` 降载、`--dpi 400` 细公式 |
 
 **完成判定**：`paper_meta.json` + `figures_index.json` 存在。
@@ -174,7 +174,7 @@ python -m scripts.parse_pdf <paper.pdf> [--dpi 300]
 3. 为每张 slide 选 `layout_kind`（避免连续相同的 layout）
 4. 把 `title` / `bullets` / 配图 / 形状/线条 等翻译成 `elements` 数组；坐标用英寸
 5. 对图：若 `figure_ref` 给出，先查 `figures_index.json/captions[].id == figure_ref`
-   找到 page；再决定用 `embedded_images` 中某张，还是用 `page_renders` 整页（必要时
+   找到 page；再决定用 `figures/<id>.png`（MinerU 高清裁图）还是用 `page_renders` 整页（必要时
    `scripts/page_screenshot.py` 裁剪 bbox）
 6. 序列化、JSON 校验
 
@@ -215,8 +215,8 @@ python -m scripts.render_pptx <slide_spec.json> <output.pptx>
 **Stage 4 常见错误**：
 
 - 字体名拼错（PptxGenJS 不报错，pptx 打开时回退默认字体）
-- 图片路径相对 workdir 但 render_pptx.py 没正确解析（render_pptx.py 必须 `cd workdir`
-  或用绝对路径喂给 PptxGenJS）
+- 图片路径相对 workdir 但 render_pptx.py 没正确解析（render_pptx.py 把 workdir 作为参数
+  传给 node、JS 端用 `path.join(workdir, path)` 拼成绝对路径）
 - shape 的 z 排序写错（背景 shape 跑到前景遮挡文字）
 
 ---
@@ -284,7 +284,7 @@ python -m scripts.render_pptx <slide_spec.json> <output.pptx>
 | `paper_meta.json` 章节数 < 5 | MinerU 章节切分不全 | 你在 Stage 2 校核时手动补 |
 | `paper_meta.json` 章节数 > 15 | 子章节过细 | 检查 paper_meta.json/sections，由你合并 |
 | Stage 3 引用了不存在的 figure | figure_ref 写错 | 查 figures_index.json/captions，改 figure_ref 或改用 page_renders |
-| Stage 4 PptxGenJS 报 image not found | 路径相对 workdir 但 node 工作目录错 | render_pptx.py 内部 cd 到 workdir 或喂绝对路径 |
+| Stage 4 PptxGenJS 报 image not found | 路径相对 workdir 但 node 工作目录错 | render_pptx.py 把 workdir 作为参数传给 node、JS 端拼成绝对路径 |
 | Stage 5 视觉 QA 报"lorem ipsum 残留" | Stage 3 的你用了占位 | 修 slide_spec.json 对应文本，从 render 重跑 |
 | Stage 5 报"table 底线被切" / "裁切带入下方正文" | bbox 太紧 / 你视觉估算偏差 | `page_screenshot.py` 默认已 +0.005 padding，仍丢手动加大 `--pad 0.01`；优先用 `figures_index.json/captions[i].bbox`（mineru 检出）|
 | Stage 5 报"表/图里 `[N]` 引用出现绿色矩形框" | pdftoppm 默认渲染 PDF 自带的 hyperlink annotation | parse_pdf.py 已默认 `-hide-annotations`；如仍出现，机器 poppler 太旧（< 0.69），升级或 `apt install -y poppler-utils` |

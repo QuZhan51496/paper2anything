@@ -146,7 +146,7 @@ Stage 0.5 让用户选了页数档，Stage 2 进来前先读 `config.json/deck_l
 2. **result 主图 → 论文 result 章节的最大 figure 或 main table**（看 `figures` / `tables` 的 caption 里有没有 "main results" 等）
 3. **motivation → 选有 before/after、failure cases 的图**（caption 里有 "examples"、"comparison"、"motivating"）
 4. **ablation slide → 选 caption 含 "ablation"、"effect of"、"varying" 的 figure**
-5. 不放心时优先用 `pages/page-NN.png`（整页渲染）而非 `embedded_images`——后者可能是矢量图分解后的碎片
+5. 不放心时优先用 `pages/page-NN.png`（整页渲染）或 `figures/<id>.png`（MinerU 高清裁图）
 
 `figure_ref` 写论文里的 figure id（如 `"figure2"`），让 Stage 3 的你决定具体怎么用（嵌入 vs. 整页裁）。
 
