@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""stage2_validate —— QA 校验（机械，闸门2）。
+"""validate —— QA 校验（机械，闸门2）。
 
 你亲手写完 index.html 后跑：校验成品页面（结构错误记 error，内容保真记 warning），
 产出报告供你据此修订。不改 HTML、不渲染——只看你写的 index.html + manifest.json。
@@ -11,10 +11,10 @@
 产物（落在 --workdir）：
   validation.json   机器可读结果（ok/errors/warnings/checks）
   qa_report.md      人类可读报告
-  logs/stage2_validate_result.json
+  logs/validate_result.json
 
 用法：
-  python stage2_validate.py --workdir <.paper2anything/html>
+  python validate.py --workdir <.paper2anything/html>
 """
 import argparse
 import sys
@@ -41,7 +41,7 @@ def run(workdir: str) -> dict:
         print_error(f"未找到 {index_html}；请先写好 index.html 再跑 QA")
         return {"status": "failed", "error": "index.html 不存在"}
     if not manifest_path.exists():
-        print_error(f"未找到 {manifest_path}；请先跑 stage1_parse")
+        print_error(f"未找到 {manifest_path}；请先跑 parse_pdf")
         return {"status": "failed", "error": "manifest.json 不存在"}
 
     manifest = core.manifest_from_dict(load_json(manifest_path))
@@ -71,12 +71,12 @@ def run(workdir: str) -> dict:
         "validation": str(root / "validation.json"),
         "qa_report": str(root / "qa_report.md"),
     }
-    save_stage_result(result, "stage2_validate", ws)
+    save_stage_result(result, "validate", ws)
     return result
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="paper2html stage2: QA 校验 index.html")
+    ap = argparse.ArgumentParser(description="paper2html validate: QA 校验 index.html")
     ap.add_argument("--workdir", required=True, help="工作目录（<pdf目录>/.paper2anything/html）")
     args = ap.parse_args()
     result = run(args.workdir)

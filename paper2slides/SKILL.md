@@ -14,7 +14,7 @@ description: "Turn an academic paper PDF into a presentation deck (.pptx) end-to
 | 阶段 | 输入 | 产物 | 责任方 |
 |---|---|---|---|
 | 0.5. configure | 用户对话 | `<workdir>/config.json` | **你**（AskUserQuestion 三项确认：页数档 + 是否做视觉 QA + 配色）|
-| 1. extract    | `paper.pdf` | `paper_meta.json` + `figures_index.json` + `figures/` + `pages/` + `equations` + 高清 figure/table 裁图（MinerU 云 API 一次性产出）| `scripts/extract_paper.py` |
+| 1. extract    | `paper.pdf` | `paper_meta.json` + `figures_index.json` + `figures/` + `pages/` + `equations` + 高清 figure/table 裁图（MinerU 云 API 一次性产出）| `scripts/parse_pdf.py` |
 | 2. outline    | `paper_meta.json` | `slide_outline.json` | **你**（按 `references/outline-heuristics.md`）|
 | 3. spec       | `slide_outline.json` + 图 | `slide_spec.json` | **你**（按 `references/design-style.md`） |
 | 4. render     | `slide_spec.json` | `output.pptx` | `scripts/render_pptx.py`（PptxGenJS 桥）|
@@ -87,7 +87,7 @@ Stage 0 解析完 workspace 后、Stage 1 之前，用 [AskUserQuestion] 与用�
 
 ```bash
 set -a; source <paper2anything 包根>/.env; set +a   # 导出统一 .env（含 MINERU_API_TOKEN）
-conda run -n paper2anything --no-capture-output python -m scripts.extract_paper <paper.pdf>
+conda run -n paper2anything --no-capture-output python -m scripts.parse_pdf <paper.pdf>
 ```
 
 一次性产出 `paper_meta.json` + `figures_index.json` + `pages/` + 高清裁图（结构化元数据由 MinerU 直接给出）。

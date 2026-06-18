@@ -1,5 +1,5 @@
 """
-Stage 6 — 封面生成（可选）
+cover — 封面生成（可选）
 
 优先使用论文原图（suitable_for_cover=True 的图），裁剪至微信封面尺寸 900×383。
 若无合适原图，调用 OpenAI 生成专业学术风格封面图（1792×1024，再 resize）。
@@ -206,7 +206,7 @@ def run(workdir: str) -> dict:
         "file_size_kb": round(file_size_kb, 1),
         "dimensions": f"{WECHAT_COVER_W}×{WECHAT_COVER_H}",
     }
-    save_stage_result(result, "stage6_cover", workspace)
+    save_stage_result(result, "cover", workspace)
     return result
 
 

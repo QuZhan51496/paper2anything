@@ -14,11 +14,11 @@ allowed-tools: Bash, Read, Write, Glob, Grep, AskUserQuestion
 
 ```text
 PDF
- → 解析            (stage2_parse.py：MinerU → parsed/ + figures/，含表格)
+ → 解析            (parse_pdf.py：MinerU → parsed/ + figures/，含表格)
  → 你读懂论文       (读 parsed/ + 看 figures/) → understanding/paper_understanding.json   [确认切入角度]
  → 你写深度解读长文  (结构自由、配图、忠实准确) → wechat_article.md + .json          [确认]
- → 封面            (stage6_cover.py：横版 900×383，优先复用论文原图)
- → md2wechat 排版   (stage7_publish.py：→ 公众号 HTML / 草稿)
+ → 封面            (cover.py：横版 900×383，优先复用论文原图)
+ → md2wechat 排版   (publish.py：→ 公众号 HTML / 草稿)
  → 公众号推文
 ```
 
@@ -65,7 +65,7 @@ md2wechat --help >/dev/null 2>&1 && echo "md2wechat 就绪" || echo "md2wechat �
 pdf_path="/path/to/paper.pdf"          # ← 用户的论文 PDF
 WORKDIR="$(dirname "$pdf_path")/.paper2anything/wechat"
 conda run -n paper2anything --no-capture-output \
-  python "${SKILL_DIR}/scripts/stage2_parse.py" "$pdf_path" --workdir "$WORKDIR"
+  python "${SKILL_DIR}/scripts/parse_pdf.py" "$pdf_path" --workdir "$WORKDIR"
 ```
 
 产出（`$WORKDIR` 下）：`parsed/paper_meta.json`、`parsed/sections.json`、`parsed/figures_index.json`、`parsed/tables_index.json`（`[{table_id, caption, html, image_path, page}]`）、`parsed/references.json`，以及 `figures/*`（含表格图）。
@@ -136,7 +136,7 @@ conda run -n paper2anything --no-capture-output \
 pdf_path="/path/to/paper.pdf"
 WORKDIR="$(dirname "$pdf_path")/.paper2anything/wechat"
 conda run -n paper2anything --no-capture-output \
-  python "${SKILL_DIR}/scripts/stage6_cover.py" --workdir "$WORKDIR"
+  python "${SKILL_DIR}/scripts/cover.py" --workdir "$WORKDIR"
 ```
 
 横版 900×383 JPG：优先把 `understanding.important_figures` 里 `suitable_for_cover` 最高分的论文原图裁成封面；否则（配了 `OPENAI_API_KEY` 时）AI 生成横版图再裁剪；都没有则 `skipped`。产出 `cover.jpg`。
@@ -149,7 +149,7 @@ conda run -n paper2anything --no-capture-output \
 pdf_path="/path/to/paper.pdf"
 WORKDIR="$(dirname "$pdf_path")/.paper2anything/wechat"
 conda run -n paper2anything --no-capture-output \
-  python "${SKILL_DIR}/scripts/stage7_publish.py" --workdir "$WORKDIR"
+  python "${SKILL_DIR}/scripts/publish.py" --workdir "$WORKDIR"
 ```
 
 读 `wechat_article.md`（+ `.json` 的 title/digest）+ `cover.jpg`，调 md2wechat 转成公众号 HTML 草稿；**md2wechat 不可用时自动降级**为“把 Markdown 手动粘贴到公众号编辑器”的指引（不报错）。脚本会打印发布步骤（mp.weixin.qq.com → 新建图文 → 粘贴 → 传封面 → 发布）。
@@ -162,12 +162,12 @@ conda run -n paper2anything --no-capture-output \
 
 | 路径 | 内容 | 谁写 |
 |---|---|---|
-| `parsed/` | MinerU PIR（meta/sections/figures_index/tables_index/references） | stage2_parse |
-| `figures/` | 论文插图 + 表格图实体 | stage2_parse |
+| `parsed/` | MinerU PIR（meta/sections/figures_index/tables_index/references） | parse_pdf |
+| `figures/` | 论文插图 + 表格图实体 | parse_pdf |
 | `understanding/paper_understanding.json` | 论文理解 + important_figures | **你** |
 | `wechat_article.md` `.json` | 深度解读长文 + 元数据 | **你** |
-| `cover.jpg` | 横版封面 | stage6_cover |
-| `wechat_article.html` | md2wechat 排版结果 | stage7_publish |
+| `cover.jpg` | 横版封面 | cover |
+| `wechat_article.html` | md2wechat 排版结果 | publish |
 | `logs/` | 各脚本 `*_result.json` | 脚本 |
 
 重跑覆盖同一目录（无 task_id）。要留旧版本就先把工作区 `.paper2anything/wechat/` 改名备份。

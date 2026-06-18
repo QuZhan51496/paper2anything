@@ -1,5 +1,5 @@
 """
-extract_paper.py — Stage 1: PDF 解析（MinerU 云 API）
+parse_pdf.py — Stage 1: PDF 解析（MinerU 云 API）
 
 输入：paper.pdf
 输出（写到 workdir）：
@@ -11,7 +11,7 @@ extract_paper.py — Stage 1: PDF 解析（MinerU 云 API）
 解析统一走 MinerU 云端；需要 MINERU_API_TOKEN。失败即报错。
 
 CLI:
-    python scripts/extract_paper.py <paper.pdf> [--output <out.pptx>] [--dpi 300]
+    python scripts/parse_pdf.py <paper.pdf> [--output <out.pptx>] [--dpi 300]
 """
 from __future__ import annotations
 import argparse

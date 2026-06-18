@@ -25,7 +25,7 @@ paper2anything/
 ├── paper2slides/            # 论文 → .pptx
 │   ├── SKILL.md
 │   ├── references/          # 设计风格、大纲启发式、pipeline、schema、pptxgenjs
-│   └── scripts/             # extract_paper / render_pptx / page_screenshot / workdir + lib/
+│   └── scripts/             # parse_pdf / render_pptx / page_screenshot / workdir + lib/
 ├── paper2poster/            # 论文 → 海报 HTML/PNG
 │   ├── SKILL.md
 │   ├── references/          # 海报示例（真实海报 PNG）、配色、版式指南
@@ -33,13 +33,13 @@ paper2anything/
 ├── paper2html/              # 论文 → 单页项目主页
 │   ├── SKILL.md
 │   ├── references/          # 设计语言、HTML 撰写规范、QA 清单
-│   └── scripts/             # stage1_parse / stage2_validate + lib/（解析/抽取/QA，无渲染器）
+│   └── scripts/             # parse_pdf / validate + lib/（解析/抽取/QA，无渲染器）
 ├── paper2xhs/               # 论文 → 小红书
 │   ├── SKILL.md
-│   └── scripts/             # stage2_parse / stage6_cover / stage7_publish + utils
+│   └── scripts/             # parse_pdf / cover / publish + utils
 └── paper2wechat/            # 论文 → 公众号
     ├── SKILL.md
-    └── scripts/             # stage2_parse / stage6_cover / stage7_publish + utils
+    └── scripts/             # parse_pdf / cover / publish + utils
 ```
 
 ---

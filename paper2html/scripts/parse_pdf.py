@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""stage1_parse —— 解析 + 确定性抽取（机械，闸门1）。
+"""parse_pdf —— 解析 + 确定性抽取（机械，闸门1）。
 
 PDF → MinerU 解析 → normalize → extract_manifest（title/authors/abstract/links/claims/
 figures/tables/method/bibtex，附录过滤，抽不到留空交你兜底）→ 复制页面图。
@@ -9,10 +9,10 @@ figures/tables/method/bibtex，附录过滤，抽不到留空交你兜底）→ 
   manifest.json  确定性抽取的事实（你创作只能用这里的真实素材）
   parsed/        MinerU 原始解析（含 full.md 供重跑复用、images/ 所有裁图）
   images/        页面引用的图（你以 images/<name> 引用，与 index.html 同级）
-  logs/stage1_parse_result.json
+  logs/parse_pdf_result.json
 
 用法：
-  python stage1_parse.py <paper.pdf> --workdir <.paper2anything/html> [--paper-url URL] [--code-url URL] [--lite]
+  python parse_pdf.py <paper.pdf> --workdir <.paper2anything/html> [--paper-url URL] [--code-url URL] [--lite]
 """
 import argparse
 import sys
@@ -98,12 +98,12 @@ def run(input_path: str, workdir: str, *, paper_url=None, code_url=None,
         },
         "links": asdict(manifest.links),
     }
-    save_stage_result(result, "stage1_parse", ws)
+    save_stage_result(result, "parse_pdf", ws)
     return result
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="paper2html stage1: 解析 + 确定性抽取")
+    ap = argparse.ArgumentParser(description="paper2html parse_pdf: 解析 + 确定性抽取")
     ap.add_argument("input", help="论文 PDF（或已解析的 Markdown）")
     ap.add_argument("--workdir", required=True, help="工作目录（<pdf目录>/.paper2anything/html）")
     ap.add_argument("--paper-url", default=None, help="论文规范链接（不传则留空，不假设 arxiv）")

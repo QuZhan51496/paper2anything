@@ -1,5 +1,5 @@
 """
-Stage 7 — md2wechat 格式化与发布准备
+publish — md2wechat 格式化与发布准备
 
 流程：
   1. 读取 wechat_article.md
@@ -208,7 +208,7 @@ def run(workdir: str) -> dict:
         "title": article.get("title", ""),
         "word_count": article.get("word_count", 0),
     }
-    save_stage_result(result, "stage7_publish", workspace)
+    save_stage_result(result, "publish", workspace)
     return result
 
 

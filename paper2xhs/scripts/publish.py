@@ -1,5 +1,5 @@
 """
-Stage 7 — 半自动发布（xiaohongshu-skills）
+publish — 半自动发布（xiaohongshu-skills）
 
 流程：
   1. fill-publish  — 自动填写浏览器发布表单
@@ -150,7 +150,7 @@ def run(workdir: str) -> dict:
 
     print_success("发布成功！")
     result = {"status": "success", "title": title, "images_count": len(images)}
-    save_stage_result(result, "stage7_publish", workspace)
+    save_stage_result(result, "publish", workspace)
     return result
 
 

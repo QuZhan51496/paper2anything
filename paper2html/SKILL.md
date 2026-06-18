@@ -13,10 +13,10 @@ allowed-tools: Bash, Read, Write, Glob, Grep, AskUserQuestion
 
 ```text
 PDF
- → 解析+抽取        (stage1_parse.py：MinerU → clean.md + manifest.json + images/，闸门1)
+ → 解析+抽取        (parse_pdf.py：MinerU → clean.md + manifest.json + images/，闸门1)
  → 你读懂论文+定设计 (读 manifest + clean.md + 看图) → 选设计语言                 [确认设计方向]
  → 你亲手写主页      (按 references/ 设计语言与撰写规范) → index.html              [可选确认]
- → QA 校验          (stage2_validate.py：缺图/坏链/内容保真，闸门2) → 据报告修，循环
+ → QA 校验          (validate.py：缺图/坏链/内容保真，闸门2) → 据报告修，循环
  → 单页项目主页 index.html（+ images/，可直接部署）
 ```
 
@@ -64,7 +64,7 @@ conda run -n paper2anything --no-capture-output python -c "import requests, rich
 pdf_path="/path/to/paper.pdf"          # ← 用户的论文 PDF
 WORKDIR="$(dirname "$pdf_path")/.paper2anything/html"
 conda run -n paper2anything --no-capture-output \
-  python "${SKILL_DIR}/scripts/stage1_parse.py" "$pdf_path" --workdir "$WORKDIR"
+  python "${SKILL_DIR}/scripts/parse_pdf.py" "$pdf_path" --workdir "$WORKDIR"
 ```
 
 产出（`$WORKDIR` 下）：
@@ -115,13 +115,13 @@ conda run -n paper2anything --no-capture-output \
 pdf_path="/path/to/paper.pdf"
 WORKDIR="$(dirname "$pdf_path")/.paper2anything/html"
 conda run -n paper2anything --no-capture-output \
-  python "${SKILL_DIR}/scripts/stage2_validate.py" --workdir "$WORKDIR"
+  python "${SKILL_DIR}/scripts/validate.py" --workdir "$WORKDIR"
 ```
 
 校验你写的 `index.html` → `validation.json` + `qa_report.md`。`Read` `qa_report.md`：
 - **error 必须清零**（缺 doctype/`</html>`、引用的 `images/<x>` 缺失、空 `href="#"`）。
 - **warning 按需修**（标题/图/表未出现在页面、claims<3、空 alt 等）。
-修法见 `references/qa-checklist.md`。修完 `index.html` 后**重跑 stage2_validate**，循环至 error 清零、warning 可接受。
+修法见 `references/qa-checklist.md`。修完 `index.html` 后**重跑 validate**，循环至 error 清零、warning 可接受。
 
 ---
 
@@ -131,11 +131,11 @@ conda run -n paper2anything --no-capture-output \
 
 | 路径 | 内容 | 谁写 |
 |---|---|---|
-| `clean.md` | normalize 后的全文 markdown | stage1_parse |
-| `manifest.json` | 确定性抽取的事实（闸门1） | stage1_parse |
-| `images/` | 页面引用的图 + 结果表截图 | stage1_parse |
+| `clean.md` | normalize 后的全文 markdown | parse_pdf |
+| `manifest.json` | 确定性抽取的事实（闸门1） | parse_pdf |
+| `images/` | 页面引用的图 + 结果表截图 | parse_pdf |
 | `index.html` | 自包含单页项目主页 | **你** |
-| `validation.json` `qa_report.md` | QA 结果（闸门2） | stage2_validate |
+| `validation.json` `qa_report.md` | QA 结果（闸门2） | validate |
 | `parsed/` `logs/` | MinerU 原始解析 / 各步骤 *_result.json | 脚本 |
 
 重跑覆盖同一目录（无 task_id）。要留旧版本就先把 `index.html` 改名备份。stage1 重跑默认复用 `parsed/full.md`（不再调 MinerU）。

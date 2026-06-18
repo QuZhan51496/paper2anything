@@ -6,11 +6,11 @@ paper2html 工具函数模块
 的 .paper2anything/<skill>/ 方案一致（无 task_id 子目录）。
 
 布局（root = .paper2anything/html/）：
-  root/clean.md       normalize 后的 markdown（stage1 写，你读）
-  root/manifest.json  确定性抽取的事实（stage1 写，闸门1）
+  root/clean.md       normalize 后的 markdown（parse_pdf 写，你读）
+  root/manifest.json  确定性抽取的事实（parse_pdf 写，闸门1）
   root/index.html     你亲手写的单页网站
   root/parsed/        MinerU 原始解析（含 parsed/images/ 所有裁图）
-  root/images/        页面引用的图（stage1 从 parsed 复制；你以 images/<name> 引用）
+  root/images/        页面引用的图（parse_pdf 从 parsed 复制；你以 images/<name> 引用）
   root/logs/          *_result.json + validation.json + qa_report.md
 """
 
@@ -51,7 +51,7 @@ def resolve_workspace(workdir: str | Path) -> dict[str, Path]:
     dirs = {
         "root": base,
         "parsed": base / "parsed",      # MinerU 原始解析（含 parsed/images/ 所有裁图）
-        "images": base / "images",      # 页面引用的图（stage1 从 parsed 复制）
+        "images": base / "images",      # 页面引用的图（parse_pdf 从 parsed 复制）
         "logs": base / "logs",          # 各步骤 *_result.json + QA 产物
     }
     for d in dirs.values():

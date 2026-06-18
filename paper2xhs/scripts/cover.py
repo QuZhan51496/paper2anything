@@ -1,5 +1,5 @@
 """
-Stage 6 — 封面生成（可选）
+cover — 封面生成（可选）
 使用 GPT Image API (gpt-image-1) 生成小红书封面图
 输出：cover.png
 """
@@ -230,7 +230,7 @@ def run(workdir: str) -> dict:
         "cover_text": cover_text,
         "file_size_kb": round(file_size_kb, 1),
     }
-    save_stage_result(result, "stage6_cover", workspace)
+    save_stage_result(result, "cover", workspace)
     return result
 
 

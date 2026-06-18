@@ -13,11 +13,11 @@ allowed-tools: Bash, Read, Write, Glob, Grep, AskUserQuestion
 
 ```text
 PDF
- → 解析            (stage2_parse.py：MinerU → parsed/ + figures/)
+ → 解析            (parse_pdf.py：MinerU → parsed/ + figures/)
  → 你读懂论文       (读 parsed/ + 看 figures/) → understanding/paper_understanding.json   [确认选题角度]
  → 你写小红书文案    (标题/正文/标签/封面文字) → xhs_post.json + xhs_post.md            [确认文案]
- → 封面            (stage6_cover.py：优先复用论文原图，否则 AI 生成)
- → 半自动发布       (stage7_publish.py，可选)
+ → 封面            (cover.py：优先复用论文原图，否则 AI 生成)
+ → 半自动发布       (publish.py，可选)
  → 小红书帖子
 ```
 
@@ -63,7 +63,7 @@ conda run -n paper2anything --no-capture-output python -c "import requests, rich
 pdf_path="/path/to/paper.pdf"          # ← 用户的论文 PDF
 WORKDIR="$(dirname "$pdf_path")/.paper2anything/xhs"
 conda run -n paper2anything --no-capture-output \
-  python "${SKILL_DIR}/scripts/stage2_parse.py" "$pdf_path" --workdir "$WORKDIR"
+  python "${SKILL_DIR}/scripts/parse_pdf.py" "$pdf_path" --workdir "$WORKDIR"
 ```
 
 产出（`$WORKDIR` 下）：
@@ -133,7 +133,7 @@ conda run -n paper2anything --no-capture-output \
 pdf_path="/path/to/paper.pdf"
 WORKDIR="$(dirname "$pdf_path")/.paper2anything/xhs"
 conda run -n paper2anything --no-capture-output \
-  python "${SKILL_DIR}/scripts/stage6_cover.py" --workdir "$WORKDIR"
+  python "${SKILL_DIR}/scripts/cover.py" --workdir "$WORKDIR"
 ```
 
 逻辑：优先复用 `understanding.important_figures` 里 `suitable_for_cover` 最高分的论文原图；没有合适原图且配了 `OPENAI_API_KEY` 时用 `OPENAI_IMAGE_MODEL`（默认 `gpt-image-1`）按 `cover_text` 生成竖版封面；都没有则 `skipped`（不阻断流程）。产出 `cover.png`。
@@ -146,7 +146,7 @@ conda run -n paper2anything --no-capture-output \
 pdf_path="/path/to/paper.pdf"
 WORKDIR="$(dirname "$pdf_path")/.paper2anything/xhs"
 conda run -n paper2anything --no-capture-output \
-  python "${SKILL_DIR}/scripts/stage7_publish.py" --workdir "$WORKDIR"
+  python "${SKILL_DIR}/scripts/publish.py" --workdir "$WORKDIR"
 ```
 
 读 `xhs_post.json`（title/body/hashtags）+ `cover.png`，通过外部 `xiaohongshu-skills` 填到发布页，**用户在浏览器确认后**才点发布。需 `XHS_SKILLS_DIR` + Chrome 扩展；未配置就跳过这步，把产物路径告诉用户让其手动发。
@@ -159,11 +159,11 @@ conda run -n paper2anything --no-capture-output \
 
 | 路径 | 内容 | 谁写 |
 |---|---|---|
-| `parsed/` | MinerU PIR（meta/sections/figures_index/references） | stage2_parse |
-| `figures/` | 论文插图实体 | stage2_parse |
+| `parsed/` | MinerU PIR（meta/sections/figures_index/references） | parse_pdf |
+| `figures/` | 论文插图实体 | parse_pdf |
 | `understanding/paper_understanding.json` | 论文理解 + important_figures | **你** |
 | `xhs_post.json` `xhs_post.md` | 小红书文案 | **你** |
-| `cover.png` | 封面 | stage6_cover |
+| `cover.png` | 封面 | cover |
 | `logs/` | 各脚本 `*_result.json` | 脚本 |
 
 重跑覆盖同一目录（无 task_id）。要保留旧版本就先把工作区 `.paper2anything/xhs/` 改名备份。

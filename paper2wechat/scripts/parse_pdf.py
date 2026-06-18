@@ -1,11 +1,11 @@
 """
-Stage 2 — MinerU 解析（云端 API 版）
+parse_pdf — MinerU 解析（云端 API 版）
 通过 https://mineru.net/api/v4 调用 MinerU SaaS：
   1. POST /file-urls/batch → 拿到 PUT 上传 URL + batch_id
   2. PUT 本地 PDF 到上传 URL
   3. 轮询 GET /extract-results/batch/{batch_id} 直到 state=done
   4. 下载 full_zip_url 并解压得到 *_content_list.json / 图片 等
-输出：paper_meta.json, sections.json, figures_index.json, references.json
+输出：paper_meta.json, sections.json, figures_index.json, references.json, tables_index.json
 """
 
 import io
@@ -163,7 +163,7 @@ def _find_mineru_output(output_dir: Path, pdf_stem: str) -> Path | None:
 
 
 def _parse_content_list(content_list_path: Path) -> tuple:
-    """解析 MinerU content_list.json → (meta, sections, figures, references)"""
+    """解析 MinerU content_list.json → (meta, sections, figures, references, tables)"""
     with open(content_list_path, "r", encoding="utf-8") as f:
         items = json.load(f)
 
@@ -171,6 +171,7 @@ def _parse_content_list(content_list_path: Path) -> tuple:
     sections = []
     figures = []
     references = []
+    tables = []
 
     current_section = None
     current_lines = []
@@ -228,8 +229,22 @@ def _parse_content_list(content_list_path: Path) -> tuple:
                     "page": page,
                 })
 
+        elif itype == "table":
+            img_path = item.get("img_path", "")
+            captions = item.get("table_caption", [])
+            caption = captions[0] if captions else ""
+            html = item.get("table_body", "")
+            if img_path:
+                tables.append({
+                    "table_id": f"tab_{len(tables) + 1}",
+                    "caption": caption,
+                    "html": html,
+                    "image_path": img_path,
+                    "page": page,
+                })
+
     flush_section()
-    return meta, sections, figures, references
+    return meta, sections, figures, references, tables
 
 
 def _parse_markdown(md_path: Path) -> tuple:
@@ -283,7 +298,8 @@ def _parse_markdown(md_path: Path) -> tuple:
     return meta, sections, figures
 
 
-def _copy_figures(mineru_out: Path, figures_dir: Path, figures_index: list) -> list:
+def _copy_figures(mineru_out: Path, figures_dir: Path, figures_index: list,
+                  id_field: str = "figure_id") -> list:
     """将图片复制到工作区 figures/ 目录，更新路径"""
     updated = []
     for fig in figures_index:
@@ -299,6 +315,17 @@ def _copy_figures(mineru_out: Path, figures_dir: Path, figures_index: list) -> l
     return updated
 
 
+def _copy_pages(mineru_out: Path, pages_dir: Path) -> None:
+    """将页面图片复制到工作区 pages/ 目录"""
+    for img in sorted(mineru_out.glob("*.png")):
+        shutil.copy2(img, pages_dir / img.name)
+    # MinerU 有时将页面图放在 images/ 子目录
+    images_sub = mineru_out / "images"
+    if images_sub.exists():
+        for img in sorted(images_sub.glob("*.png")):
+            shutil.copy2(img, pages_dir / img.name)
+
+
 def _validate(meta: dict, sections: list) -> dict:
     """验证解析结果"""
     checks = {
@@ -312,9 +339,10 @@ def _validate(meta: dict, sections: list) -> dict:
 
 def run(pdf_path: str, workdir: str) -> dict:
     """
-    MinerU 云端解析 PDF → parsed/ 下的 PIR（paper_meta / sections / figures_index / references）+ figures/
+    MinerU 云端解析 PDF → parsed/ 下的 PIR（paper_meta / sections / figures_index /
+    tables_index / references）+ figures/
 
-    输入：PDF 路径 + 工作区目录（<pdf目录>/.paper2anything/xhs）
+    输入：PDF 路径 + 工作区目录（<pdf目录>/.paper2anything/wechat）
     输出：parsed/*.json、figures/*
     """
     print_stage_header("MinerU 解析 PDF")
@@ -355,6 +383,7 @@ def run(pdf_path: str, workdir: str) -> dict:
     sections = []
     figures = []
     references = []
+    tables = []
 
     if mineru_out:
         # 选 v1 扁平 content_list 交给 _parse_content_list（按 v1 block schema 解析）。
@@ -368,7 +397,7 @@ def run(pdf_path: str, workdir: str) -> dict:
 
         if content_list_path and content_list_path.exists():
             print_info("使用 content_list.json 解析")
-            meta, sections, figures, references = _parse_content_list(content_list_path)
+            meta, sections, figures, references, tables = _parse_content_list(content_list_path)
         else:
             # 备用：使用 Markdown
             md_candidates = list(mineru_out.glob("*.md"))
@@ -379,15 +408,16 @@ def run(pdf_path: str, workdir: str) -> dict:
                 print_error("MinerU 输出中未找到可解析文件")
                 return {"status": "failed", "error": "MinerU 输出无法解析"}
 
-        # 复制图片到工作区 figures/
+        # 复制图片/表格图到工作区 figures/
         figures = _copy_figures(mineru_out, figures_dir, figures)
+        tables = _copy_figures(mineru_out, figures_dir, tables, id_field="table_id")
     else:
         print_error("MinerU 未生成输出目录")
         return {"status": "failed", "error": "MinerU 未生成输出"}
 
     # ── 验证（参考 slides：摘要交给下游兜底，不作为 abort 条件）──
     # 很多论文（含本测试论文）摘要是作者行后的无标题段落，确定性抽取会落空；
-    # 这本是你在 understanding/文案 阶段亲自填的内容，不应在此把整个解析 abort。
+    # 这本是你在 understanding/深读文章 阶段亲自填的内容，不应在此把整个解析 abort。
     checks = _validate(meta, sections)
     if not checks["title"] or not checks["sections"]:
         print_error("解析验证失败")
@@ -406,11 +436,13 @@ def run(pdf_path: str, workdir: str) -> dict:
     save_json(meta, parsed_dir / "paper_meta.json")
     save_json(sections, parsed_dir / "sections.json")
     save_json(figures, parsed_dir / "figures_index.json")
+    save_json(tables, parsed_dir / "tables_index.json")
     save_json(references, parsed_dir / "references.json")
 
     print_success(f"论文标题: {meta['title'][:80]}")
     print_success(f"章节数量: {len(sections)}")
     print_success(f"图片数量: {len(figures)}")
+    print_success(f"表格数量: {len(tables)}")
     print_info(f"PIR 已保存至: {parsed_dir}")
 
     result = {
@@ -420,10 +452,11 @@ def run(pdf_path: str, workdir: str) -> dict:
         "stats": {
             "sections": len(sections),
             "figures": len(figures),
+            "tables": len(tables),
             "references": len(references),
         },
     }
-    save_stage_result(result, "stage2_parse", workspace)
+    save_stage_result(result, "parse_pdf", workspace)
     return result
 
 
@@ -437,7 +470,7 @@ if __name__ == "__main__":
     parser.add_argument("pdf_path", help="论文 PDF 路径")
     parser.add_argument(
         "--workdir", required=True,
-        help="工作区目录，约定 <pdf目录>/.paper2anything/xhs",
+        help="工作区目录，约定 <pdf目录>/.paper2anything/wechat",
     )
     args = parser.parse_args()
     res = run(args.pdf_path, args.workdir)

@@ -1,6 +1,6 @@
-# QA 检查项与修复（stage2_validate 产出 → 你据此修 index.html）
+# QA 检查项与修复（validate 产出 → 你据此修 index.html）
 
-`stage2_validate.py` 校验你写的 `index.html`，产出 `validation.json` + `qa_report.md`。
+`validate.py` 校验你写的 `index.html`，产出 `validation.json` + `qa_report.md`。
 **error 必须清零**才算过；**warning 看情况修**（多数该修，少数可接受）。
 
 ## error（结构性，必修）
@@ -26,5 +26,5 @@
 
 ## 循环
 
-修完 `index.html` → 重跑 `stage2_validate.py --workdir <...>` → 直到 error 清零、warning 可接受。
+修完 `index.html` → 重跑 `validate.py --workdir <...>` → 直到 error 清零、warning 可接受。
 QA 不改你的 HTML，只报告——主笔始终是你。

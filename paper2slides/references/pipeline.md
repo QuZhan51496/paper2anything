@@ -101,7 +101,7 @@ python -m scripts.workdir resolve <paper.pdf> [--output <out.pptx>] --ensure
 `MINERU_API_TOKEN`（包根 `.env`）；无 token 或解析失败**直接报错**。
 
 ```bash
-python -m scripts.extract_paper <paper.pdf> [--dpi 300]
+python -m scripts.parse_pdf <paper.pdf> [--dpi 300]
 ```
 
 **输入**：`<paper.pdf>`（绝对路径或相对当前工作目录）
@@ -287,5 +287,5 @@ python -m scripts.render_pptx <slide_spec.json> <output.pptx>
 | Stage 4 PptxGenJS 报 image not found | 路径相对 workdir 但 node 工作目录错 | render_pptx.py 内部 cd 到 workdir 或喂绝对路径 |
 | Stage 5 视觉 QA 报"lorem ipsum 残留" | Stage 3 的你用了占位 | 修 slide_spec.json 对应文本，从 render 重跑 |
 | Stage 5 报"table 底线被切" / "裁切带入下方正文" | bbox 太紧 / 你视觉估算偏差 | `page_screenshot.py` 默认已 +0.005 padding，仍丢手动加大 `--pad 0.01`；优先用 `figures_index.json/captions[i].bbox`（mineru 检出）|
-| Stage 5 报"表/图里 `[N]` 引用出现绿色矩形框" | pdftoppm 默认渲染 PDF 自带的 hyperlink annotation | extract_paper.py 已默认 `-hide-annotations`；如仍出现，机器 poppler 太旧（< 0.69），升级或 `apt install -y poppler-utils` |
+| Stage 5 报"表/图里 `[N]` 引用出现绿色矩形框" | pdftoppm 默认渲染 PDF 自带的 hyperlink annotation | parse_pdf.py 已默认 `-hide-annotations`；如仍出现，机器 poppler 太旧（< 0.69），升级或 `apt install -y poppler-utils` |
 | Stage 5 报"figure/table 字模糊" | dpi 太低 | 默认已 300 dpi；论文超长降到 `--dpi 200` 时如不够清晰，恢复 300 或升 `--dpi 400` |

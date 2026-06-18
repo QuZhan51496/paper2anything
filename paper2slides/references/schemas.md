@@ -374,7 +374,7 @@ MinerU 未能定位该表。Stage 3 在这种情况下走视觉估算 fallback�
 |---|---|
 | `bbox_source` | 枚举值如 `"mineru:vlm"`（VLM 模型识别，`bbox_confidence == "high"`）|
 | `html` | 仅 `kind == "table"` 有；MinerU 把表识别成 HTML，可供 Stage 3 选择直接渲染或裁图 |
-| `high_res_crop_path` | `"figures/<id>.png"`，`extract_paper` 已用 PIL 从 300 dpi 整页 PNG 裁出高清版 |
+| `high_res_crop_path` | `"figures/<id>.png"`，`parse_pdf` 已用 PIL 从 300 dpi 整页 PNG 裁出高清版 |
 | `subfigures` | `[{page, bbox}]` 子图列表（如论文 Figure 2 是两个并排子图，无编号 caption 的 image 会被归并到下一个有编号 figure）|
 
 **`paper_meta.json` 顶层**还含：
