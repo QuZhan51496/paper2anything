@@ -3,13 +3,13 @@ name: paper2poster
 description: "Convert academic papers (PDF) into conference posters (HTML/PNG). You are the conductor: you decide what each section needs — an original paper figure or text — write the outline, hand-author the poster HTML, and iterate on the render using your own visual read and a blind-reader content quiz. Use when the user wants a poster from a paper PDF."
 arguments: [pdf-path]
 allowed-tools:
-  - Bash(python *)
-  - Bash(conda run *)
+  - Bash
   - Read
   - Write
   - Glob
   - Grep
   - Agent
+  - AskUserQuestion
 user-invocable: true
 disable-model-invocation: false
 effort: high

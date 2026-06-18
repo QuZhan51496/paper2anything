@@ -35,7 +35,8 @@ description: "Turn an academic paper PDF into a presentation deck (.pptx) end-to
 
 **Python 环境**：所有脚本跑在 `paper2anything` conda 环境。命令前缀
 `conda run -n paper2anything --no-capture-output python -m scripts.<name> ...`
-（已 `conda activate paper2anything` 时可省前缀）。前缀省略约定见
+（已 `conda activate paper2anything` 时可省前缀）。**所有 `-m scripts.<name>` 须在本
+skill 目录（`scripts/` 的父目录）下执行，否则报 `No module named 'scripts'`**；前缀省略约定见
 [references/pipeline.md](references/pipeline.md) §通用约定。
 
 **第一步永远是解析 workspace**：

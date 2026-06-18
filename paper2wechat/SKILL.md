@@ -78,7 +78,7 @@ conda run -n paper2anything --no-capture-output \
 
 深度解读的地基，**你自己做判断**：
 
-1. `Read` `parsed/sections.json`（全文）+ `paper_meta.json`；`Read` `figures_index.json` / `tables_index.json` 的图注表注，并**实际 `Read` 关键图**（`figures/` 下）判断哪些值得内嵌、哪张适合做横版封面。
+1. `Read` `parsed/sections.json`（全文）+ `paper_meta.json`；`Read` `figures_index.json` / `tables_index.json` 的图注表注（图 caption 可能为空属 v1 解析局限、正常，别依赖它、以实际看图为准），并**实际 `Read` 关键图**（`figures/` 下）判断哪些值得内嵌、哪张适合做横版封面。
 2. 用 `Write` 落 `understanding/paper_understanding.json`：
    ```json
    {

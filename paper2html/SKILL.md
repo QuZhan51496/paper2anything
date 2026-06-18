@@ -1,7 +1,7 @@
 ---
 name: paper2html
 description: 将学术论文（PDF 或 MinerU 解析后的 Markdown）转换为可直接发布的、自包含的单页**项目主页**（self-contained index.html）——就是研究者常基于 GitHub Pages 做的那种论文宣传网页。当用户提到"把论文做成项目主页/网页"、"paper2html"、"生成论文 landing page / project page"、"把这篇 PDF 变成 HTML 网页"、"论文转网页"、"做一个论文主页"时触发。你主导的协调式：机械步骤（MinerU 解析 + 确定性事实抽取闸门1 + 生成后 QA 闸门2）调 scripts，**index.html 的设计与撰写由你亲手完成**（不调用任何 LLM API），可选多种设计语言。
-allowed-tools: Bash, Read, Write, Glob, Grep
+allowed-tools: Bash, Read, Write, Glob, Grep, AskUserQuestion
 ---
 
 # paper2html — 论文转单页项目主页（你主导的协调式）
