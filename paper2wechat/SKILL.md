@@ -16,7 +16,7 @@ allowed-tools: Bash, Read, Write, Glob, Grep, AskUserQuestion
 PDF
  → 解析            (stage2_parse.py：MinerU → parsed/ + figures/，含表格)
  → 你读懂论文       (读 parsed/ + 看 figures/) → understanding/paper_understanding.json   [确认切入角度]
- → 你写深度解读长文  (结构自由、配图、忠实准确) → wechat/wechat_article.md + .json          [确认]
+ → 你写深度解读长文  (结构自由、配图、忠实准确) → wechat_article.md + .json          [确认]
  → 封面            (stage6_cover.py：横版 900×383，优先复用论文原图)
  → md2wechat 排版   (stage7_publish.py：→ 公众号 HTML / 草稿)
  → 公众号推文
@@ -105,7 +105,7 @@ conda run -n paper2anything --no-capture-output \
 
 ## Step 3：写深度解读长文（你来做）[确认]
 
-按公众号深度解读风格**亲自撰写**，用 `Write` 落 `wechat/wechat_article.md` 和 `wechat/wechat_article.json`。
+按公众号深度解读风格**亲自撰写**，用 `Write` 落 `wechat_article.md` 和 `wechat_article.json`。
 
 **公众号深度解读规则（领域知识）：**
 - **篇幅**约 1500–2500 字（按论文复杂度和 Step 2 的约定增减）。
@@ -117,11 +117,11 @@ conda run -n paper2anything --no-capture-output \
   5. 意义、应用与局限：能用在哪、有什么不足
   6. 结尾：一句话总结 + 延伸思考
 - 用 H2（`## 小节标题`）分节；关键技术术语首次出现给中英文、可 `**加粗**`。
-- **配图**：在合适位置插 `![图注](../figures/<图片名>.png)`（路径相对 `wechat/` 目录，故用 `../figures/...`；图片名取自 `figures_index.json` 的 `image_path` 文件名）。
+- **配图**：在合适位置插 `![图注](figures/<图片名>.png)`（md 与 figures/ 同在工作区根 `.paper2anything/wechat/` 下，故用 `figures/...`；图片名取自 `figures_index.json` 的 `image_path` 文件名）。
 - **忠实准确**：实验数字照实引用，不夸大、不编造；可有解读和洞察，但区分“论文说的”与“你的点评”。
 
-产物 —— `wechat/wechat_article.md`：第一行 `# {标题}`，然后正文（含配图）。
-`wechat/wechat_article.json`（供排版脚本读 title/digest/word_count）：
+产物 —— `wechat_article.md`：第一行 `# {标题}`，然后正文（含配图）。
+`wechat_article.json`（供排版脚本读 title/digest/word_count）：
 ```json
 {"title": "最终标题", "digest": "公众号摘要，≤120字", "word_count": 2200}
 ```
@@ -139,7 +139,7 @@ conda run -n paper2anything --no-capture-output \
   python "${SKILL_DIR}/scripts/stage6_cover.py" --workdir "$WORKDIR"
 ```
 
-横版 900×383 JPG：优先把 `understanding.important_figures` 里 `suitable_for_cover` 最高分的论文原图裁成封面；否则（配了 `OPENAI_API_KEY` 时）AI 生成横版图再裁剪；都没有则 `skipped`。产出 `wechat/cover.jpg`。
+横版 900×383 JPG：优先把 `understanding.important_figures` 里 `suitable_for_cover` 最高分的论文原图裁成封面；否则（配了 `OPENAI_API_KEY` 时）AI 生成横版图再裁剪；都没有则 `skipped`。产出 `cover.jpg`。
 
 ---
 
@@ -152,25 +152,25 @@ conda run -n paper2anything --no-capture-output \
   python "${SKILL_DIR}/scripts/stage7_publish.py" --workdir "$WORKDIR"
 ```
 
-读 `wechat/wechat_article.md`（+ `.json` 的 title/digest）+ `cover.jpg`，调 md2wechat 转成公众号 HTML 草稿；**md2wechat 不可用时自动降级**为“把 Markdown 手动粘贴到公众号编辑器”的指引（不报错）。脚本会打印发布步骤（mp.weixin.qq.com → 新建图文 → 粘贴 → 传封面 → 发布）。
+读 `wechat_article.md`（+ `.json` 的 title/digest）+ `cover.jpg`，调 md2wechat 转成公众号 HTML 草稿；**md2wechat 不可用时自动降级**为“把 Markdown 手动粘贴到公众号编辑器”的指引（不报错）。脚本会打印发布步骤（mp.weixin.qq.com → 新建图文 → 粘贴 → 传封面 → 发布）。
 
 ---
 
 ## 产物位置
 
-全部落在论文旁 `<pdf目录>/.paper2anything/wechat/`：
+全部落在论文旁 `<pdf目录>/.paper2anything/wechat/`（成品与 parsed/ 等平级，无嵌套子目录）：
 
-| 子目录 | 内容 | 谁写 |
+| 路径 | 内容 | 谁写 |
 |---|---|---|
 | `parsed/` | MinerU PIR（meta/sections/figures_index/tables_index/references） | stage2_parse |
 | `figures/` | 论文插图 + 表格图实体 | stage2_parse |
 | `understanding/paper_understanding.json` | 论文理解 + important_figures | **你** |
-| `wechat/wechat_article.md` `.json` | 深度解读长文 + 元数据 | **你** |
-| `wechat/cover.jpg` | 横版封面 | stage6_cover |
-| `wechat/wechat_article.html` | md2wechat 排版结果 | stage7_publish |
+| `wechat_article.md` `.json` | 深度解读长文 + 元数据 | **你** |
+| `cover.jpg` | 横版封面 | stage6_cover |
+| `wechat_article.html` | md2wechat 排版结果 | stage7_publish |
 | `logs/` | 各脚本 `*_result.json` | 脚本 |
 
-重跑覆盖同一目录（无 task_id）。要留旧版本就先把 `wechat/` 改名备份。
+重跑覆盖同一目录（无 task_id）。要留旧版本就先把工作区 `.paper2anything/wechat/` 改名备份。
 
 ---
 

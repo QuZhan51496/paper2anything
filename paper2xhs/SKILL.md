@@ -15,7 +15,7 @@ allowed-tools: Bash, Read, Write, Glob, Grep, AskUserQuestion
 PDF
  → 解析            (stage2_parse.py：MinerU → parsed/ + figures/)
  → 你读懂论文       (读 parsed/ + 看 figures/) → understanding/paper_understanding.json   [确认选题角度]
- → 你写小红书文案    (标题/正文/标签/封面文字) → xhs/xhs_post.json + xhs_post.md            [确认文案]
+ → 你写小红书文案    (标题/正文/标签/封面文字) → xhs_post.json + xhs_post.md            [确认文案]
  → 封面            (stage6_cover.py：优先复用论文原图，否则 AI 生成)
  → 半自动发布       (stage7_publish.py，可选)
  → 小红书帖子
@@ -101,7 +101,7 @@ conda run -n paper2anything --no-capture-output \
 
 ## Step 3：写小红书帖子（你来做）[确认]
 
-按小红书风格**亲自撰写**，用 `Write` 落 `xhs/xhs_post.json` 和 `xhs/xhs_post.md`。
+按小红书风格**亲自撰写**，用 `Write` 落 `xhs_post.json` 和 `xhs_post.md`。
 
 **小红书文案规则（领域知识）：**
 - **标题** ≤20 字，吸睛：含核心价值、或数字、或对比、或悬念式提问。
@@ -116,12 +116,12 @@ conda run -n paper2anything --no-capture-output \
 - **标签** 8–12 个，写在正文末尾；`hashtags` 字段同步放这些标签（发布脚本读 `hashtags`）。
 - **封面文字** `cover_text` ≤15 字（封面大字用）。
 
-产物 schema —— `xhs/xhs_post.json`：
+产物 schema —— `xhs_post.json`：
 ```json
 {"title": "...", "body": "含 emoji/换行，末尾带标签的完整正文",
  "hashtags": ["#标签1", "#标签2"], "cover_text": "≤15字封面词", "paper_title_zh": "论文中文标题"}
 ```
-`xhs/xhs_post.md`：第一行 `# {title}`，然后正文；可在顶部放 `![封面](cover.png)` 占位（封面在 Step 4 生成）。
+`xhs_post.md`：第一行 `# {title}`，然后正文；可在顶部放 `![封面](cover.png)` 占位（封面在 Step 4 生成）。
 
 写完用 `AskUserQuestion` 给用户看标题 + 正文摘要，确认或按反馈修改（可直接改 JSON/MD）。
 
@@ -136,7 +136,7 @@ conda run -n paper2anything --no-capture-output \
   python "${SKILL_DIR}/scripts/stage6_cover.py" --workdir "$WORKDIR"
 ```
 
-逻辑：优先复用 `understanding.important_figures` 里 `suitable_for_cover` 最高分的论文原图；没有合适原图且配了 `OPENAI_API_KEY` 时用 `OPENAI_IMAGE_MODEL`（默认 `gpt-image-1`）按 `cover_text` 生成竖版封面；都没有则 `skipped`（不阻断流程）。产出 `xhs/cover.png`。
+逻辑：优先复用 `understanding.important_figures` 里 `suitable_for_cover` 最高分的论文原图；没有合适原图且配了 `OPENAI_API_KEY` 时用 `OPENAI_IMAGE_MODEL`（默认 `gpt-image-1`）按 `cover_text` 生成竖版封面；都没有则 `skipped`（不阻断流程）。产出 `cover.png`。
 
 ---
 
@@ -149,24 +149,24 @@ conda run -n paper2anything --no-capture-output \
   python "${SKILL_DIR}/scripts/stage7_publish.py" --workdir "$WORKDIR"
 ```
 
-读 `xhs/xhs_post.json`（title/body/hashtags）+ `xhs/cover.png`，通过外部 `xiaohongshu-skills` 填到发布页，**用户在浏览器确认后**才点发布。需 `XHS_SKILLS_DIR` + Chrome 扩展；未配置就跳过这步，把产物路径告诉用户让其手动发。
+读 `xhs_post.json`（title/body/hashtags）+ `cover.png`，通过外部 `xiaohongshu-skills` 填到发布页，**用户在浏览器确认后**才点发布。需 `XHS_SKILLS_DIR` + Chrome 扩展；未配置就跳过这步，把产物路径告诉用户让其手动发。
 
 ---
 
 ## 产物位置
 
-全部落在论文旁 `<pdf目录>/.paper2anything/xhs/`：
+全部落在论文旁 `<pdf目录>/.paper2anything/xhs/`（成品与 parsed/ 等平级，无嵌套子目录）：
 
-| 子目录 | 内容 | 谁写 |
+| 路径 | 内容 | 谁写 |
 |---|---|---|
 | `parsed/` | MinerU PIR（meta/sections/figures_index/references） | stage2_parse |
 | `figures/` | 论文插图实体 | stage2_parse |
 | `understanding/paper_understanding.json` | 论文理解 + important_figures | **你** |
-| `xhs/xhs_post.json` `xhs_post.md` | 小红书文案 | **你** |
-| `xhs/cover.png` | 封面 | stage6_cover |
+| `xhs_post.json` `xhs_post.md` | 小红书文案 | **你** |
+| `cover.png` | 封面 | stage6_cover |
 | `logs/` | 各脚本 `*_result.json` | 脚本 |
 
-重跑覆盖同一目录（无 task_id）。要保留旧版本就先把 `xhs/` 改名备份。
+重跑覆盖同一目录（无 task_id）。要保留旧版本就先把工作区 `.paper2anything/xhs/` 改名备份。
 
 ---
 

@@ -37,7 +37,8 @@ def resolve_workspace(workdir: str | Path) -> dict[str, Path]:
     """解析协调式工作区（root = 论文旁 .paper2anything/xhs/），按需创建子目录。
 
     供机械脚本（parse/cover/publish）共用：每个脚本拿到同一个 --workdir 即对齐到
-    同一组产物目录，无需 task_id。
+    同一组产物目录，无需 task_id。成品（xhs_post.json/md、cover.png）落在工作区根，
+    与 parsed/ figures/ understanding/ 平级——不再套同名 xhs/ 子目录。
     """
     base = Path(workdir).expanduser().resolve()
     dirs = {
@@ -45,7 +46,7 @@ def resolve_workspace(workdir: str | Path) -> dict[str, Path]:
         "parsed": base / "parsed",            # MinerU 解析出的 PIR（脚本写）
         "figures": base / "figures",          # 论文插图实体（脚本写）
         "understanding": base / "understanding",  # paper_understanding.json（你写）
-        "xhs": base / "xhs",                  # xhs_post.json/md（你写）+ cover.png（脚本写）
+        "xhs": base,                          # 成品 xhs_post.json/md（你写）+ cover.png（脚本写）落工作区根，与 parsed/ 等平级
         "logs": base / "logs",                # 各步骤 *_result.json
     }
     for d in dirs.values():
