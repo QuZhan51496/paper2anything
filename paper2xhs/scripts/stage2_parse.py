@@ -357,11 +357,13 @@ def run(pdf_path: str, workdir: str) -> dict:
     references = []
 
     if mineru_out:
-        # 优先使用 content_list.json
+        # 选 v1 扁平 content_list 交给 _parse_content_list（按 v1 block schema 解析）。
+        # pattern 精确到 `_content_list.json` 结尾，排除 MinerU 同时产出的
+        # `_content_list_v2.json`（v2 是按页嵌套 list、schema 不同）；zip 内文件名前缀是
+        # job-id 而非 pdf_stem，故精确名通常不命中，靠 sorted glob 选定（取定、不依赖目录序）。
         content_list_path = mineru_out / f"{pdf_stem}_content_list.json"
         if not content_list_path.exists():
-            # 尝试其他命名
-            candidates = list(mineru_out.glob("*content_list*.json"))
+            candidates = sorted(mineru_out.glob("*_content_list.json"))
             content_list_path = candidates[0] if candidates else None
 
         if content_list_path and content_list_path.exists():

@@ -164,8 +164,11 @@ def extract_with_mineru(pdf_path: str, output_dir: str, token: str = None):
                     dest = os.path.join(figures_dir, basename)
                 with open(dest, "wb") as f:
                     f.write(zf.read(name))
-            elif lower.endswith(".json"):
-                # Save the structured JSON output too
+            elif lower.endswith("content_list_v2.json"):
+                # MinerU v2 content list：list[页][typed block]，block.content 为含
+                # title_content/paragraph_content/level 的 dict，存成 mineru_raw.json 供
+                # auto_outline.build_digest 消费（与 paper2slides 的 mineru_parser 同源、同读 v2）。
+                # 只认 v2——zip 内其它 .json（middle/model/layout/v1 content_list）对 poster digest 无用。
                 json_path = os.path.join(output_dir, "mineru_raw.json")
                 with open(json_path, "wb") as f:
                     f.write(zf.read(name))
