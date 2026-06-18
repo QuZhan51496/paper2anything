@@ -53,7 +53,7 @@ set -a; source <paper2anything 包根>/.env; set +a
 依赖自检：
 
 ```bash
-conda run -n paper2anything --no-capture-output python -c "import requests, rich, dotenv, PIL" 2>&1
+conda run -n paper2anything --no-capture-output python -c "import requests, rich, dotenv" 2>&1
 ```
 
 ---

@@ -152,8 +152,8 @@ def run(workdir: str) -> dict:
     suitable_for_cover 最高分且 image_path 存在的），否则用 OPENAI_IMAGE_MODEL 生成；
     无 OPENAI_API_KEY 则跳过（status=skipped）。
 
-    输入：understanding/paper_understanding.json、xhs/xhs_post.json
-    输出：xhs/cover.png
+    输入：understanding/paper_understanding.json、xhs_post.json
+    输出：cover.png
     """
     print_stage_header("生成封面")
 

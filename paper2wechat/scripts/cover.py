@@ -152,7 +152,7 @@ def run(workdir: str) -> dict:
     无 OPENAI_API_KEY 则跳过（status=skipped）。
 
     输入：understanding/paper_understanding.json
-    输出：wechat/cover.jpg
+    输出：cover.jpg
     """
     print_stage_header("生成封面（微信横版 900×383）")
 

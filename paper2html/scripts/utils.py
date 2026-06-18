@@ -9,9 +9,10 @@ paper2html 工具函数模块
   root/clean.md       normalize 后的 markdown（parse_pdf 写，你读）
   root/manifest.json  确定性抽取的事实（parse_pdf 写，闸门1）
   root/index.html     你亲手写的单页网站
+  root/validation.json + root/qa_report.md  QA 结果（validate 写，闸门2）
   root/parsed/        MinerU 原始解析（含 parsed/images/ 所有裁图）
   root/images/        页面引用的图（parse_pdf 从 parsed 复制；你以 images/<name> 引用）
-  root/logs/          *_result.json + validation.json + qa_report.md
+  root/logs/          *_result.json
 """
 
 import json
