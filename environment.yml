@@ -13,7 +13,7 @@
 #     libreoffice（pptx → pdf，视觉 QA 用）............................. paper2slides
 #     Node.js + pptxgenjs（PPT 渲染）+ react-icons/react/react-dom/sharp
 #       （icon 光栅，仅 icon 元素需要）................................. paper2slides
-#     playwright 浏览器内核（装好后跑一次 `playwright install chromium`） paper2poster / paper2xhs
+#     playwright 浏览器内核（装好后跑一次 `playwright install chromium`） paper2poster
 #     md2wechat（已在下方 pip 装；如需源码版见 paper2wechat/SKILL.md）.... paper2wechat
 name: paper2anything
 channels:

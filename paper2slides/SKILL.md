@@ -1,6 +1,7 @@
 ---
 name: paper2slides
 description: "Turn an academic paper PDF into a presentation deck (.pptx) end-to-end. Use this skill whenever the user wants to \"make slides from a paper\", \"generate a deck from this PDF\", \"把这篇论文做成 PPT\", \"生成幻灯片\", \"做一个 PPT\", or supplies a research paper PDF and asks for a .pptx out. Trigger even when the user only says \"deck this paper\" or \"summarize as slides\". This skill is the orchestrator for academic paper to deck flows; invoke it instead of going to `pptx` or `pdf` skills directly when the upstream is a research paper."
+allowed-tools: Bash, Read, Write, Glob, Grep, Agent, AskUserQuestion
 ---
 
 # paper2slides

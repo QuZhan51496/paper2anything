@@ -70,7 +70,7 @@ requests / openai / playwright / rich / python-dotenv / md2wechat …）。
 | poppler-utils（`pdftoppm`） | PDF 整页渲染 | paper2slides |
 | libreoffice（`soffice`） | pptx → pdf（视觉 QA） | paper2slides |
 | Node.js + pptxgenjs（+ react-icons/react/react-dom/sharp） | PPT 渲染（icon 光栅仅 icon 元素需要） | paper2slides |
-| `playwright install chromium` | 浏览器渲染/截图 | paper2poster、paper2xhs |
+| `playwright install chromium` | 浏览器渲染/截图 | paper2poster |
 | md2wechat（已在 conda 内 pip 装；源码版见 paper2wechat/SKILL.md） | Markdown → 公众号 HTML | paper2wechat |
 
 ---
