@@ -294,6 +294,14 @@ like your previous poster, that's a signal to rethink, not a shortcut to take.
        `margin:auto` / giant gaps, which just relocate the void. (A real run that
        *filled* the voids with real content read markedly cleaner than the same
        poster "fixed" with `space-between`, which only moved the whitespace around.)
+     - **No block overlap (manual — the geometry gate does NOT catch this).** A
+       `geom_check` PASS does *not* prove blocks don't overlap: a `flex:1` column
+       whose content exceeds its shrunk height *escapes downward* (overflow is
+       visible by default) and can paint over a following full-width band, yet the
+       box and the content both fit the canvas so overflow/fill/clip all pass. While
+       you measure the per-panel boxes, also confirm each column's content `bottom`
+       sits **above** the next full-width band's `top` — never trust the gate alone
+       for overlap.
      - **No distorted figures (aspect-ratio gate):** for every `<img>`, the
        rendered `width/height` must match `naturalWidth/naturalHeight` within
        ~0.02. A figure stretched to fill space (e.g. a forced `height:`) is an
