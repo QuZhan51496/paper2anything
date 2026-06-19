@@ -170,6 +170,13 @@ _MONTHS = {
     "jan", "feb", "mar", "apr", "jun", "jul", "aug", "sep", "sept", "oct", "nov", "dec",
 }
 
+# IEEE 会员等级等头衔，逗号切分后会落成独立 token、易被误当作者，显式排除。
+_NON_AUTHOR = {
+    "member", "senior member", "graduate student member", "student member",
+    "associate member", "fellow", "senior fellow", "life fellow", "life member",
+    "life senior member", "ieee", "ieee member", "ieee fellow", "acm",
+}
+
 
 def extract_authors(cl: list) -> list[str]:
     if not cl or not cl[0]:
@@ -225,7 +232,14 @@ def extract_authors(cl: list) -> list[str]:
             stripped = re.sub(r"[\s\-\.\']", "", cand)
             if not stripped.isalpha():
                 continue
-            if cand.lower() in _MONTHS:
+            if cand.lower() in _MONTHS or cand.lower() in _NON_AUTHOR:
+                continue
+            # 作者名各词应以大写字母或姓名缩写（"J."）开头；含小写起首词的多为摘要句子碎片
+            if not all(w[0].isupper() or re.fullmatch(r"[A-Z]\.?", w)
+                       for w in cand.split() if w):
+                continue
+            # 作者名至少含名 + 姓两段；单个大写词多为摘要句首词 / 缩写（"Recently"/"MAs"）
+            if len(cand.split()) < 2:
                 continue
             if cand in seen:
                 continue
@@ -263,10 +277,14 @@ def extract_abstract(cl: list) -> str:
 
 
 def _section_depth(title_text: str) -> int:
-    """根据数字前缀判断章节层级："3" → 1, "3.1" → 2, "3.1.1" → 3，无前缀 → 0。"""
-    m = re.match(r"^(\d+(?:\.\d+)*)", title_text.strip())
+    """章节层级："3"→1、"3.1"→2；罗马数字章节号（IEEE 风格 "II. System Model"）→1；
+    无编号→0。字母子节号（"A. ..."）不计为顶层、仍返回 0。"""
+    s = title_text.strip()
+    m = re.match(r"^(\d+(?:\.\d+)*)", s)
     if m:
         return m.group(1).count(".") + 1
+    if re.match(r"^[IVX]+[.)\s]", s):
+        return 1
     return 0
 
 
@@ -379,7 +397,7 @@ def iter_figures(cl: list, layout: dict) -> list[dict]:
             page_no = page_idx + 1
             bbox = _bbox_for(etype, page_idx)
 
-            m = re.search(r"Figure\s+(\d+)", cap_text, re.IGNORECASE)
+            m = re.search(r"Fig(?:ure)?\.?\s*(\d+)", cap_text, re.IGNORECASE)
             if m:
                 num = int(m.group(1))
                 fig = {

@@ -224,7 +224,8 @@ def _parse_content_list(content_list_path: Path) -> tuple:
             # 两者都是论文插图，一并收集，否则会漏掉收敛曲线等最值得展示的图。
             img_path = item.get("img_path", "")
             captions = item.get("img_caption") or item.get("chart_caption") or []
-            caption = captions[0] if captions else ""
+            # caption 是分片列表，真图注常不在首位（如 ['', 'Fig. 2: ...']）：拼接所有非空片。
+            caption = " ".join(c.strip() for c in captions if c and c.strip())
             if img_path:
                 figures.append({
                     "figure_id": f"fig_{len(figures) + 1}",

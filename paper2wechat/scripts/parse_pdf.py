@@ -229,7 +229,8 @@ def _parse_content_list(content_list_path: Path) -> tuple:
             img_path = item.get("img_path", "")
             cap_field = "chart_caption" if itype == "chart" else "img_caption"
             captions = item.get(cap_field, [])
-            caption = captions[0] if captions else ""
+            # caption 是分片列表，真图注常不在首位（如 ['', 'Fig. 2: ...']）：拼接所有非空片。
+            caption = " ".join(c.strip() for c in captions if c and c.strip())
             if img_path:
                 figures.append({
                     "figure_id": f"fig_{len(figures) + 1}",
@@ -241,7 +242,7 @@ def _parse_content_list(content_list_path: Path) -> tuple:
         elif itype == "table":
             img_path = item.get("img_path", "")
             captions = item.get("table_caption", [])
-            caption = captions[0] if captions else ""
+            caption = " ".join(c.strip() for c in captions if c and c.strip())
             html = item.get("table_body", "")
             if img_path:
                 tables.append({
