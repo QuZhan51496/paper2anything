@@ -28,6 +28,67 @@ from utils import (
 WECHAT_COVER_W = 900
 WECHAT_COVER_H = 383
 
+_CJK_FONT = "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc"
+
+
+def _fit_font(draw, text: str, max_w: int, max_h: int, start: int = 60, min_size: int = 26):
+    """逐字断行，递减字号直到 text 能塞进 max_w×max_h，返回 (font, lines, line_h)。"""
+    from PIL import ImageFont
+    size = start
+    lines = [text]
+    while size >= min_size:
+        font = ImageFont.truetype(_CJK_FONT, size)
+        lines, cur = [], ""
+        for ch in text:
+            if draw.textbbox((0, 0), cur + ch, font=font)[2] <= max_w or not cur:
+                cur += ch
+            else:
+                lines.append(cur)
+                cur = ch
+        if cur:
+            lines.append(cur)
+        line_h = int(size * 1.3)
+        if line_h * len(lines) <= max_h:
+            return font, lines, line_h
+        size -= 4
+    return ImageFont.truetype(_CJK_FONT, min_size), lines, int(min_size * 1.3)
+
+
+def _compose_wechat_cover(fig_path: Path, banner_text: str, out_path: Path,
+                          w: int = WECHAT_COVER_W, h: int = WECHAT_COVER_H) -> bool:
+    """合成微信横版封面（900×383）：左侧深色文字栏 + 右侧白卡等比内嵌原图（不裁剪）。失败返回 False。"""
+    try:
+        from PIL import Image, ImageDraw
+        if not os.path.exists(_CJK_FONT):
+            return False
+        bg, accent = (17, 49, 68), (240, 180, 65)
+        canvas = Image.new("RGB", (w, h), bg)
+        draw = ImageDraw.Draw(canvas)
+        draw.rectangle([0, 0, 9, h], fill=accent)  # 左缘装饰条
+        margin = 30
+        text = (banner_text or "").strip()
+        text_w = int(w * 0.42) if text else margin
+        if text:
+            font, lines, line_h = _fit_font(draw, text, text_w - margin - 18, h - 2 * margin)
+            ty = (h - line_h * len(lines)) / 2
+            for ln in lines:
+                draw.text((margin, ty), ln, font=font, fill=(255, 255, 255))
+                ty += line_h
+        card = [text_w + 6, margin, w - margin, h - margin]
+        draw.rounded_rectangle(card, radius=18, fill=(255, 255, 255))
+        pad = 16
+        area_w, area_h = card[2] - card[0] - 2 * pad, card[3] - card[1] - 2 * pad
+        fig = Image.open(fig_path).convert("RGB")
+        scale = min(area_w / fig.width, area_h / fig.height)
+        nw, nh = max(1, int(fig.width * scale)), max(1, int(fig.height * scale))
+        fig = fig.resize((nw, nh), Image.LANCZOS)
+        canvas.paste(fig, (card[0] + pad + (area_w - nw) // 2, card[1] + pad + (area_h - nh) // 2))
+        canvas.convert("RGB").save(out_path, "JPEG", quality=92)
+        return True
+    except Exception as e:
+        print_warning(f"封面合成失败（回退为裁剪原图）：{e}")
+        return False
+
 
 def _get_openai_client():
     try:
@@ -170,13 +231,22 @@ def run(workdir: str) -> dict:
     method_name = understanding.get("method_name", "")
     keywords = understanding.get("keywords", [])
 
+    # banner 标题：优先文章中文标题，否则方法简称，否则截断的论文标题
+    banner_text = method_name or paper_title[:24]
+    article_path = workspace["wechat"] / "wechat_article.json"
+    if article_path.exists():
+        banner_text = (load_json(article_path).get("title") or banner_text)
+
     # 优先使用论文原图（important_figures 里 suitable_for_cover 最高分）
     main_figure_path, _ = _select_cover_figure(understanding, figures_dir)
 
     if main_figure_path:
-        print_info(f"使用论文原图作为封面: {main_figure_path.name}（resize 到 {WECHAT_COVER_W}×{WECHAT_COVER_H}）")
-        _resize_to_wechat_cover(main_figure_path, cover_path)
-        cover_source = "paper_figure"
+        print_info(f"使用论文原图合成横版封面: {main_figure_path.name}（{WECHAT_COVER_W}×{WECHAT_COVER_H}）")
+        if _compose_wechat_cover(main_figure_path, banner_text, cover_path):
+            cover_source = "paper_figure_composed"
+        else:
+            _resize_to_wechat_cover(main_figure_path, cover_path)
+            cover_source = "paper_figure"
     else:
         print_info("未找到合适的论文原图，尝试 AI 生成封面...")
         if not os.environ.get("OPENAI_API_KEY"):

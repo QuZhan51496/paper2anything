@@ -22,6 +22,67 @@ from utils import (
     save_stage_result,
 )
 
+_CJK_FONT = "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc"
+
+
+def _fit_font(draw, text: str, max_w: int, max_h: int, start: int = 110, min_size: int = 48):
+    """逐字断行，递减字号直到 text 能塞进 max_w×max_h，返回 (font, lines, line_h)。"""
+    from PIL import ImageFont
+    size = start
+    lines = [text]
+    while size >= min_size:
+        font = ImageFont.truetype(_CJK_FONT, size)
+        lines, cur = [], ""
+        for ch in text:
+            if draw.textbbox((0, 0), cur + ch, font=font)[2] <= max_w or not cur:
+                cur += ch
+            else:
+                lines.append(cur)
+                cur = ch
+        if cur:
+            lines.append(cur)
+        line_h = int(size * 1.32)
+        if line_h * len(lines) <= max_h:
+            return font, lines, line_h
+        size -= 6
+    return ImageFont.truetype(_CJK_FONT, min_size), lines, int(min_size * 1.32)
+
+
+def _compose_xhs_cover(fig_path: Path, cover_text: str, out_path: Path, w: int = 1080, h: int = 1620) -> bool:
+    """合成小红书竖版封面（2:3）：深色底 + 顶部 cover_text 大字 + 白卡内嵌等比原图。失败返回 False。"""
+    try:
+        from PIL import Image, ImageDraw
+        if not os.path.exists(_CJK_FONT):
+            return False
+        bg, accent = (17, 49, 68), (240, 180, 65)
+        canvas = Image.new("RGB", (w, h), bg)
+        draw = ImageDraw.Draw(canvas)
+        margin = 70
+        text = (cover_text or "").strip()
+        title_h = int(h * 0.26) if text else margin
+        if text:
+            font, lines, line_h = _fit_font(draw, text, w - 2 * margin, title_h - 70)
+            ty = (title_h - line_h * len(lines)) / 2 + 8
+            for ln in lines:
+                lw = draw.textbbox((0, 0), ln, font=font)[2]
+                draw.text(((w - lw) / 2, ty), ln, font=font, fill=(255, 255, 255))
+                ty += line_h
+            draw.rectangle([margin, title_h - 30, margin + 100, title_h - 20], fill=accent)
+        card = [margin, title_h + 8, w - margin, h - margin]
+        draw.rounded_rectangle(card, radius=28, fill=(255, 255, 255))
+        pad = 32
+        area_w, area_h = card[2] - card[0] - 2 * pad, card[3] - card[1] - 2 * pad
+        fig = Image.open(fig_path).convert("RGB")
+        scale = min(area_w / fig.width, area_h / fig.height)
+        nw, nh = max(1, int(fig.width * scale)), max(1, int(fig.height * scale))
+        fig = fig.resize((nw, nh), Image.LANCZOS)
+        canvas.paste(fig, (card[0] + pad + (area_w - nw) // 2, card[1] + pad + (area_h - nh) // 2))
+        canvas.save(out_path, "PNG")
+        return True
+    except Exception as e:
+        print_warning(f"封面合成失败（回退为直接复制原图）：{e}")
+        return False
+
 
 def _get_openai_client():
     try:
@@ -182,9 +243,12 @@ def run(workdir: str) -> dict:
     main_figure_path, main_figure_desc = _select_main_figure(understanding, figures_dir)
 
     if main_figure_path:
-        print_info(f"找到合适的论文原图: {main_figure_path.name}，直接用作封面")
-        shutil.copy2(main_figure_path, cover_path)
-        cover_source = "paper_figure"
+        print_info(f"找到合适的论文原图: {main_figure_path.name}，合成竖版封面")
+        if _compose_xhs_cover(main_figure_path, cover_text, cover_path):
+            cover_source = "paper_figure_composed"
+        else:
+            shutil.copy2(main_figure_path, cover_path)
+            cover_source = "paper_figure"
     else:
         # ── 无合适原图，AI 生成 ──
         print_info("未找到合适的论文原图，尝试 AI 生成封面...")
