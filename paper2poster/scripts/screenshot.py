@@ -25,7 +25,8 @@ def screenshot_html(html_path: Path, png_path: Path, width: int, height: int) ->
             viewport={"width": width, "height": height},
             device_scale_factor=1,
         )
-        page.goto(html_path.resolve().as_uri())
+        page.goto(html_path.resolve().as_uri(), wait_until="networkidle")
+        page.wait_for_timeout(300)  # 让相对路径图 / 字体加载完再截，避免截到半成帧
         page.screenshot(path=str(png_path), full_page=False)
         browser.close()
 
