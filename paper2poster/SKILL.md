@@ -298,6 +298,12 @@ like your previous poster, that's a signal to rethink, not a shortcut to take.
        squashed a 1.64:1 chart to 1.02:1.) If flagged, restore proportional
        scaling — see the figure-CSS rule in step 3, and fill the freed space with
        content, not a stretched image.
+     - **No clipped panels (panel-clip gate):** the checker also flags a panel that
+       *hides* its own overflow — `overflow:hidden`/`auto` on a flex equal-height
+       column whose content is taller than the box silently cuts the bottom off, and
+       page-level `scrollHeight` won't catch it. If `clipped_panels` fires, don't
+       mask it with `overflow:hidden` — drop the hidden so the box can grow, or cut
+       the content until it genuinely fits.
 
      This check is **two-sided on purpose**: a single "did it overflow?" test has
      only a ceiling and silently passes an under-filled, shrunk-down poster. Do not

@@ -232,10 +232,14 @@ def run(workdir: str) -> dict:
     keywords = understanding.get("keywords", [])
 
     # banner 标题：优先文章中文标题，否则方法简称，否则截断的论文标题
+    # （文章 JSON 是可选的标题来源，损坏/缺失都不应阻断封面，故 try 兜底）
     banner_text = method_name or paper_title[:24]
     article_path = workspace["wechat"] / "wechat_article.json"
     if article_path.exists():
-        banner_text = (load_json(article_path).get("title") or banner_text)
+        try:
+            banner_text = (load_json(article_path).get("title") or banner_text)
+        except Exception:
+            pass
 
     # 优先使用论文原图（important_figures 里 suitable_for_cover 最高分）
     main_figure_path, _ = _select_cover_figure(understanding, figures_dir)
