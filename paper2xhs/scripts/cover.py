@@ -211,7 +211,8 @@ def run(workdir: str) -> dict:
         )
 
         if not success:
-            return {"status": "failed", "error": "封面图生成失败"}
+            # 封面是可选步骤，AI 生成失败（如 key 无效 / API 报错）不应阻断流程，降级为 skipped。
+            return {"status": "skipped", "reason": "AI 封面生成失败（封面可选，不阻断）"}
 
         cover_source = "generated"
 

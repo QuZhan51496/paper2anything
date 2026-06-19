@@ -249,7 +249,16 @@ like your previous poster, that's a signal to rethink, not a shortcut to take.
 
    - **(a) Deterministic geometry check — two-sided.** Overflow, clipping,
      unequal columns, *and underfill* are all measurable — measure them, don't
-     eyeball a downscaled PNG. Use Playwright to read the box model:
+     eyeball a downscaled PNG. **Run the shipped checker for the three
+     structure-agnostic gates** (no overflow; fill ratio ≥ 0.95 computed from the
+     true content frontier — real text/image extent, not a fixed-height container;
+     per-image aspect within 0.02). It exits non-zero on failure:
+     ```bash
+     conda run -n paper2anything --no-capture-output python ${SKILL_DIR}/scripts/geom_check.py \
+       "${RUN_DIR}/poster.html" 1920 1440
+     ```
+     It does **not** know your panel structure — still measure the per-panel
+     voids below yourself (Playwright box model) and read the PNG:
      - **No overflow:** `body.scrollHeight` must be `<=` the canvas height (else
        content spills off the bottom); each figure's `<img>` right/bottom must sit
        inside its panel; columns should end at roughly the same `y`.
