@@ -10,6 +10,9 @@
      不取某个容器盒——固定高度的 `.poster`/整页背景会把溢出或留白掩盖成"刚好填满"。
      （纵轴方向；溢出时该值会 >1，此时以 overflow 字段为准——verdict 已据溢出判 FAIL。）
   3. 无图变形：每张 <img> 的 rendered 宽高比与 natural 宽高比之差 ≤ 0.02。
+  4. 无裁剪：overflow 非 visible 的面板内容未被切掉（scrollHeight ≤ clientHeight）。
+     flex 等高列会把内容压短、再被 overflow:hidden 切掉，使溢出 / 填充率**假性通过**——
+     必须单独查每个面板的 scrollHeight，否则一个内容被裁的海报会被误判为 PASS。
 
 输出 JSON（verdict + 各项数值）；退出码 0=过、1=不过。
 
@@ -56,12 +59,31 @@ _JS = r"""
       ratioErr: ok ? +Math.abs(ren - nat).toFixed(3) : null,
     };
   });
+  // 裁剪检测：overflow 非 visible 的面板若 scrollHeight>clientHeight，内容已被切掉。
+  // getBoundingClientRect 测的是被裁 / 压缩后的盒子，会让溢出与填充率假性通过——单独查。
+  const clipped = [];
+  for (const el of document.querySelectorAll('*')) {
+    if (el === document.body || el === document.documentElement) continue;
+    const st = getComputedStyle(el);
+    const dv = (st.overflowY !== 'visible' && el.scrollHeight - el.clientHeight > 2)
+      ? el.scrollHeight - el.clientHeight : 0;
+    const dh = (st.overflowX !== 'visible' && el.scrollWidth - el.clientWidth > 2)
+      ? el.scrollWidth - el.clientWidth : 0;
+    if (dv || dh) {
+      clipped.push({
+        tag: el.tagName.toLowerCase(),
+        cls: (el.className && el.className.toString ? el.className.toString() : '').slice(0, 40),
+        clippedY: dv, clippedX: dh,
+        text: (el.textContent || '').trim().slice(0, 50),
+      });
+    }
+  }
   return {
     scrollH: Math.max(de.scrollHeight, Math.round(maxB)),
     scrollW: Math.max(de.scrollWidth, Math.round(maxR)),
     contentBottom: Math.round(maxB),
     contentRight: Math.round(maxR),
-    imgs,
+    imgs, clipped,
   };
 }
 """
@@ -85,9 +107,10 @@ def main() -> int:
     overflow_x = data["scrollW"] - W
     fill = round(data["contentBottom"] / H, 3) if H else 0.0
     distorted = [im for im in data["imgs"] if im["ratioErr"] is not None and im["ratioErr"] > 0.02]
+    clipped = data.get("clipped", [])
     overflow = overflow_y > 1 or overflow_x > 1
     underfill = fill < 0.95
-    ok = not overflow and not underfill and not distorted
+    ok = not overflow and not underfill and not distorted and not clipped
 
     out = {
         "verdict": "PASS" if ok else "FAIL",
@@ -96,6 +119,7 @@ def main() -> int:
         "fill_ratio": fill, "fill_fail": underfill,
         "n_images": len(data["imgs"]),
         "distorted_images": distorted,
+        "clipped_panels": clipped,
     }
     print(json.dumps(out, ensure_ascii=False, indent=2))
     return 0 if ok else 1

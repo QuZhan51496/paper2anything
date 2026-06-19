@@ -530,6 +530,19 @@ def _lead_abstract(markdown: str) -> str:
     return best if len(best.split()) >= 40 else ""
 
 
+# 库 / 工具官网（pydata 等）常出现在 "Tools and Libraries" 节，不是论文自己的资源链接。
+_TOOL_DOMAINS = (
+    "pydata.org", "matplotlib.org", "numpy.org", "scipy.org", "scikit-learn.org",
+    "pytorch.org", "tensorflow.org", "keras.io", "rdkit.org", "opencv.org",
+    "python.org", "readthedocs.io", "huggingface.co/docs",
+)
+# data 链接要有明确的数据集信号，而非任何含 "data" 子串的 URL（如 py*data*.org）。
+_DATA_SIGNALS = (
+    "dataset", "zenodo.org", "figshare", "kaggle.com",
+    "huggingface.co/datasets", "dryad", "osf.io", "/data/",
+)
+
+
 def _extract_links(markdown: str, source: Path, paper_url: str | None, code_url: str | None) -> Links:
     cleaned = normalize_markdown(markdown)
     urls = [url.rstrip(".,;") for url in URL_RE.findall(cleaned)]
@@ -549,9 +562,11 @@ def _extract_links(markdown: str, source: Path, paper_url: str | None, code_url:
 
     for url in urls:
         lower = url.lower()
+        if any(dom in lower for dom in _TOOL_DOMAINS):
+            continue  # 库 / 工具官网不是论文的资源链接
         if not links.project and any(word in lower for word in ["github.io", "project", "demo"]):
             links.project = url
-        if not links.data and any(word in lower for word in ["dataset", "data"]):
+        if not links.data and any(word in lower for word in _DATA_SIGNALS):
             links.data = url
         if not links.video and any(word in lower for word in ["youtube", "youtu.be", "video"]):
             links.video = url

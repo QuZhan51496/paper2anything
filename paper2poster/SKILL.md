@@ -193,14 +193,18 @@ like your previous poster, that's a signal to rethink, not a shortcut to take.
    sharp — never squeeze a wide figure into a narrow box; that is what makes
    figures look like thumbnails.
 
-3. **Write `poster.html` yourself** with the `Write` tool: a self-contained
-   HTML file (embed each original figure as a base64 `data:` URI so it opens
-   standalone). Design freely — pick the grid, the type scale, the color
-   blocking, where the claim sits, what dominates. Size the poster to
-   the intake (`poster_intake.size`, e.g. 20×15 in → 1920×1440 px at 96 dpi).
-   Use the outline you wrote in Step 4 as the content source. Sections you
-   planned as text get a worded treatment (a paragraph, a styled text box, or a
-   short list); sections with a figure embed it.
+3. **Write `poster.html` yourself** with the `Write` tool. **While iterating,
+   reference figures by relative path** (`src="parsed/figures/x.jpg"`) —
+   screenshot.py and geom_check.py resolve them via `file://`, and the file
+   stays small and editable. Only at the end run
+   `scripts/embed_figures.py poster.html` once to inline them as base64 `data:`
+   URIs for a self-contained, distributable poster (don't hand-paste base64 — it
+   bloats the file beyond what the render/edit loop can handle). Design freely —
+   pick the grid, the type scale, the color blocking, where the claim sits, what
+   dominates. Size the poster to the intake (`poster_intake.size`, e.g. 20×15 in
+   → 1920×1440 px at 96 dpi). Use the outline you wrote in Step 4 as the content
+   source. Sections you planned as text get a worded treatment (a paragraph, a
+   styled text box, or a short list); sections with a figure embed it.
 
    **Figure CSS — make the border hug the image, never frame empty space.** A
    recurring bug: setting `width:100%` + `max-height:X` + `object-fit:contain`
