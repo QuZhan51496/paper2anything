@@ -541,6 +541,10 @@ _DATA_SIGNALS = (
     "dataset", "zenodo.org", "figshare", "kaggle.com",
     "huggingface.co/datasets", "dryad", "osf.io", "/data/",
 )
+# code 链接要邻近"代码可得"信号才采纳 github URL，而非全文第一个 github——后者往往是
+# 被引工具仓库（lm-eval-harness、nanochat 等），不是本文自己的代码。\bcode\b 用词边界避开
+# encode/decode；不含 "code" 字样的纯引用条目（"A framework for…"）因此被正确跳过。
+_CODE_SIGNAL_RE = re.compile(r"\bcode\b|\bimplementation\b|\brepositor", re.IGNORECASE)
 
 
 def _extract_links(markdown: str, source: Path, paper_url: str | None, code_url: str | None) -> Links:
@@ -554,11 +558,16 @@ def _extract_links(markdown: str, source: Path, paper_url: str | None, code_url:
     # cited papers / external resources, so any pick links to the wrong thing. There is
     # no reliable canonical-link heuristic — supply it via --paper-url, else leave empty.
 
-    github = next((url for url in urls if "github.com" in url.lower()), "")
     if code_url:
         links.code = code_url
-    elif github:
-        links.code = github
+    else:
+        # 只采纳邻近出现"代码可得"信号的 github URL（与 data 链接需数据信号同理）。
+        # 全文第一个 github 往往是被引工具仓库，裸抓必错；找不到带信号的就留空交兜底。
+        for m in re.finditer(r"https?://[^\s)]*github\.com[^\s)]*", cleaned, re.IGNORECASE):
+            window = cleaned[max(0, m.start() - 90):m.end() + 20]
+            if _CODE_SIGNAL_RE.search(window):
+                links.code = m.group(0).rstrip(".,;")
+                break
 
     for url in urls:
         lower = url.lower()
