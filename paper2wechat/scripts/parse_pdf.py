@@ -222,6 +222,12 @@ def _parse_content_list(content_list_path: Path) -> tuple:
             elif not meta["authors"] and title_found and len(text) < 300:
                 meta["authors"] = [a.strip() for a in re.split(r"[,;，；\n]", text) if a.strip()]
 
+        elif itype == "equation":
+            # 行间公式块（text 是 LaTeX）：并入当前小节正文，否则公式密集论文会丢光所有式子、
+            # 留下 "define X as:" 这种断头句，下游读 sections 写理解时缺关键内容。
+            if current_section is not None and text:
+                current_lines.append(text)
+
         elif itype in ("image", "chart"):
             # vlm 模型把折线图/热力图等绘图块标 type=="chart"（图注在 chart_caption），
             # 把照片/示意图标 type=="image"（图注在 img_caption）。两者都是论文插图，
