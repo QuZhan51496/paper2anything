@@ -301,8 +301,14 @@ def validate_site(html: str, output_dir: Path, manifest: PaperManifest) -> QARes
     figures_referenced = sum(1 for f in manifest.figures if f.file and f.file.lower() in lower_html)
     if manifest.figures and not figures_referenced:
         warnings.append("None of the extracted figures are referenced in the page.")
-    tables_referenced = sum(1 for t in manifest.tables if t.image and t.image.lower() in lower_html)
-    if table_images and not tables_referenced:
+    def _table_referenced(t: TableBlock) -> bool:
+        if t.image and t.image.lower() in lower_html:
+            return True
+        # 原生渲染的表（html-authoring.md 推荐做法）不贴截图：图注出现在页面即算引用。
+        cap = (t.caption or "").strip().lower()
+        return bool(cap) and cap[:30] in lower_html
+    tables_referenced = sum(1 for t in manifest.tables if _table_referenced(t))
+    if manifest.tables and not tables_referenced:
         warnings.append("None of the extracted result tables are referenced in the page.")
 
     checks = {
@@ -451,6 +457,9 @@ def _extract_authors(author_block: str) -> list[str]:
     for raw in author_block.splitlines():
         line = raw.strip()
         if not line or line.startswith("#") or "provided proper attribution" in line.lower():
+            continue
+        # 含 4 位年份（19xx/20xx）的行是日期 / 投稿信息，不是作者——作者名不含年份。
+        if re.search(r"\b(19|20)\d{2}\b", line):
             continue
         line = re.sub(r"\S+@\S+", "", line)
         for marker in ["Google Brain", "Google Research", "University of Toronto", "OpenAI", "DeepMind", "Stanford", "MIT"]:
@@ -722,7 +731,7 @@ def _extract_claims(markdown: str, headings: list[tuple[int, int, str]]) -> list
         re.compile(r"\b\d+(?:\.\d+)?\s*%", re.IGNORECASE),
         re.compile(r"\b\d+(?:\.\d+)?\s*[x×]\b", re.IGNORECASE),
         re.compile(r"\b\d+(?:\.\d+)?\s*(?:hours?|days?|minutes?|seconds?|ms|GPUs?|TPUs?|FLOPs?|params?|parameters|points?|fps|tokens?/s)\b", re.IGNORECASE),
-        re.compile(r"\b\d+(?:\.\d+)?\s+[A-Z][A-Za-z][A-Za-z0-9\-]*\b"),  # number followed by a metric/proper noun (e.g. "28.4 BLEU", "92.1 F1")
+        re.compile(r"\b\d+(?:\.\d+)?\s+(?!(?:We|The|This|These|Our|In|As|For|To|It|Of|And|But|A|An)\b)[A-Z][A-Za-z][A-Za-z0-9\-]*\b"),  # number + metric/proper noun (e.g. "28.4 BLEU"); skip number + sentence word (e.g. "2026 We")
         re.compile(r"O\([^)]+\)", re.IGNORECASE),
     ]
 
@@ -743,8 +752,12 @@ def _extract_claims(markdown: str, headings: list[tuple[int, int, str]]) -> list
 
     if len(claims) < 3:
         abstract = _extract_section_text(markdown, "Abstract")
-        for item in re.findall(r"\b\d+(?:\.\d+)?\b", abstract):
-            _add_claim(claims, item, _limit_text(_clean_inline(abstract), 180), "Abstract")
+        for pattern in patterns:
+            for match in pattern.finditer(abstract):
+                _add_claim(claims, match.group(0),
+                           _limit_text(_clean_inline(abstract), 180), "Abstract")
+                if len(claims) >= 3:
+                    break
             if len(claims) >= 3:
                 break
     return claims[:5]
@@ -846,9 +859,10 @@ def _is_method_heading(title: str) -> bool:
 
 
 def _make_bibtex(title: str, authors: list[str], source: Path) -> str:
-    # Take the year only if the filename carries one, else leave it empty. Emit @misc
+    # Take the year only if the filename carries a standalone 4-digit year (an
+    # arxiv-style id like 2606.19789 does not), else leave it empty. Emit @misc
     # (no venue) rather than hardcoding a journal — the publication venue is unknown.
-    year_match = re.search(r"(19|20)\d{2}", source.stem)
+    year_match = re.search(r"\b(19|20)\d{2}\b", source.stem)
     year = year_match.group(0) if year_match else ""
     key_author = "paper"
     if authors:

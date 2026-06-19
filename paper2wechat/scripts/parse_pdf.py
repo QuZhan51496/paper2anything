@@ -195,7 +195,12 @@ def _parse_content_list(content_list_path: Path) -> tuple:
         itype = item.get("type", "")
         text = item.get("text", "").strip()
         page = item.get("page_idx", 0) + 1
-        is_heading = (itype == "title") or (itype == "text" and item.get("text_level") == 1)
+        # MinerU 的标题既可能是 type=="title"，也可能是 type=="text" 带 text_level。
+        # vlm 模型把论文大标题标 text_level==1、各级小节标 text_level==2（对应 md 的 # / ##）；
+        # 旧版则把小节也标 text_level==1。统一：任一带 text_level 或 type=="title" 的都算标题候选，
+        # 首个非空候选作论文标题，其余作小节标题，兼容两种 schema。
+        text_level = item.get("text_level")
+        is_heading = (itype == "title") or (itype == "text" and text_level in (1, 2))
 
         if is_heading:
             if not title_found and len(text) > 5:
@@ -217,9 +222,13 @@ def _parse_content_list(content_list_path: Path) -> tuple:
             elif not meta["authors"] and title_found and len(text) < 300:
                 meta["authors"] = [a.strip() for a in re.split(r"[,;，；\n]", text) if a.strip()]
 
-        elif itype == "image":
+        elif itype in ("image", "chart"):
+            # vlm 模型把折线图/热力图等绘图块标 type=="chart"（图注在 chart_caption），
+            # 把照片/示意图标 type=="image"（图注在 img_caption）。两者都是论文插图，
+            # 一并收进 figures，否则会漏掉速度曲线、收敛曲线等关键图表。
             img_path = item.get("img_path", "")
-            captions = item.get("img_caption", [])
+            cap_field = "chart_caption" if itype == "chart" else "img_caption"
+            captions = item.get(cap_field, [])
             caption = captions[0] if captions else ""
             if img_path:
                 figures.append({

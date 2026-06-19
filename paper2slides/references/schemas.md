@@ -366,7 +366,7 @@ MinerU 未能定位该表。Stage 3 在这种情况下走视觉估算 fallback�
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | `extract_backend` | `"mineru"` | Stage 1 解析后端（固定为 `"mineru"`）|
-| `mineru_task_id` | string \| null | MinerU 任务 ID（便于复跑诊断；写入 `run.log`）|
+| `mineru_task_id` | string \| null | MinerU 任务 ID（便于复跑诊断）|
 
 **`figures_index.json/captions[i]`**（mineru 后端时所有 caption 都带）：
 

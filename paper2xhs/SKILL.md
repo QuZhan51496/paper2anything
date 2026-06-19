@@ -78,7 +78,7 @@ conda run -n paper2anything --no-capture-output \
 
 这是创作的地基，**你自己做判断**，不要交给脚本：
 
-1. `Read` `parsed/sections.json`（全文）+ `parsed/paper_meta.json`；`Read` `parsed/figures_index.json` 看图注（caption 可能为空属 v1 解析局限、正常，别依赖它、以实际看图为准），并**实际 `Read` 几张候选图片**（`figures/` 下）判断哪些清晰、适合做封面或配图——图注说“framework”的图在小图里未必好看，只有你的眼睛能判断。
+1. `Read` `parsed/sections.json`（全文）+ `parsed/paper_meta.json`；`Read` `parsed/figures_index.json` 看图注（个别图 caption 可能为空，以实际看图为准），并**实际 `Read` 几张候选图片**（`figures/` 下）判断哪些清晰、适合做封面或配图——图注说“framework”的图在小图里未必好看，只有你的眼睛能判断。
 2. 用 `Write` 落 `understanding/paper_understanding.json`，schema：
    ```json
    {

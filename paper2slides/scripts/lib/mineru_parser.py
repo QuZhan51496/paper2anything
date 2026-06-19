@@ -162,6 +162,15 @@ def extract_title(cl: list) -> str:
     return ""
 
 
+# 月份名：日期行（如 "June 19, 2026"）按逗号切分、剥掉数字后会剩月份单词，
+# 易被误当作者；显式排除。
+_MONTHS = {
+    "january", "february", "march", "april", "may", "june", "july", "august",
+    "september", "october", "november", "december",
+    "jan", "feb", "mar", "apr", "jun", "jul", "aug", "sep", "sept", "oct", "nov", "dec",
+}
+
+
 def extract_authors(cl: list) -> list[str]:
     if not cl or not cl[0]:
         return []
@@ -215,6 +224,8 @@ def extract_authors(cl: list) -> list[str]:
             # 主要由字母与空格/连字符/句点组成
             stripped = re.sub(r"[\s\-\.\']", "", cand)
             if not stripped.isalpha():
+                continue
+            if cand.lower() in _MONTHS:
                 continue
             if cand in seen:
                 continue
@@ -273,7 +284,9 @@ def iter_sections(cl: list) -> list[dict]:
     for i, (_, elem) in enumerate(flat):
         if elem.get("type") != "title":
             continue
-        if elem.get("content", {}).get("level") != 1:
+        # vlm 把论文标题标 level 1、各级小节标题标 level 2；旧输出可能把小节也标 1。
+        # 1/2 都收作切分候选，论文标题靠下面 depth==0&kind==other 过滤掉。
+        if elem.get("content", {}).get("level") not in (1, 2):
             continue
         t = _join_text(elem["content"].get("title_content", []))
         if not t:
@@ -333,35 +346,38 @@ def iter_figures(cl: list, layout: dict) -> list[dict]:
     （前者疑似是渲染坐标 / 缩放坐标），用 page_size 归一化会把 figure 切到错的位置。
     table 路径已是这样做的，这里同步对齐。
     """
-    # 预聚合 layout 各页 type='image' 的 bbox。**不**排序——para_blocks 已是 reading order
-    # （左→右、上→下），与 content_list_v2 的 element 顺序一致；强行按 top 排会让
-    # "page 4 Scaled+Multi-Head 子图"这种同页多图的左右关系反过来配对。
-    by_page: dict[int, list[list]] = {}
+    # 预聚合 layout 各页的 image / chart 块 bbox：vlm 把折线图 / 热力图等绘图标成
+    # type=='chart'、照片 / 示意图标成 type=='image'，两者都是论文插图。**不**排序——
+    # para_blocks 已是 reading order（左→右、上→下），与 content_list_v2 的 element 顺序
+    # 一致；强行按 top 排会让同页多子图的左右关系反过来配对。按 kind 分池、配对时各取各的。
+    pools: dict[str, dict[int, list[list]]] = {"image": {}, "chart": {}}
     for page_idx, page_layout in enumerate(layout.get("pdf_info", [])):
         for blk in page_layout.get("para_blocks", []):
-            if blk.get("type") != "image":
-                continue
-            by_page.setdefault(page_idx, []).append(blk["bbox"])
+            bt = blk.get("type")
+            if bt in ("image", "chart"):
+                pools[bt].setdefault(page_idx, []).append(blk["bbox"])
 
-    consumed: dict[int, int] = {}
+    consumed: dict[tuple, int] = {}
     figures: list[dict] = []
-    staging: list[dict] = []  # 无编号 caption 的 image，等下一个有编号的合并
+    staging: list[dict] = []  # 无编号 caption 的图，等下一个有编号的合并
 
-    def _bbox_for_page(page_idx: int):
-        avail = by_page.get(page_idx, [])
-        i = consumed.get(page_idx, 0)
+    def _bbox_for(kind: str, page_idx: int):
+        avail = pools[kind].get(page_idx, [])
+        i = consumed.get((kind, page_idx), 0)
         if i >= len(avail):
             return None
-        consumed[page_idx] = i + 1
+        consumed[(kind, page_idx)] = i + 1
         return _norm_bbox_pts(avail[i], layout, page_idx)
 
     for page_idx, page_elems in enumerate(cl):
         for elem in page_elems:
-            if elem.get("type") != "image":
+            etype = elem.get("type")
+            if etype not in ("image", "chart"):
                 continue
-            cap_text = _join_text(elem["content"].get("image_caption", []))
+            cap_field = "image_caption" if etype == "image" else "chart_caption"
+            cap_text = _join_text(elem["content"].get(cap_field, []))
             page_no = page_idx + 1
-            bbox = _bbox_for_page(page_idx)
+            bbox = _bbox_for(etype, page_idx)
 
             m = re.search(r"Figure\s+(\d+)", cap_text, re.IGNORECASE)
             if m:
@@ -399,17 +415,24 @@ def iter_figures(cl: list, layout: dict) -> list[dict]:
             else:
                 staging.append({"page": page_no, "bbox": bbox, "caption": cap_text})
 
-    # 末尾仍有 staging：单独成 figure
-    for i, s in enumerate(staging, start=1):
+    # 末尾仍有 staging：单独成 figure。无图注且面积极小的丢弃——这类多为解析噪声
+    # （QED / 标记符号碎片、像素级残块），保留只会让 Stage 3 裁出空白。
+    idx = 0
+    for s in staging:
+        bb = s.get("bbox")
+        area = bb[2] * bb[3] if bb else 0.0
+        if not (s.get("caption") or "").strip() and area < 0.005:
+            continue
+        idx += 1
         fig = {
-            "id": f"figure_unnamed_{i}",
+            "id": f"figure_unnamed_{idx}",
             "kind": "figure",
             "num": None,
             "page": s["page"],
             "caption": s["caption"],
         }
-        if s.get("bbox"):
-            fig["bbox"] = s["bbox"]
+        if bb:
+            fig["bbox"] = bb
             fig["bbox_source"] = "mineru:vlm"
             fig["bbox_confidence"] = "medium"
         figures.append(fig)
