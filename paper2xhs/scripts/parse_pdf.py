@@ -296,13 +296,16 @@ def _parse_markdown(md_path: Path) -> tuple:
 
 
 def _copy_figures(mineru_out: Path, figures_dir: Path, figures_index: list) -> list:
-    """将图片复制到工作区 figures/ 目录，更新路径"""
+    """将图片复制到工作区 figures/ 目录，更新路径；跳过 <1.5KB 的噪声碎片图
+    （空白小方块 / 被拆碎的子面板）——真实插图均远大于此，不会误删。"""
     updated = []
     for fig in figures_index:
         src = Path(fig["image_path"])
         if not src.is_absolute():
             src = mineru_out / src
         if src.exists():
+            if src.stat().st_size < 1500:
+                continue  # 噪声碎片，不收进 figures_index
             dest = figures_dir / src.name
             shutil.copy2(src, dest)
             fig = dict(fig)

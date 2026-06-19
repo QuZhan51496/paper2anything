@@ -243,10 +243,12 @@ like your previous poster, that's a signal to rethink, not a shortcut to take.
    conda run -n paper2anything --no-capture-output python ${SKILL_DIR}/scripts/screenshot.py \
      "${RUN_DIR}/poster.html" \
      "${RUN_DIR}/poster.png" \
-     --width 1920 --height 1440
+     --width 2304 --height 1728
    ```
 
-   Set `--width/--height` to your intake size (20×15 in → 1920×1440 at 96 dpi).
+   The example uses the **default** intake size (48×36 in → 2304×1728 at 48 dpi).
+   Set `--width/--height` to *your* intake size (e.g. 20×15 in → 1920×1440 at 96 dpi)
+   — they must match the size you recorded in `poster_intake`, not the example.
    This tool only screenshots the HTML you wrote — it picks no template and makes
    no design decision. Then run all three checks (none is optional — they are how
    you know what to fix next):
@@ -259,8 +261,9 @@ like your previous poster, that's a signal to rethink, not a shortcut to take.
      per-image aspect within 0.02). It exits non-zero on failure:
      ```bash
      conda run -n paper2anything --no-capture-output python ${SKILL_DIR}/scripts/geom_check.py \
-       "${RUN_DIR}/poster.html" 1920 1440
+       "${RUN_DIR}/poster.html" 2304 1728
      ```
+     (pass the same width/height you rendered at — the example is the 48×36 default)
      It does **not** know your panel structure — still measure the per-panel
      voids below yourself (Playwright box model) and read the PNG:
      - **No overflow:** `body.scrollHeight` must be `<=` the canvas height (else
