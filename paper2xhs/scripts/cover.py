@@ -72,15 +72,20 @@ def _compose_xhs_cover(fig_path: Path, cover_text: str, out_path: Path, w: int =
                 draw.text(((w - lw) / 2, ty), ln, font=font, fill=(255, 255, 255))
                 ty += line_h
             draw.rectangle([margin, title_h - 30, margin + 100, title_h - 20], fill=accent)
-        card = [margin, title_h + 8, w - margin, h - margin]
-        draw.rounded_rectangle(card, radius=28, fill=(255, 255, 255))
+        # 白卡按图等比缩放后的尺寸"贴合"图（加 pad），水平居中、顶对齐贴标题下方——宽图不再浮在
+        # 过高白卡里留大片空白，余白统一落在底部、卡外是深色封面底，观感更整（仍等比内嵌、不裁不拉伸）。
         pad = 32
-        area_w, area_h = card[2] - card[0] - 2 * pad, card[3] - card[1] - 2 * pad
+        region = [margin, title_h + 8, w - margin, h - margin]
+        avail_w, avail_h = region[2] - region[0] - 2 * pad, region[3] - region[1] - 2 * pad
         fig = Image.open(fig_path).convert("RGB")
-        scale = min(area_w / fig.width, area_h / fig.height)
+        scale = min(avail_w / fig.width, avail_h / fig.height)
         nw, nh = max(1, int(fig.width * scale)), max(1, int(fig.height * scale))
         fig = fig.resize((nw, nh), Image.LANCZOS)
-        canvas.paste(fig, (card[0] + pad + (area_w - nw) // 2, card[1] + pad + (area_h - nh) // 2))
+        card_w, card_h = nw + 2 * pad, nh + 2 * pad
+        cx = region[0] + (region[2] - region[0] - card_w) // 2
+        cy = region[1]  # 顶对齐：图卡紧贴标题下方，余白统一落在底部（标题→图→留白的自然版式）
+        draw.rounded_rectangle([cx, cy, cx + card_w, cy + card_h], radius=28, fill=(255, 255, 255))
+        canvas.paste(fig, (cx + pad, cy + pad))
         canvas.save(out_path, "PNG")
         return True
     except Exception as e:
