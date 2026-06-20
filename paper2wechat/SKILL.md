@@ -29,7 +29,9 @@ PDF
    ```bash
    WORKDIR="$(dirname "$pdf_path")/.paper2anything/wechat"
    ```
-   `$pdf_path` 是用户给的论文 PDF（每块重设一次）。脚本在 `${SKILL_DIR}/scripts`。
+   `$pdf_path` 是用户给的论文 PDF（每块重设一次）。脚本在 `${SKILL_DIR}/scripts`——`SKILL_DIR`
+   是**本 skill 的目录**（见本 skill 顶部注入的 "Base directory for this skill: …"）；各 Bash 块独立 shell，
+   用到它的块开头按需 `export SKILL_DIR=<那个目录>` 一次（和 `WORKDIR` 一样每块现设）。
 3. **两个决策点用 `AskUserQuestion` 暂停**：① 读懂论文后确认“切入角度/深度/篇幅”；② 长文成稿后确认。
 4. **深度解读 = 读懂后用自己的话讲清楚**：可以加直觉解释、类比、背景、应用与局限，让有背景的读者快速吃透这篇论文——但**忠实于论文、不夸大、不编造数据**。
 

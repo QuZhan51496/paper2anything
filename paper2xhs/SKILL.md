@@ -28,7 +28,9 @@ PDF
    ```bash
    WORKDIR="$(dirname "$pdf_path")/.paper2anything/xhs"
    ```
-   其中 `$pdf_path` 是用户给的论文 PDF 路径（每个块都重新设一次）。脚本仍在 `${SKILL_DIR}/scripts`。
+   其中 `$pdf_path` 是用户给的论文 PDF 路径（每个块都重新设一次）。脚本在 `${SKILL_DIR}/scripts`——`SKILL_DIR`
+   是**本 skill 的目录**（见本 skill 顶部注入的 "Base directory for this skill: …"）；各 Bash 块独立 shell，
+   用到它的块开头按需 `export SKILL_DIR=<那个目录>` 一次（和 `WORKDIR` 一样每块现设）。
 3. **在两个决策点用 `AskUserQuestion` 暂停**：① 读懂论文后确认“选题角度”；② 文案成稿后确认。用户想改，可直接改产物 JSON/MD 或告诉你改。
 4. **小红书是“准确、不夸大的科普”**：忠实反映论文贡献，口语化、有钩子，但**绝不编造数据或夸大结论**。
 
