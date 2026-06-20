@@ -49,9 +49,12 @@ _JS = r"""
   // MathJax v3 把解析失败渲成 <mjx-merror>；未加载/失败则正文留有原始定界符。
   const merrors = document.querySelectorAll('mjx-merror, .mjx-merror').length;
   const bodyText = document.body ? document.body.innerText : '';
-  // 残留未渲染的 TeX：`\(…\)` / `\[…\]` 正文几乎不会有、可直接判；`$…$` 易和货币（"$5 到 $10"）
-  // 撞车，故只在定界符内含数学信号（反斜杠命令 / ^ / _ / {）时才算，避免误伤金额。
-  const rawTex = /\\\([^)]{1,}\\\)|\\\[[^\]]{1,}\\\]|\$[^$\n]*[\\^_{][^$\n]*\$/.test(bodyText);
+  // 残留未渲染的 TeX：`\(…\)` / `\[…\]` 与块级 `$$…$$` 正文几乎不会有、可直接判——尤其裸 `$$`：
+  // 货币只用单 `$`、绝不连用，故正文一旦出现 `$$` 即 MathJax 没吃掉该块级公式（如公式内含裸 `<`
+  // 被浏览器当 HTML 标签、把 `$$` 与正文割裂致 MathJax 跳过）。单 `$…$` 易和货币（"$5 到 $10"）撞车，
+  // 故只在定界符内含数学信号（反斜杠命令 / ^ / _ / {）时才算，避免误伤金额。
+  const rawTex = /\\\([^)]{1,}\\\)|\\\[[^\]]{1,}\\\]|\$[^$\n]*[\\^_{][^$\n]*\$/.test(bodyText)
+                 || bodyText.includes('$$');
   return {
     imgs,
     scrollW: de.scrollWidth, clientW: de.clientWidth,
