@@ -186,8 +186,8 @@ like your previous poster, that's a signal to rethink, not a shortcut to take.
    targets that visual language (strong title band, a dominant hero element, a
    one-sentence claim, color-blocked sections, generous whitespace, big type).
    Those examples are **wide (~2:1)**; at a squarer size like the 48×36 default
-   (≈4:3) a *full-width* hero figure eats too much vertical budget and overflows —
-   keep the hero **column-scoped** (or pick a 2:1 size) so the vertical fits.
+   (≈4:3) a *full-width* hero band or figure eats too much vertical budget and
+   overflows — keep the hero **column-scoped** (or pick a 2:1 size) so the vertical fits.
 
 2. **Check any figures' real shape.** For each section you decided gets an
    original figure, get its pixel size

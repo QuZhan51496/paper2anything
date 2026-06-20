@@ -279,9 +279,14 @@ def validate_site(html: str, output_dir: Path, manifest: PaperManifest) -> QARes
     source_text = ""
     source_compact = ""
     clean_md = output_dir / "clean.md"
-    if clean_md.exists():
-        source_text = clean_md.read_text(encoding="utf-8", errors="ignore").replace("\\", "")
-        # MinerU 会在 URL 里插空格/换行（PDF 折行残留，如 "gith ub.com"），令真链接对不上源文被误判
+    # normalize 会把脚注 URL 从 clean.md 剥掉（ACM/IEEE 论文常把代码/项目链接放脚注），令真链接对不上
+    # clean.md 被误判臆造——并入 MinerU 原始解析 content_list（保留脚注原文）一起作追溯源。
+    srcs = [clean_md, *sorted((output_dir / "parsed").glob("*content_list*.json"))]
+    source_text = "\n".join(
+        s.read_text(encoding="utf-8", errors="ignore") for s in srcs if s.exists()
+    ).replace("\\", "")
+    if source_text:
+        # MinerU 还会在 URL 里插空格/换行（PDF 折行残留，如 "gith ub.com"），令真链接对不上源文被误判
         # 臆造——再比一版**去掉所有空白**的源文（URL 本不含空白，去空白不会放过真臆造链接）。
         source_compact = re.sub(r"\s+", "", source_text)
     manifest_urls = {u.rstrip("/") for u in asdict(manifest.links).values() if u}
