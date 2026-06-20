@@ -295,6 +295,11 @@ def validate_site(html: str, output_dir: Path, manifest: PaperManifest) -> QARes
             continue
         if u in manifest_urls or u in source_text or (u and u in source_compact):
             continue
+        # 兜底：MinerU 有时把 URL 的 scheme+host 卷进行内公式（如 github → `\mathrm{g}\mathrm{i}`+thub），
+        # 整串对不上，但较长的 path 尾段往往原样保留——用它（≥15 字、足够独特）再追溯一次。
+        tail = re.sub(r"\s+", "", re.sub(r"^https?://[^/]+/?", "", u))
+        if len(tail) >= 15 and tail in source_compact:
+            continue
         untraceable.append(u)
     if untraceable:
         warnings.append("Link(s) not traceable to the paper source (possible fabrication; verify or remove): "
