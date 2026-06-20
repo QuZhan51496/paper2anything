@@ -47,15 +47,23 @@ _JS = r"""
     maxB = Math.max(maxB, r.bottom + window.scrollY);
     maxR = Math.max(maxR, r.right + window.scrollX);
   }
+  // 形变量的是图片**内容盒**（getBoundingClientRect 减 border/padding，取小数精度），不是
+  // border-box——非方形图加 CSS 边框时 border-box 宽高比会偏离真实图片比（边框在窄边占比更大），
+  // 让 height:auto 的好图被误判形变 FAIL。减边框 + 用小数（避免 clientHeight 整数取整对极扁图的
+  // 误差），等比图恒过、真形变（强行设死宽高）仍抓。
+  const px = (v) => parseFloat(v) || 0;
   const imgs = [...document.querySelectorAll('img')].map((im) => {
     const r = im.getBoundingClientRect();
-    const ok = im.naturalHeight && r.height;
+    const st = getComputedStyle(im);
+    const cw = r.width  - px(st.borderLeftWidth) - px(st.borderRightWidth) - px(st.paddingLeft) - px(st.paddingRight);
+    const ch = r.height - px(st.borderTopWidth)  - px(st.borderBottomWidth) - px(st.paddingTop) - px(st.paddingBottom);
+    const ok = im.naturalHeight && ch > 0;
     const nat = ok ? im.naturalWidth / im.naturalHeight : null;
-    const ren = ok ? r.width / r.height : null;
+    const ren = ok ? cw / ch : null;
     return {
       alt: (im.alt || '').slice(0, 40),
       natW: im.naturalWidth, natH: im.naturalHeight,
-      renW: Math.round(r.width), renH: Math.round(r.height),
+      renW: Math.round(cw), renH: Math.round(ch),
       ratioErr: ok ? +Math.abs(ren - nat).toFixed(3) : null,
     };
   });

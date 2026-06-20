@@ -8,6 +8,7 @@ cover — 封面生成（可选）
 
 import base64
 import os
+import re
 import shutil
 from pathlib import Path
 
@@ -32,19 +33,22 @@ _CJK_FONT = "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc"
 
 
 def _fit_font(draw, text: str, max_w: int, max_h: int, start: int = 60, min_size: int = 26):
-    """逐字断行，递减字号直到 text 能塞进 max_w×max_h，返回 (font, lines, line_h)。"""
+    """断行（拉丁/数字串不拆），递减字号直到 text 能塞进 max_w×max_h，返回 (font, lines, line_h)。"""
     from PIL import ImageFont
     size = start
     lines = [text]
+    # 断行单元：连续拉丁字母/数字算一个不可断单元（"NeurIPS 2025" 不被拆成 "202"+"5"），
+    # 其余按单字符——纯中文标题与逐字断行一致。
+    units = re.findall(r"[A-Za-z0-9]+|.", text)
     while size >= min_size:
         font = ImageFont.truetype(_CJK_FONT, size)
         lines, cur = [], ""
-        for ch in text:
-            if draw.textbbox((0, 0), cur + ch, font=font)[2] <= max_w or not cur:
-                cur += ch
+        for unit in units:
+            if draw.textbbox((0, 0), cur + unit, font=font)[2] <= max_w or not cur:
+                cur += unit
             else:
                 lines.append(cur)
-                cur = ch
+                cur = "" if unit.isspace() else unit
         if cur:
             lines.append(cur)
         line_h = int(size * 1.3)

@@ -547,9 +547,15 @@ _DATA_SIGNALS = (
 _CODE_SIGNAL_RE = re.compile(r"\bcode\b|\bimplementation\b|\brepositor", re.IGNORECASE)
 
 
+def _clean_url(url: str) -> str:
+    # 去 markdown 转义反斜杠 + 尾随标点：MinerU 把 URL 里的 _ 等转义成 \_，而反斜杠在 URL 中非法，
+    # 留着会让带下划线的仓库链接（repo 名常含 _）404。反斜杠从不是合法 URL 字符，整串删安全。
+    return url.replace("\\", "").rstrip(".,;")
+
+
 def _extract_links(markdown: str, source: Path, paper_url: str | None, code_url: str | None) -> Links:
     cleaned = normalize_markdown(markdown)
-    urls = [url.rstrip(".,;") for url in URL_RE.findall(cleaned)]
+    urls = [_clean_url(url) for url in URL_RE.findall(cleaned)]
     links = Links()
 
     if paper_url:
@@ -566,7 +572,7 @@ def _extract_links(markdown: str, source: Path, paper_url: str | None, code_url:
         for m in re.finditer(r"https?://[^\s)]*github\.com[^\s)]*", cleaned, re.IGNORECASE):
             window = cleaned[max(0, m.start() - 90):m.end() + 20]
             if _CODE_SIGNAL_RE.search(window):
-                links.code = m.group(0).rstrip(".,;")
+                links.code = _clean_url(m.group(0))
                 break
 
     for url in urls:
