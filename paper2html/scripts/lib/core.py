@@ -277,9 +277,13 @@ def validate_site(html: str, output_dir: Path, manifest: PaperManifest) -> QARes
     # 页面你亲手写，LLM 可能臆造看似合理的 repo/项目主页 URL（论文从未给）——会 404 或误导。
     # CDN/字体等基础设施与引用域(arxiv/doi)放行；其余对不上源文的记 warning 让你核实或删除。
     source_text = ""
+    source_compact = ""
     clean_md = output_dir / "clean.md"
     if clean_md.exists():
         source_text = clean_md.read_text(encoding="utf-8", errors="ignore").replace("\\", "")
+        # MinerU 会在 URL 里插空格/换行（PDF 折行残留，如 "gith ub.com"），令真链接对不上源文被误判
+        # 臆造——再比一版**去掉所有空白**的源文（URL 本不含空白，去空白不会放过真臆造链接）。
+        source_compact = re.sub(r"\s+", "", source_text)
     manifest_urls = {u.rstrip("/") for u in asdict(manifest.links).values() if u}
     _LINK_OK = ("cdn.jsdelivr.net", "cdnjs.cloudflare.com", "polyfill.io", "unpkg.com",
                 "fonts.googleapis.com", "fonts.gstatic.com", "ajax.googleapis.com",
@@ -289,7 +293,7 @@ def validate_site(html: str, output_dir: Path, manifest: PaperManifest) -> QARes
         u = _clean_url(raw).rstrip("/")
         if any(dom in u for dom in _LINK_OK):
             continue
-        if u in manifest_urls or u in source_text:
+        if u in manifest_urls or u in source_text or (u and u in source_compact):
             continue
         untraceable.append(u)
     if untraceable:
