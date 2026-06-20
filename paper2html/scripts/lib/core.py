@@ -273,6 +273,29 @@ def validate_site(html: str, output_dir: Path, manifest: PaperManifest) -> QARes
     if hash_links:
         errors.append(f"Found {len(hash_links)} empty href=\"#\" links.")
 
+    # 防伪造链接：页面里可点的 <a href="http..."> 须能追溯到论文源文（clean.md）或 manifest 链接。
+    # 页面你亲手写，LLM 可能臆造看似合理的 repo/项目主页 URL（论文从未给）——会 404 或误导。
+    # CDN/字体等基础设施与引用域(arxiv/doi)放行；其余对不上源文的记 warning 让你核实或删除。
+    source_text = ""
+    clean_md = output_dir / "clean.md"
+    if clean_md.exists():
+        source_text = clean_md.read_text(encoding="utf-8", errors="ignore").replace("\\", "")
+    manifest_urls = {u.rstrip("/") for u in asdict(manifest.links).values() if u}
+    _LINK_OK = ("cdn.jsdelivr.net", "cdnjs.cloudflare.com", "polyfill.io", "unpkg.com",
+                "fonts.googleapis.com", "fonts.gstatic.com", "ajax.googleapis.com",
+                "arxiv.org", "doi.org", "w3.org", "schema.org")
+    untraceable = []
+    for raw in dict.fromkeys(re.findall(r'<a\b[^>]*\bhref="(https?://[^"]+)"', html, re.IGNORECASE)):
+        u = _clean_url(raw).rstrip("/")
+        if any(dom in u for dom in _LINK_OK):
+            continue
+        if u in manifest_urls or u in source_text:
+            continue
+        untraceable.append(u)
+    if untraceable:
+        warnings.append("Link(s) not traceable to the paper source (possible fabrication; verify or remove): "
+                        + ", ".join(untraceable[:5]))
+
     if not manifest.links.paper:
         warnings.append("No paper link was detected.")
     if not manifest.links.code:
