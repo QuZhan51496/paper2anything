@@ -11,10 +11,12 @@
      强行设死宽高的真形变仍抓）。html-authoring.md "渲染后自检" 一条说的正是这项，本脚本把它工具化。
   2. 图破损：naturalWidth==0（src 路径错/文件缺），渲染出来是裂图。
   3. 横向溢出：documentElement.scrollWidth 明显超视口宽 → 有元素把页面撑横，移动端横向滚动。
-  4. MathJax 渲染失败：留有 <mjx-merror>（公式没解析成功）或正文残留未渲染的 `$…$`/`\\(…\\)`。
-  5. 图上采样（软警告）：rendered 宽 > natural 宽 ×1.5 → 小图被放大显糊（html-authoring.md "勿上采样"）。
+  4. 内容裁切：overflow-x:hidden/clip 的盒子里正常流子元素超出右缘 → 内容被裁且滚不到（移动端宽表/
+     宽块塞进窄容器最常见）。页级 scrollWidth 查不到（裁切被 hidden 吞在盒内）；故单列。
+  5. MathJax 渲染失败：留有 <mjx-merror>（公式没解析成功）或正文残留未渲染的 `$…$`/`\\(…\\)`/`$$…$$`。
+  6. 图上采样（软警告）：rendered 宽 > natural 宽 ×1.5 → 小图被放大显糊（html-authoring.md "勿上采样"）。
 
-输出 JSON（verdict + 各项数值）；退出码 0=过、1=不过。1–4 为硬指标，5 仅警告不判 FAIL。
+输出 JSON（verdict + 各项数值）；退出码 0=过、1=不过。1–5 为硬指标，6 仅警告不判 FAIL。
 本脚本只查"渲染层硬伤"，版式/美观/设计语言仍由你看 _preview 截图自己判断。
 """
 import json
@@ -55,11 +57,36 @@ _JS = r"""
   // 故只在定界符内含数学信号（反斜杠命令 / ^ / _ / {）时才算，避免误伤金额。
   const rawTex = /\\\([^)]{1,}\\\)|\\\[[^\]]{1,}\\\]|\$[^$\n]*[\\^_{][^$\n]*\$/.test(bodyText)
                  || bodyText.includes('$$');
+  // 元素级横向裁切：overflow-x:hidden/clip 的盒子里，正常流子元素右缘超出盒子 = 内容被裁且**滚不到**
+  // （移动端把宽表/宽块塞进窄容器最常见）。页级 scrollWidth 查不到——裁切被 hidden 吞在盒内、不撑大页面。
+  // 只查显式 hidden/clip（auto/scroll 能滚到、不算缺陷）；只看正常流子元素（跳过 position:absolute/fixed
+  // 的装饰件，且 ::after 辉光等伪元素本就不在 children 里），故纯装饰性溢出不会误报。
+  const clipped = [];
+  for (const el of document.querySelectorAll('*')) {
+    const st = getComputedStyle(el);
+    if (st.overflowX !== 'hidden' && st.overflowX !== 'clip') continue;
+    if (el.scrollWidth - el.clientWidth <= 4) continue;
+    const right = el.getBoundingClientRect().right;
+    for (const ch of el.children) {
+      const cs = getComputedStyle(ch);
+      if (cs.position === 'absolute' || cs.position === 'fixed') continue;
+      if (cs.display === 'none' || cs.visibility === 'hidden') continue;
+      if (ch.getBoundingClientRect().right - right > 4) {
+        clipped.push({
+          tag: el.tagName.toLowerCase(),
+          cls: (el.className && el.className.toString ? el.className.toString() : '').slice(0, 40),
+          child: ch.tagName.toLowerCase(),
+          clipped_px: el.scrollWidth - el.clientWidth,
+        });
+        break;
+      }
+    }
+  }
   return {
     imgs,
     scrollW: de.scrollWidth, clientW: de.clientWidth,
     innerW: window.innerWidth,
-    merrors, rawTex,
+    merrors, rawTex, clipped,
   };
 }
 """
@@ -87,8 +114,9 @@ def main() -> int:
     h_overflow = data["scrollW"] - data["innerW"]
     h_overflow_fail = h_overflow > 2
     mathjax_fail = data["merrors"] > 0 or data["rawTex"]
+    clipped = data.get("clipped", [])
 
-    ok = not distorted and not broken and not h_overflow_fail and not mathjax_fail
+    ok = not distorted and not broken and not h_overflow_fail and not mathjax_fail and not clipped
     out = {
         "verdict": "PASS" if ok else "FAIL",
         "viewport_width": vw,
@@ -97,6 +125,7 @@ def main() -> int:
         "broken_images": broken,
         "h_overflow_px": h_overflow, "h_overflow_fail": h_overflow_fail,
         "mathjax": {"merrors": data["merrors"], "raw_tex_left": data["rawTex"], "fail": mathjax_fail},
+        "clipped_content": clipped,
         "upscaled_images_warn": upscaled,
     }
     print(json.dumps(out, ensure_ascii=False, indent=2))

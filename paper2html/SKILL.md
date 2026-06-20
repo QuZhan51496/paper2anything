@@ -127,13 +127,17 @@ conda run -n paper2anything --no-capture-output \
 再跑一遍渲染自检（把 html-authoring.md "渲染后自检" 那条工具化）：
 
 ```bash
+# 桌面宽 + 移动宽都要过——移动端最容易暴露横向溢出 / 宽表被裁 / 长公式溢出
 conda run -n paper2anything --no-capture-output \
-  python "${SKILL_DIR}/scripts/render_check.py" "$WORKDIR/index.html"
+  python "${SKILL_DIR}/scripts/render_check.py" "$WORKDIR/index.html" 1200
+conda run -n paper2anything --no-capture-output \
+  python "${SKILL_DIR}/scripts/render_check.py" "$WORKDIR/index.html" 390
 ```
 
 退出码 0=过、1=不过；输出 JSON 列出 `distorted_images`（rendered 与 natural 宽高比差 >0.02）、
-`broken_images`、`h_overflow_px`、`mathjax.fail`（含残留未渲染 `$…$`）、`upscaled_images_warn`。
-**硬指标全清零**（上采样是软警告，自己判），不过就改 `index.html` 重跑。
+`broken_images`、`h_overflow_px`、`clipped_content`（overflow:hidden 里被裁且滚不到的宽表/块）、
+`mathjax.fail`（含残留未渲染 `$…$`/`$$…$$`）、`upscaled_images_warn`。
+**两个宽度的硬指标都要清零**（上采样是软警告，自己判），不过就改 `index.html` 重跑。
 
 ---
 
