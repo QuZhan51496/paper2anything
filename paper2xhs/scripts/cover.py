@@ -34,15 +34,23 @@ def _fit_font(draw, text: str, max_w: int, max_h: int, start: int = 110, min_siz
     # 断行单元：连续拉丁字母/数字算一个不可断单元（"NeurIPS 2025" 不被拆成 "202"+"5"），
     # 其余按单字符——纯中文标题与逐字断行一致。
     units = re.findall(r"[A-Za-z0-9]+|.", text)
+    # kinsoku 禁则：闭引号/括号/收尾标点不另起一行（否则 '…甜点"' 的闭引号会孤落行首/末行），触发断行时
+    # 若该字符是收尾标点就挂在行尾、宁可轻微超宽。直双引号 " 兼作开/闭，按出现奇偶判定（第偶数个为闭）。
+    no_start = "”’）)】》」』〉］｝》>，。、；;：:？?！!…·"
     while size >= min_size:
         font = ImageFont.truetype(_CJK_FONT, size)
-        lines, cur = [], ""
+        lines, cur, dq = [], "", 0
         for unit in units:
+            closing = unit in no_start or (unit == '"' and dq % 2 == 1)
             if draw.textbbox((0, 0), cur + unit, font=font)[2] <= max_w or not cur:
                 cur += unit
+            elif closing and cur:
+                cur += unit  # 收尾标点/闭引号挂行尾，不另起一行（kinsoku）
             else:
                 lines.append(cur)
                 cur = "" if unit.isspace() else unit
+            if unit == '"':
+                dq += 1
         if cur:
             lines.append(cur)
         line_h = int(size * 1.32)

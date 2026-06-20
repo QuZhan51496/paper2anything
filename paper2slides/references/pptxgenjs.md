@@ -141,7 +141,8 @@ slide.addImage({
 Install: `npm install -g react-icons react react-dom sharp`
 
 Popular icon sets in react-icons:
-- `react-icons/fa` - Font Awesome
+- `react-icons/fa` - Font Awesome **5**（`lib:"fa"`，**默认**；下方学术名表都属这里）
+- `react-icons/fa6` - Font Awesome **6**（`lib:"fa6"`）—— 不少现代名只在 fa6（如 `FaArrowTrendUp`、`FaArrowsRotate`、`FaSliders`、`FaTriangleExclamation`、`FaScaleBalanced`、`FaCircleQuestion`），且几个经典名在 5/6 间改了名（`FaCheckCircle`↔`FaCircleCheck`、`FaProjectDiagram`↔`FaDiagramProject`、`FaBalanceScale`↔`FaScaleBalanced`）。某名在默认 `fa` 解析不到时，多半是 fa6-only：给该 icon 元素加 `lib:"fa6"` 或换成对应改名重试。
 - `react-icons/md` - Material Design
 - `react-icons/hi` - Heroicons
 - `react-icons/bi` - Bootstrap Icons
