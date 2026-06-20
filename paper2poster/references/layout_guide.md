@@ -50,7 +50,7 @@ Academic posters must balance **information density** with **visual clarity**. K
 
 ## Figure Placement Rules
 
-- Maximum 1 figure per section (avoid clutter)
+- No fixed figure quota — use as many or as few figures as the content needs; a section can be text-only. Just avoid clutter (don't pad with weak figures).
 - Key figure (method/architecture) should get the most space
 - Result figures/tables go in the right column
 - Figure-to-text ratio within a section: ~40:60 or 50:50

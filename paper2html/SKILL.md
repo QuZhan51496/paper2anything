@@ -123,6 +123,18 @@ conda run -n paper2anything --no-capture-output \
 - **warning 按需修**（标题/图/表未出现在页面、claims<3、空 alt 等）。
 修法见 `references/qa-checklist.md`。修完 `index.html` 后**重跑 validate**，循环至 error 清零、warning 可接受。
 
+`validate.py` 只查静态文本，**查不到渲染层视觉问题**（图变形/破损、横向溢出、MathJax 没渲出来）。
+再跑一遍渲染自检（把 html-authoring.md "渲染后自检" 那条工具化）：
+
+```bash
+conda run -n paper2anything --no-capture-output \
+  python "${SKILL_DIR}/scripts/render_check.py" "$WORKDIR/index.html"
+```
+
+退出码 0=过、1=不过；输出 JSON 列出 `distorted_images`（rendered 与 natural 宽高比差 >0.02）、
+`broken_images`、`h_overflow_px`、`mathjax.fail`（含残留未渲染 `$…$`）、`upscaled_images_warn`。
+**硬指标全清零**（上采样是软警告，自己判），不过就改 `index.html` 重跑。
+
 ---
 
 ## 产物位置

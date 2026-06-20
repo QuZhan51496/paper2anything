@@ -119,7 +119,7 @@ conda run -n paper2anything --no-capture-output \
   5. 意义、应用与局限：能用在哪、有什么不足
   6. 结尾：一句话总结 + 延伸思考
 - 用 H2（`## 小节标题`）分节；关键技术术语首次出现给中英文、可 `**加粗**`。
-- **配图**：在合适位置插 `![图注](figures/<图片名>.png)`（md 与 figures/ 同在工作区根 `.paper2anything/wechat/` 下，故用 `figures/...`；图片名取自 `figures_index.json` 的 `image_path` 文件名）。
+- **配图**：在合适位置插 `![图注](figures/<图片名>)`（md 与 figures/ 同在工作区根 `.paper2anything/wechat/` 下，故用 `figures/...`；`<图片名>` 直接取自 `figures_index.json` 的 `image_path` 文件名、**含其真实扩展名**（MinerU 多为 `.jpg`），勿臆改后缀）。
 - **忠实准确**：实验数字照实引用，不夸大、不编造；可有解读和洞察，但区分“论文说的”与“你的点评”。
 
 产物 —— `wechat_article.md`：第一行 `# {标题}`，然后正文（含配图）。
