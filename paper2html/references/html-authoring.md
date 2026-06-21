@@ -16,7 +16,8 @@ method_components/bibtex）。**不要编造**数字、作者、机构或论文�
 - 每张 `<img>` 都要有**非空 `alt`**（用图注）。不要留 `href="#"` 空锚点。
 - CSS/JS 尽量内联或用 CDN（如 MathJax），保证单文件打开即用。用 MathJax 写公式（`$…$` / `$$…$$`）时，
   定界符内的 `<` `>` 须写成 `\lt` `\gt`——裸 `<` 紧跟字母会被浏览器当 HTML 起始标签、割裂公式致 MathJax
-  跳过（页面残留字面 `$$…$$`，render_check 判 FAIL）。
+  跳过（页面残留字面 `$$…$$`，render_check 判 FAIL）。长 display 公式（`$$…$$`）窄视口不换行、会把页面撑横
+  （render_check 390 判 FAIL）——给它套 `overflow-x:auto` 容器，让公式在自身内横滚、别撑宽页面（同宽表）。
 
 ## 项目主页版式建议
 
