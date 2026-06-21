@@ -42,3 +42,4 @@ method_components/bibtex）。**不要编造**数字、作者、机构或论文�
 
 - `manifest.tables[]` 多为**图片表**（`image` 有值、`html` 为空）——直接 `<img src="images/...">` 展示。
 - 若某表有 `html`（管道表重建），可在页面内渲成与全站同风格的原生 HTML 表；否则用截图。
+- 原生宽表（多列对比表）须放进**可横滚容器**（`overflow-x:auto` + 给表设 `min-width` 保列宽），别用 `overflow:hidden`——窄视口下右侧列会被裁掉且滚不到。
