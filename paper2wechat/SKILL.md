@@ -17,7 +17,7 @@ PDF
  → 解析            (parse_pdf.py：MinerU → parsed/ + figures/，含表格)
  → 你读懂论文       (读 parsed/ + 看 figures/) → understanding/paper_understanding.json   [确认切入角度]
  → 你写深度解读长文  (结构自由、配图、忠实准确) → wechat_article.md + .json          [确认]
- → 封面            (cover.py：横版 900×383，优先复用论文原图)
+ → 封面            (cover.py：默认 API 生图 gpt-image-2 横版 900×383；无 key/key 不可用回退本地合成复用原图)
  → md2wechat 排版   (publish.py：→ 公众号 HTML / 草稿)
  → 公众号推文
 ```
@@ -49,7 +49,7 @@ set -a; source <paper2anything 包根>/.env; set +a
 
 本 skill 用到的 key（**理解与撰文由你亲自做，不调用任何 LLM API**）：
 - `MINERU_API_TOKEN` — 解析 PDF（必填）
-- `OPENAI_API_KEY`(+ `OPENAI_BASE_URL`) — 仅封面 AI 生成；无则自动跳过封面
+- `OPENAI_API_KEY`(+ `OPENAI_BASE_URL`) — 封面默认走它生图（gpt-image-2）；无 key 或 key 不可用时回退本地合成（复用论文原图）
 - `MD2WECHAT_CMD` / `MD2WECHAT_THEME` — md2wechat 排版（不在 PATH 时填 CMD；主题默认 `default`）
 
 依赖自检（缺啥按提示装；依赖统一在 `environment.yml`）：
@@ -93,6 +93,7 @@ conda run -n paper2anything --no-capture-output \
      "experiment_results": ["关键数据（含具体数字）", "..."],
      "limitations": "论文承认的局限或潜在不足",
      "keywords": ["关键词", "..."],
+     "cover_palette": {"bg": "#F4F5F7", "accent": "#2E86AB"},
      "important_figures": [
        {"figure_id": "fig_1", "image_path": "<figures_index.json 里的真实路径>",
         "suitable_for_cover": true, "importance_score": 0.9,
@@ -100,7 +101,8 @@ conda run -n paper2anything --no-capture-output \
      ]
    }
    ```
-   - `important_figures` 必须含 `image_path`（取自 `figures_index.json`，真实存在）、`suitable_for_cover`、`importance_score`——**封面脚本（Step 4）靠它选横版原图**；漏了就只能 AI 生成。
+   - `important_figures` 必须含 `image_path`（取自 `figures_index.json`，真实存在）、`suitable_for_cover`、`importance_score`——封面默认走 API 生图（gpt-image-2），仅当 `OPENAI_API_KEY` 未配/不可用时回退本地合成、靠它选横版原图；漏了则回退时无图 → 封面 `skipped`。
+   - `cover_palette`（可选）：本地合成回退路径的配色，按论文领域选 `bg`(浅色打底) + `accent`(强调色)，标题字色随底色深浅自动适配。参考浅色调：通用 `#F4F5F7`+`#2E86AB`、生物 `#EEF6F0`+`#2D8A5F`、物理数学 `#F1ECF8`+`#6A30C2`、工程 `#FBF0EC`+`#D85A3C`、社科 `#F4EEF2`+`#8A5A78`、化学 `#EAF4F8`+`#0E86C0`。
 3. 用 `AskUserQuestion` 与用户确认**切入角度 / 深度 / 目标篇幅**（如：偏方法细节还是偏直觉科普、约 1500 还是 2500 字）。
 
 ---
@@ -134,14 +136,17 @@ conda run -n paper2anything --no-capture-output \
 
 ## Step 4：生成封面（脚本，可选）
 
+**封面主标题此刻由你现拟**（你已读透论文，比从 JSON 里捡更贴切），经 `--title` 传入：
+
 ```bash
 pdf_path="/path/to/paper.pdf"
 WORKDIR="$(dirname "$pdf_path")/.paper2anything/wechat"
 conda run -n paper2anything --no-capture-output \
-  python "${SKILL_DIR}/scripts/cover.py" --workdir "$WORKDIR"
+  python "${SKILL_DIR}/scripts/cover.py" --workdir "$WORKDIR" \
+  --title "你拟的封面主标题"
 ```
 
-横版 900×383 JPG：优先把 `understanding.important_figures` 里 `suitable_for_cover` 最高分的论文原图裁成封面；否则（配了 `OPENAI_API_KEY` 时）AI 生成横版图再裁剪；都没有则 `skipped`。产出 `cover.jpg`。
+横版 900×383 JPG：**默认用 `OPENAI_IMAGE_MODEL`（默认 `gpt-image-2`）AI 生成横版图再裁剪**，主标题用你传入的 `--title`（留空才回退文章标题/`method_name`）；未配 `OPENAI_API_KEY` 或 key 不可用时回退本地合成——把 `understanding.important_figures` 里 `suitable_for_cover` 最高分的论文原图裁成封面（叠加 `--title`，配色取 `cover_palette`）；两者都不可用则 `skipped`。产出 `cover.jpg`。
 
 ---
 
@@ -200,6 +205,6 @@ cp -r "$WORKDIR/figures" "$DEST/"     # 正文以 figures/<name> 相对引用配
 ## 排错
 
 - **MinerU 解析失败**：核对 `MINERU_API_TOKEN`；PDF ≤200MB / ≤200 页；能访问 `mineru.net`。重跑 Step 1（覆盖）。
-- **封面没生成**：没配 `OPENAI_API_KEY` 会自动跳过（正常）；想复用原图，确保 `understanding.important_figures` 有 `suitable_for_cover:true` 且 `image_path` 存在的**横版**图。
+- **封面没生成（`skipped`）**：通常是既没配可用 `OPENAI_API_KEY`、又没有可复用的论文原图。配上 key 走 AI 生图，或确保 `understanding.important_figures` 有 `suitable_for_cover:true` 且 `image_path` 存在的**横版**图以供本地合成回退。
 - **md2wechat 不可用**：Step 5 自动降级为输出 Markdown 供手动粘贴；要排版就装 md2wechat 或在 `.env` 配 `MD2WECHAT_CMD`。
 - **理解/撰文不需要 API key**：这两步是你亲自做的，不调用任何 LLM API。

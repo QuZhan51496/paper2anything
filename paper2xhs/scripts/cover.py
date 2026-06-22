@@ -60,13 +60,35 @@ def _fit_font(draw, text: str, max_w: int, max_h: int, start: int = 110, min_siz
     return ImageFont.truetype(_CJK_FONT, min_size), lines, int(min_size * 1.32)
 
 
-def _compose_xhs_cover(fig_path: Path, cover_text: str, out_path: Path, w: int = 1080, h: int = 1440) -> bool:
+def _hex2rgb(s: str, default: tuple) -> tuple:
+    try:
+        s = (s or "").lstrip("#")
+        return tuple(int(s[i:i + 2], 16) for i in (0, 2, 4))
+    except Exception:
+        return default
+
+
+def _cover_colors(understanding: dict) -> tuple:
+    """本地合成封面的底色/强调色：用 understanding.cover_palette 里选定的配色（bg + accent）；
+    缺省回退通用浅色调（浅灰底 + 蓝色强调）。"""
+    pal = (understanding or {}).get("cover_palette") or {}
+    return _hex2rgb(pal.get("bg"), (244, 245, 247)), _hex2rgb(pal.get("accent"), (46, 134, 171))
+
+
+def _title_color(bg: tuple) -> tuple:
+    """标题字色随底色深浅自适应：深底用白字、浅底用近黑字，保证对比度。"""
+    return (255, 255, 255) if (0.299 * bg[0] + 0.587 * bg[1] + 0.114 * bg[2]) < 140 else (26, 26, 40)
+
+
+def _compose_xhs_cover(fig_path: Path, cover_text: str, out_path: Path,
+                       understanding: dict = None, w: int = 1080, h: int = 1440) -> bool:
     """合成小红书竖版封面（3:4）：深色底 + 顶部 cover_text 大字 + 白卡内嵌等比原图。失败返回 False。"""
     try:
         from PIL import Image, ImageDraw
         if not os.path.exists(_CJK_FONT):
             return False
-        bg, accent = (17, 49, 68), (240, 180, 65)
+        bg, accent = _cover_colors(understanding)
+        txt = _title_color(bg)
         canvas = Image.new("RGB", (w, h), bg)
         draw = ImageDraw.Draw(canvas)
         margin = 70
@@ -77,7 +99,7 @@ def _compose_xhs_cover(fig_path: Path, cover_text: str, out_path: Path, w: int =
             ty = (title_h - line_h * len(lines)) / 2 + 8
             for ln in lines:
                 lw = draw.textbbox((0, 0), ln, font=font)[2]
-                draw.text(((w - lw) / 2, ty), ln, font=font, fill=(255, 255, 255))
+                draw.text(((w - lw) / 2, ty), ln, font=font, fill=txt)
                 ty += line_h
             draw.rectangle([margin, title_h - 30, margin + 100, title_h - 20], fill=accent)
         # 白卡按图等比缩放后的尺寸"贴合"图（加 pad），水平居中、顶对齐贴标题下方——宽图不再浮在
@@ -92,7 +114,7 @@ def _compose_xhs_cover(fig_path: Path, cover_text: str, out_path: Path, w: int =
         card_w, card_h = nw + 2 * pad, nh + 2 * pad
         cx = region[0] + (region[2] - region[0] - card_w) // 2
         cy = region[1]  # 顶对齐：图卡紧贴标题下方，余白统一落在底部（标题→图→留白的自然版式）
-        draw.rounded_rectangle([cx, cy, cx + card_w, cy + card_h], radius=28, fill=(255, 255, 255))
+        draw.rounded_rectangle([cx, cy, cx + card_w, cy + card_h], radius=28, fill=(255, 255, 255), outline=(226, 228, 232), width=2)
         canvas.paste(fig, (cx + pad, cy + pad))
         canvas.save(out_path, "PNG")
         return True
@@ -126,32 +148,42 @@ def _clip_title(title: str, limit: int = 90) -> str:
     return t[:limit].rsplit(" ", 1)[0].rstrip(" ,.;:-") + "…"
 
 
-def _build_image_prompt(
-    paper_title: str,
-    cover_text: str,
-    method_name: str,
-    keywords: list,
-    main_figure_desc: str = "",
-) -> str:
-    """构建封面图生成 Prompt"""
-    kw_str = "、".join(keywords[:4]) if keywords else "AI 研究"
-    fig_hint = f"参考图片风格：{main_figure_desc}。" if main_figure_desc else ""
-
-    return f"""设计一张小红书封面图，风格要求：
-- 整体风格：科技感、简洁、现代、学术
-- 背景：深色渐变（深蓝或深紫色调）或白色简洁背景
-- 主要文字（大字）："{cover_text}"
-- 副标题文字（小字）："{_clip_title(paper_title)}"
-- 装饰元素：与 AI/机器学习相关的抽象图形（神经网络节点、数据流、几何图形）
-- 关键词标签：{kw_str}
-- 图片比例：3:4（竖版，适合小红书）
-- 文字要清晰可读，颜色对比度高
-- 整体要有视觉冲击力，吸引 AI 研究者点击
-{fig_hint}
-不要包含任何真实人物照片。"""
+def _paper_brief(understanding: dict) -> str:
+    """把论文理解拼成「核心内容」简介，供模型理解论文、构思贴切主视觉（不必逐条画进图里）。"""
+    g = understanding.get
+    findings = g("highlights", []) or g("contributions", []) or []  # xhs 用 highlights，wechat 用 contributions
+    results = g("experiment_results", []) or []
+    rows = [
+        ("标题", g("paper_title", "")),
+        ("核心方法 / 主题", g("method_name", "")),
+        ("一句话概括", g("one_sentence_summary", "")),
+        ("解决的问题", g("problem", "")),
+        ("方法做法", g("method", "")),
+        ("主要发现", "；".join(str(h) for h in findings[:4])),
+        ("关键结果", "；".join(str(r) for r in results[:4])),
+        ("关键词", "、".join((g("keywords", []) or [])[:6])),
+    ]
+    return "\n".join(f"- {k}：{v}" for k, v in rows if v)
 
 
-def _select_main_figure(understanding: dict, figures_dir: Path) -> tuple:
+def _build_image_prompt(understanding: dict, title: str, subtitle: str) -> str:
+    """构建封面图生成 Prompt：给足论文核心内容供模型理解，约束简洁、禁止编造数据图表。
+    title / subtitle 由你在封面步骤拟定后传入（此时你已读透论文）。"""
+    sub_line = f'\n- 画面含副标题小字："{subtitle}"' if subtitle else ""
+    return f"""为下面这篇学术论文设计一张小红书风格的竖版封面图。
+
+【论文核心内容（供你理解论文、构思贴切的主视觉；不必把这些文字都画进图里）】
+{_paper_brief(understanding)}
+
+【设计要求】
+- 尽量简洁：聚焦一个能表达论文主旨的核心视觉或隐喻，不要做成密密麻麻的信息图。
+- 画面含主标题大字："{title}"{sub_line}
+- 除上述主、副标题外尽量不要再添加其他文字。
+- 严禁编造：不要画任何具体数据、图表、折线/柱状图、坐标轴、表格、baseline 对比或伪造界面；标题本身的数字除外，需要图形时只用抽象示意。
+- 不要出现任何真实人物照片。"""
+
+
+def _select_main_figure(understanding: dict) -> tuple:
     """选择最适合封面的图片"""
     important_figures = understanding.get("important_figures", [])
 
@@ -177,17 +209,9 @@ def _select_main_figure(understanding: dict, figures_dir: Path) -> tuple:
     return None, ""
 
 
-def generate_cover(
-    client,
-    paper_title: str,
-    cover_text: str,
-    method_name: str,
-    keywords: list,
-    main_figure_desc: str,
-    output_path: Path,
-) -> bool:
+def generate_cover(client, understanding: dict, title: str, subtitle: str, output_path: Path) -> bool:
     """调用 GPT Image API 生成封面图"""
-    prompt = _build_image_prompt(paper_title, cover_text, method_name, keywords, main_figure_desc)
+    prompt = _build_image_prompt(understanding, title, subtitle)
     print_info(f"封面 Prompt: {prompt[:200]}...")
 
     try:
@@ -237,13 +261,13 @@ def _validate_image(image_path: Path) -> bool:
         return image_path.stat().st_size > 10240
 
 
-def run(workdir: str) -> dict:
+def run(workdir: str, cover_title: str = "", cover_subtitle: str = "") -> dict:
     """
-    生成小红书封面（可选）：优先复用论文原图（understanding.important_figures 里
-    suitable_for_cover 最高分且 image_path 存在的），否则用 OPENAI_IMAGE_MODEL 生成；
-    无 OPENAI_API_KEY 则跳过（status=skipped）。
+    生成小红书封面（可选）：默认用 OPENAI_IMAGE_MODEL 生图；无 OPENAI_API_KEY 或 key 不可用时
+    回退本地合成（复用论文原图）；两者都不可用则 status=skipped。
+    cover_title / cover_subtitle 由你在封面步骤拟定后经 CLI 传入（留空才回退 JSON 字段）。
 
-    输入：understanding/paper_understanding.json、xhs_post.json
+    输入：understanding/paper_understanding.json（xhs_post.json 可选，仅作 cover_text 回退）
     输出：cover.png
     """
     print_stage_header("生成封面")
@@ -252,63 +276,49 @@ def run(workdir: str) -> dict:
     understanding_path = workspace["understanding"] / "paper_understanding.json"
     post_path = workspace["xhs"] / "xhs_post.json"
     cover_path = workspace["xhs"] / "cover.png"
-    figures_dir = workspace["figures"]
 
-    # 检查输入文件
-    for p in [understanding_path, post_path]:
-        if not p.exists():
-            print_error(f"输入文件不存在: {p}")
-            return {"status": "failed", "error": f"{p.name} 不存在"}
+    if not understanding_path.exists():
+        print_error(f"输入文件不存在: {understanding_path}")
+        return {"status": "failed", "error": f"{understanding_path.name} 不存在"}
 
-    # 加载数据
     understanding = load_json(understanding_path)
-    post = load_json(post_path)
 
-    paper_title = understanding.get("paper_title", "")
-    cover_text = post.get("cover_text", understanding.get("one_sentence_summary", "")[:15])
-    method_name = understanding.get("method_name", "")
-    keywords = understanding.get("keywords", [])
+    # 主/副标题优先用你传入的，留空才回退 JSON 字段
+    # （xhs_post.json 是可选的标题来源，缺失/损坏都不应阻断封面，故 try 兜底）
+    if not cover_title and post_path.exists():
+        try:
+            cover_title = load_json(post_path).get("cover_text") or ""
+        except Exception:
+            pass
+    cover_title = cover_title or understanding.get("one_sentence_summary", "")[:15]
+    cover_subtitle = cover_subtitle or _clip_title(understanding.get("paper_title", ""))
 
-    # ── 优先使用论文原图 ──
-    main_figure_path, main_figure_desc = _select_main_figure(understanding, figures_dir)
+    cover_source = None
+    # ── 默认：API 生图（gpt-image-2）──
+    if os.environ.get("OPENAI_API_KEY"):
+        try:
+            client = _get_openai_client()
+            print_info(f"封面主标题: {cover_title}")
+            if generate_cover(client, understanding, cover_title, cover_subtitle, cover_path):
+                cover_source = "ai_generated"
+        except (ImportError, ValueError) as e:
+            print_warning(f"API 客户端不可用：{e}")
+        if not cover_source:
+            print_warning("API 生图未成功（key 未提供则不会到这；多为 key 不可用或报错），回退本地合成")
+    else:
+        print_info("未配置 OPENAI_API_KEY，使用本地合成（复用论文原图）")
 
-    if main_figure_path:
-        print_info(f"找到合适的论文原图: {main_figure_path.name}，合成竖版封面")
-        if _compose_xhs_cover(main_figure_path, cover_text, cover_path):
+    # ── 回退：本地合成，复用论文原图 ──
+    if not cover_source:
+        main_figure_path, _ = _select_main_figure(understanding)
+        if not main_figure_path:
+            return {"status": "skipped", "reason": "API 不可用且无可复用论文原图"}
+        print_info(f"本地合成竖版封面，复用论文原图: {main_figure_path.name}")
+        if _compose_xhs_cover(main_figure_path, cover_title, cover_path, understanding):
             cover_source = "paper_figure_composed"
         else:
             shutil.copy2(main_figure_path, cover_path)
             cover_source = "paper_figure"
-    else:
-        # ── 无合适原图，AI 生成 ──
-        print_info("未找到合适的论文原图，尝试 AI 生成封面...")
-
-        if not os.environ.get("OPENAI_API_KEY"):
-            print_warning("未设置 OPENAI_API_KEY，跳过封面生成")
-            return {"status": "skipped", "reason": "无合适论文图片且未设置 OPENAI_API_KEY"}
-
-        try:
-            client = _get_openai_client()
-        except (ImportError, ValueError) as e:
-            print_warning(f"封面生成跳过: {e}")
-            return {"status": "skipped", "reason": str(e)}
-
-        print_info(f"封面文字: {cover_text}")
-        success = generate_cover(
-            client,
-            paper_title=paper_title,
-            cover_text=cover_text,
-            method_name=method_name,
-            keywords=keywords,
-            main_figure_desc=main_figure_desc,
-            output_path=cover_path,
-        )
-
-        if not success:
-            # 封面是可选步骤，AI 生成失败（如 key 无效 / API 报错）不应阻断流程，降级为 skipped。
-            return {"status": "skipped", "reason": "AI 封面生成失败（封面可选，不阻断）"}
-
-        cover_source = "generated"
 
     # 验证
     if not _validate_image(cover_path):
@@ -322,7 +332,7 @@ def run(workdir: str) -> dict:
         "status": "success",
         "cover_path": str(cover_path),
         "cover_source": cover_source,
-        "cover_text": cover_text,
+        "cover_text": cover_title,
         "file_size_kb": round(file_size_kb, 1),
     }
     save_stage_result(result, "cover", workspace)
@@ -338,7 +348,9 @@ if __name__ == "__main__":
         "--workdir", required=True,
         help="工作区目录，约定 <pdf目录>/.paper2anything/xhs",
     )
+    parser.add_argument("--title", default="", help="封面主标题大字（你在此步拟定；留空回退 xhs_post.cover_text）")
+    parser.add_argument("--subtitle", default="", help="封面副标题小字（你拟定；留空回退论文标题精简）")
     args = parser.parse_args()
-    res = run(args.workdir)
+    res = run(args.workdir, args.title, args.subtitle)
     # skipped（无 key / 无合适图）不算失败
     sys.exit(0 if res.get("status") in ("success", "skipped") else 1)

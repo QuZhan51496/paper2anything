@@ -66,14 +66,36 @@ def _fit_font(draw, text: str, max_w: int, max_h: int, start: int = 60, min_size
     return ImageFont.truetype(_CJK_FONT, min_size), lines, int(min_size * 1.3)
 
 
+def _hex2rgb(s: str, default: tuple) -> tuple:
+    try:
+        s = (s or "").lstrip("#")
+        return tuple(int(s[i:i + 2], 16) for i in (0, 2, 4))
+    except Exception:
+        return default
+
+
+def _cover_colors(understanding: dict) -> tuple:
+    """本地合成封面的底色/强调色：用 understanding.cover_palette 里选定的配色（bg + accent）；
+    缺省回退通用浅色调（浅灰底 + 蓝色强调）。"""
+    pal = (understanding or {}).get("cover_palette") or {}
+    return _hex2rgb(pal.get("bg"), (244, 245, 247)), _hex2rgb(pal.get("accent"), (46, 134, 171))
+
+
+def _title_color(bg: tuple) -> tuple:
+    """标题字色随底色深浅自适应：深底用白字、浅底用近黑字，保证对比度。"""
+    return (255, 255, 255) if (0.299 * bg[0] + 0.587 * bg[1] + 0.114 * bg[2]) < 140 else (26, 26, 40)
+
+
 def _compose_wechat_cover(fig_path: Path, banner_text: str, out_path: Path,
+                          understanding: dict = None,
                           w: int = WECHAT_COVER_W, h: int = WECHAT_COVER_H) -> bool:
     """合成微信横版封面（900×383）：左侧深色文字栏 + 右侧白卡等比内嵌原图（不裁剪）。失败返回 False。"""
     try:
         from PIL import Image, ImageDraw
         if not os.path.exists(_CJK_FONT):
             return False
-        bg, accent = (17, 49, 68), (240, 180, 65)
+        bg, accent = _cover_colors(understanding)
+        txt = _title_color(bg)
         canvas = Image.new("RGB", (w, h), bg)
         draw = ImageDraw.Draw(canvas)
         draw.rectangle([0, 0, 9, h], fill=accent)  # 左缘装饰条
@@ -84,10 +106,10 @@ def _compose_wechat_cover(fig_path: Path, banner_text: str, out_path: Path,
             font, lines, line_h = _fit_font(draw, text, text_w - margin - 18, h - 2 * margin)
             ty = (h - line_h * len(lines)) / 2
             for ln in lines:
-                draw.text((margin, ty), ln, font=font, fill=(255, 255, 255))
+                draw.text((margin, ty), ln, font=font, fill=txt)
                 ty += line_h
         card = [text_w + 6, margin, w - margin, h - margin]
-        draw.rounded_rectangle(card, radius=18, fill=(255, 255, 255))
+        draw.rounded_rectangle(card, radius=18, fill=(255, 255, 255), outline=(226, 228, 232), width=2)
         pad = 16
         area_w, area_h = card[2] - card[0] - 2 * pad, card[3] - card[1] - 2 * pad
         fig = Image.open(fig_path).convert("RGB")
@@ -137,21 +159,54 @@ def _resize_to_wechat_cover(src_path: Path, dst_path: Path) -> bool:
         return True
 
 
-def _build_image_prompt(paper_title: str, method_name: str, keywords: list) -> str:
-    kw_str = "、".join(keywords[:4]) if keywords else "AI 研究"
-    return f"""设计一张微信公众号封面图，风格要求：
-- 整体风格：专业、学术、简洁，适合科技类公众号
-- 图片比例：横版，宽高比约 2.35:1（适合微信公众号封面图）
-- 背景：深蓝色渐变或白色简洁背景
-- 主要文字："{method_name or paper_title[:20]}"
-- 装饰元素：与 AI/机器学习相关的抽象图形（神经网络节点、数据流、几何图形）
-- 关键词标签：{kw_str}
-- 文字清晰可读，颜色对比度高
-- 整体专业感强，适合学术研究者群体
-不要包含任何真实人物照片。不要竖版构图。"""
+def _clip_title(title: str, limit: int = 90) -> str:
+    """标题文本：优先取冒号前的主标题（更精炼且语义完整），过短则用全称；
+    超长再按词边界截断加省略号——避免半句硬截把原意截反。"""
+    t = " ".join((title or "").split())
+    head = re.split(r"[:：]", t, 1)[0].strip()
+    if len(head) >= 16:
+        t = head
+    if len(t) <= limit:
+        return t
+    return t[:limit].rsplit(" ", 1)[0].rstrip(" ,.;:-") + "…"
 
 
-def _select_cover_figure(understanding: dict, figures_dir: Path) -> tuple:
+def _paper_brief(understanding: dict) -> str:
+    """把论文理解拼成「核心内容」简介，供模型理解论文、构思贴切主视觉（不必逐条画进图里）。"""
+    g = understanding.get
+    findings = g("highlights", []) or g("contributions", []) or []  # xhs 用 highlights，wechat 用 contributions
+    results = g("experiment_results", []) or []
+    rows = [
+        ("标题", g("paper_title", "")),
+        ("核心方法 / 主题", g("method_name", "")),
+        ("一句话概括", g("one_sentence_summary", "")),
+        ("解决的问题", g("problem", "")),
+        ("方法做法", g("method", "")),
+        ("主要发现", "；".join(str(h) for h in findings[:4])),
+        ("关键结果", "；".join(str(r) for r in results[:4])),
+        ("关键词", "、".join((g("keywords", []) or [])[:6])),
+    ]
+    return "\n".join(f"- {k}：{v}" for k, v in rows if v)
+
+
+def _build_image_prompt(understanding: dict, title: str) -> str:
+    """构建封面图生成 Prompt：给足论文核心内容供模型理解，约束简洁、禁止编造数据图表。
+    title（封面主标题）由你在封面步骤拟定后传入（此时你已读透论文）。"""
+    return f"""为下面这篇学术论文设计一张微信公众号横版封面图。
+
+【论文核心内容（供你理解论文、构思贴切的主视觉；不必把这些文字都画进图里）】
+{_paper_brief(understanding)}
+
+【设计要求】
+- 尽量简洁专业：聚焦一个能表达论文主旨的核心视觉或隐喻，不要做成密密麻麻的信息图。
+- 画面含醒目主标题："{title}"
+- 除主标题外尽量不要再添加其他文字。
+- 严禁编造：不要画任何具体数据、图表、折线/柱状图、坐标轴、表格、baseline 对比或伪造界面；需要图形时只用抽象示意。
+- 横版构图，不要竖版。
+- 不要出现任何真实人物照片。"""
+
+
+def _select_cover_figure(understanding: dict) -> tuple:
     """优先选 suitable_for_cover=True 且 importance_score 最高的图"""
     important_figures = understanding.get("important_figures", [])
     best, best_score = None, 0.0
@@ -173,8 +228,8 @@ def _select_cover_figure(understanding: dict, figures_dir: Path) -> tuple:
     return None, ""
 
 
-def generate_cover_ai(client, paper_title: str, method_name: str, keywords: list, output_path: Path) -> bool:
-    prompt = _build_image_prompt(paper_title, method_name, keywords)
+def generate_cover_ai(client, understanding: dict, title: str, output_path: Path) -> bool:
+    prompt = _build_image_prompt(understanding, title)
     print_info(f"封面 Prompt: {prompt[:200]}...")
     try:
         response = client.images.generate(
@@ -218,11 +273,11 @@ def _validate_image(image_path: Path) -> bool:
         return image_path.stat().st_size > 5120
 
 
-def run(workdir: str) -> dict:
+def run(workdir: str, cover_title: str = "") -> dict:
     """
-    生成微信公众号封面（横版 900×383 JPG）：优先复用 understanding.important_figures 里
-    suitable_for_cover 最高分的论文原图，否则用 OPENAI_IMAGE_MODEL 生成横版图再裁剪；
-    无 OPENAI_API_KEY 则跳过（status=skipped）。
+    生成微信公众号封面（横版 900×383 JPG）：默认用 OPENAI_IMAGE_MODEL 生成横版图再裁剪；
+    无 OPENAI_API_KEY 或 key 不可用时回退本地合成（复用论文原图）；两者都不可用则 status=skipped。
+    cover_title（封面主标题）由你在封面步骤拟定后经 CLI 传入（留空才回退 JSON 字段）。
 
     输入：understanding/paper_understanding.json
     输出：cover.jpg
@@ -232,7 +287,6 @@ def run(workdir: str) -> dict:
     workspace = resolve_workspace(workdir)
     understanding_path = workspace["understanding"] / "paper_understanding.json"
     cover_path = workspace["wechat"] / "cover.jpg"
-    figures_dir = workspace["figures"]
 
     if not understanding_path.exists():
         print_error(f"输入文件不存在: {understanding_path}")
@@ -241,43 +295,43 @@ def run(workdir: str) -> dict:
     understanding = load_json(understanding_path)
     paper_title = understanding.get("paper_title", "")
     method_name = understanding.get("method_name", "")
-    keywords = understanding.get("keywords", [])
 
-    # banner 标题：优先文章中文标题，否则方法简称，否则截断的论文标题
+    # banner 标题：优先你传入的，否则文章中文标题，否则方法简称/截断论文标题
     # （文章 JSON 是可选的标题来源，损坏/缺失都不应阻断封面，故 try 兜底）
-    banner_text = method_name or paper_title[:24]
-    article_path = workspace["wechat"] / "wechat_article.json"
-    if article_path.exists():
+    banner_text = cover_title or method_name or paper_title[:24]
+    if not cover_title:
+        article_path = workspace["wechat"] / "wechat_article.json"
+        if article_path.exists():
+            try:
+                banner_text = (load_json(article_path).get("title") or banner_text)
+            except Exception:
+                pass
+
+    cover_source = None
+    # ── 默认：API 生图（gpt-image-2）──
+    if os.environ.get("OPENAI_API_KEY"):
         try:
-            banner_text = (load_json(article_path).get("title") or banner_text)
-        except Exception:
-            pass
+            client = _get_openai_client()
+            if generate_cover_ai(client, understanding, banner_text, cover_path):
+                cover_source = "ai_generated"
+        except (ImportError, ValueError) as e:
+            print_warning(f"API 客户端不可用：{e}")
+        if not cover_source:
+            print_warning("API 生图未成功（多为 key 不可用或报错），回退本地合成")
+    else:
+        print_info("未配置 OPENAI_API_KEY，使用本地合成（复用论文原图）")
 
-    # 优先使用论文原图（important_figures 里 suitable_for_cover 最高分）
-    main_figure_path, _ = _select_cover_figure(understanding, figures_dir)
-
-    if main_figure_path:
-        print_info(f"使用论文原图合成横版封面: {main_figure_path.name}（{WECHAT_COVER_W}×{WECHAT_COVER_H}）")
-        if _compose_wechat_cover(main_figure_path, banner_text, cover_path):
+    # ── 回退：本地合成，复用论文原图 ──
+    if not cover_source:
+        main_figure_path, _ = _select_cover_figure(understanding)
+        if not main_figure_path:
+            return {"status": "skipped", "reason": "API 不可用且无可复用论文原图"}
+        print_info(f"本地合成横版封面，复用论文原图: {main_figure_path.name}（{WECHAT_COVER_W}×{WECHAT_COVER_H}）")
+        if _compose_wechat_cover(main_figure_path, banner_text, cover_path, understanding):
             cover_source = "paper_figure_composed"
         else:
             _resize_to_wechat_cover(main_figure_path, cover_path)
             cover_source = "paper_figure"
-    else:
-        print_info("未找到合适的论文原图，尝试 AI 生成封面...")
-        if not os.environ.get("OPENAI_API_KEY"):
-            print_warning("未设置 OPENAI_API_KEY，跳过封面生成")
-            return {"status": "skipped", "reason": "无合适论文图且未设置 OPENAI_API_KEY"}
-        try:
-            client = _get_openai_client()
-        except (ImportError, ValueError) as e:
-            print_warning(f"封面生成跳过: {e}")
-            return {"status": "skipped", "reason": str(e)}
-        success = generate_cover_ai(client, paper_title, method_name, keywords, cover_path)
-        if not success:
-            # 封面是可选步骤，AI 生成失败（如 key 无效 / API 报错）不应阻断流程，降级为 skipped。
-            return {"status": "skipped", "reason": "AI 封面生成失败（封面可选，不阻断）"}
-        cover_source = "ai_generated"
 
     if not _validate_image(cover_path):
         print_error("封面图验证失败")
@@ -306,6 +360,7 @@ if __name__ == "__main__":
         "--workdir", required=True,
         help="工作区目录，约定 <pdf目录>/.paper2anything/wechat",
     )
+    parser.add_argument("--title", default="", help="封面主标题（你在此步拟定；留空回退文章标题/method_name）")
     args = parser.parse_args()
-    res = run(args.workdir)
+    res = run(args.workdir, args.title)
     sys.exit(0 if res.get("status") in ("success", "skipped") else 1)
