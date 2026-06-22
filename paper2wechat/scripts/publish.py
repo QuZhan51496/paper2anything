@@ -114,7 +114,7 @@ def _fallback_copy_markdown(input_path: Path, output_path: Path) -> None:
 def _print_publish_guide(article_path: Path, html_path: Path, md_path: Path, article: dict) -> None:
     """打印发布指引"""
     print_info("\n" + "═" * 60)
-    print_success("【Stage 7 完成】md2wechat 格式化成功")
+    print_success("【md2wechat 完成】格式化成功")
     print_info("═" * 60)
     print_info(f"\n文章标题：{article.get('title', '')}")
     print_info(f"文章摘要：{article.get('digest', '')[:80]}...")

@@ -110,7 +110,8 @@ def _get_openai_client():
     api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key:
         raise ValueError("未设置 OPENAI_API_KEY 环境变量")
-    return OpenAI(api_key=api_key)
+    base_url = os.environ.get("OPENAI_BASE_URL") or None
+    return OpenAI(api_key=api_key, base_url=base_url)
 
 
 def _build_image_prompt(

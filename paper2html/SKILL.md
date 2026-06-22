@@ -53,7 +53,9 @@ set -a; source <paper2anything 包根>/.env; set +a
 依赖自检：
 
 ```bash
-conda run -n paper2anything --no-capture-output python -c "import requests, rich, dotenv" 2>&1
+conda run -n paper2anything --no-capture-output python -c "import requests, rich, dotenv, playwright" 2>&1
+# render_check.py（Step 4 渲染自检）需 chromium 内核，首次跑前装一次：
+#   conda run -n paper2anything --no-capture-output python -m playwright install chromium
 ```
 
 ---
@@ -97,7 +99,7 @@ conda run -n paper2anything --no-capture-output \
 按确认的设计方向，**亲自用 `Write` 落 `$WORKDIR/index.html`**——一个自包含、可部署的单页网站。
 **先读 `references/html-authoring.md`**（硬约束与易错点），要点：
 
-- 自包含：图用相对路径 `images/<filename>`（取自 manifest 的 `figures[].file` / `tables[].image`，stage1 已复制进
+- 自包含：图用相对路径 `images/<filename>`（取自 manifest 的 `figures[].file` / `tables[].image`，parse_pdf 已复制进
   `images/`）；CSS 内联或 CDN；每张 `<img>` 非空 `alt`；不留 `href="#"`。
 - 首屏轻盈（标题/作者/机构/资源按钮），主图作 teaser 一次性大图，再 abstract → claims → method → results →
   支撑图 → BibTeX（按论文气质调整，非强制）。
@@ -174,7 +176,7 @@ cp -r "$WORKDIR/images" "$DEST/"      # index.html 以 images/<file> 相对引�
 | `.paper2anything/html/parsed/` `logs/` | MinerU 原始解析 / 各步骤 *_result.json | 脚本 |
 | **`<pdf目录>/<stem>_html/`** | **成品归集**：`index.html` + `images/`，与 PDF 同级、可直接打开 | **你（Step 5）** |
 
-重跑覆盖同一目录（无 task_id）。要留旧版本就先把 `index.html` 改名备份。Step 1 重跑默认复用 `parsed/full.md`（不再调 MinerU）。
+重跑覆盖同一目录（无 task_id）。要留旧版本就先把 `index.html` 改名备份。Step 1 重跑默认复用 `parsed/full.md`，跳过 MinerU 云端解析。
 
 ---
 

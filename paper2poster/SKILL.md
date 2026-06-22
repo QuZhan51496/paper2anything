@@ -200,7 +200,7 @@ like your previous poster, that's a signal to rethink, not a shortcut to take.
    reference figures by relative path** (`src="parsed/figures/x.jpg"`) —
    screenshot.py and geom_check.py resolve them via `file://`, and the file
    stays small and editable. Only at the end run
-   `scripts/embed_figures.py poster.html` once to inline them as base64 `data:`
+   embed_figures once — `conda run -n paper2anything --no-capture-output python ${SKILL_DIR}/scripts/embed_figures.py "${RUN_DIR}/poster.html"` — to inline them as base64 `data:`
    URIs for a self-contained, distributable poster (don't hand-paste base64 — it
    bloats the file beyond what the render/edit loop can handle). Design freely —
    pick the grid, the type scale, the color blocking, where the claim sits, what
@@ -493,7 +493,7 @@ Suggested starting palettes (pick whatever the design calls for — `color_schem
 ## Troubleshooting
 
 - **MinerU 401**: token missing — set `MINERU_API_TOKEN` from `https://mineru.net/apiManage/token`.
-- **MinerU OSS download stalls**: requests through MinerU's presigned OSS URLs need `proxies={"http": None, "https": None}` to bypass system proxy (already handled in `parse_pdf.py`).
+- **MinerU OSS download stalls**: requests through MinerU's presigned OSS URLs must bypass the system proxy — `parse_pdf.py` already does this with a `trust_env=False` session (setting `proxies={...}` alone doesn't work because requests still honors `ALL_PROXY`).
 - **Playwright missing**: `pip install playwright && playwright install chromium`. The geometry check (Step 5, check a) and `screenshot.py` both need it.
 - **No external VLM / LLM**: this skill calls no vision/LLM API. Figure choice, design, the visual read (Step 6), and the content check (Step 7, blind subagent) are all done by you; the geometry check (Step 5a) is pure pixel math. The only network dependency is MinerU for PDF parsing (Step 1). For a fully offline run, parse the PDF elsewhere and drop `content.md` + `mineru_raw.json` + `figures/` into `parsed/` by hand.
 

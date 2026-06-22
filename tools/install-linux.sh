@@ -180,7 +180,7 @@ if command -v npm >/dev/null 2>&1; then
   fi
 fi
 
-# playwright chromium（paper2poster / paper2xhs）—— Linux 缓存在 ~/.cache/ms-playwright
+# playwright chromium（paper2poster / paper2html）—— Linux 缓存在 ~/.cache/ms-playwright
 if compgen -G "$HOME/.cache/ms-playwright/chromium-*" >/dev/null 2>&1; then
   green "  [ok] playwright chromium (~/.cache/ms-playwright)"
 else

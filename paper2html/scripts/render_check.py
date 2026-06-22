@@ -17,7 +17,7 @@
   6. 图上采样（软警告）：rendered 宽 > natural 宽 ×1.5 → 小图被放大显糊（html-authoring.md "勿上采样"）。
 
 输出 JSON（verdict + 各项数值）；退出码 0=过、1=不过。1–5 为硬指标，6 仅警告不判 FAIL。
-本脚本只查"渲染层硬伤"，版式/美观/设计语言仍由你看 _preview 截图自己判断。
+本脚本只查"渲染层硬伤"，版式/美观/设计语言仍由你自己判断。
 """
 import json
 import sys

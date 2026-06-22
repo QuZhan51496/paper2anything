@@ -29,11 +29,11 @@ paper2anything/
 ├── paper2poster/            # 论文 → 海报 HTML/PNG
 │   ├── SKILL.md
 │   ├── references/          # 海报示例（真实海报 PNG）、配色、版式指南
-│   └── scripts/             # parse_pdf / auto_outline / screenshot / check_env
+│   └── scripts/             # parse_pdf / auto_outline / geom_check / embed_figures / screenshot / check_env
 ├── paper2html/              # 论文 → 单页项目主页
 │   ├── SKILL.md
 │   ├── references/          # 设计语言、HTML 撰写规范、QA 清单
-│   └── scripts/             # parse_pdf / validate + lib/（解析/抽取/QA，无渲染器）
+│   └── scripts/             # parse_pdf / validate / render_check 等 + lib/（解析/抽取/QA，无渲染器）
 ├── paper2xhs/               # 论文 → 小红书
 │   ├── SKILL.md
 │   └── scripts/             # parse_pdf / cover / publish + utils
@@ -70,7 +70,7 @@ requests / openai / playwright / rich / python-dotenv / md2wechat …）。
 | poppler-utils（`pdftoppm`） | PDF 整页渲染 | paper2slides |
 | libreoffice（`soffice`） | pptx → pdf（视觉 QA） | paper2slides |
 | Node.js + pptxgenjs（+ react-icons/react/react-dom/sharp） | PPT 渲染（icon 光栅仅 icon 元素需要） | paper2slides |
-| `playwright install chromium` | 浏览器渲染/截图 | paper2poster |
+| `playwright install chromium` | 浏览器渲染/截图 | paper2poster / paper2html |
 | md2wechat（已在 conda 内 pip 装；源码版见 paper2wechat/SKILL.md） | Markdown → 公众号 HTML | paper2wechat |
 
 ---
@@ -108,25 +108,23 @@ set -a; source <paper2anything 包根>/.env; set +a
 | paper2xhs | `MINERU_API_TOKEN`（封面另需 `OPENAI_API_KEY`；半自动发布另需 `XHS_SKILLS_DIR`） |
 | paper2wechat | `MINERU_API_TOKEN`（封面另需 `OPENAI_API_KEY`；排版用 `md2wechat`，已在统一环境内） |
 
-> 5 个 skill 统一用 `MINERU_API_TOKEN`。各脚本最终都从 `os.environ` 读取，故只需这一个
-> `.env`、无需各 skill 的局部配置文件；脚本启动时会自动 `load_dotenv` 包根 `.env`
-> （已 export 的同名环境变量优先，不被覆盖）。
+> 凭据只此一个包根 `.env`，无需各 skill 的局部配置文件。
 
 ---
 
 ## 产物位置（统一）
 
-5 个 skill 的产物都落在**论文同目录**下的 `.paper2anything/<skill>/`，跟着论文走、互不干扰：
+每个 skill 的**最终成品**都落在**论文同目录**下（跟着论文走、互不干扰）；全部中间产物保留在同目录的 `.paper2anything/<skill>/`：
 
-| Skill | 产物位置（相对论文目录） |
-| --- | --- |
-| paper2slides | `<论文名>.pptx`（直接在论文目录，重名 `-v2/-v3`）；中间产物 `.paper2anything/slides/<论文名>/` |
-| paper2poster | `.paper2anything/poster/`（`poster.html` / `poster.png` + 全部中间产物） |
-| paper2html | `.paper2anything/html/`（`index.html` + `images/` + `manifest.json` + `clean.md` 等） |
-| paper2xhs | `.paper2anything/xhs/`（`understanding/`、`xhs/xhs_post.json\|md`、`xhs/cover.png`） |
-| paper2wechat | `.paper2anything/wechat/`（`understanding/`、`wechat/wechat_article.md\|html`、`wechat/cover.jpg`） |
+| Skill | 最终成品（论文同目录） | 中间产物 |
+| --- | --- | --- |
+| paper2slides | `<论文名>.pptx`（重名 `-v2/-v3`） | `.paper2anything/slides/<论文名>/` |
+| paper2poster | `<论文名>_poster/`（`poster.png` + `poster.html`） | `.paper2anything/poster/` |
+| paper2html | `<论文名>_html/`（`index.html` + `images/`） | `.paper2anything/html/` |
+| paper2xhs | `<论文名>_xhs/`（`xhs_post.md` + `.json` + `cover.png`） | `.paper2anything/xhs/` |
+| paper2wechat | `<论文名>_wechat/`（`wechat_article.md` + `.json` + `cover.jpg` + `figures/`） | `.paper2anything/wechat/` |
 
-> 论文目录只读时，slides 回退到 `~/.cache/paper2anything/slides/`。这些产物目录已在包根 `.gitignore` 忽略。
+> 含相对引用的成品（html 的 `images/`、wechat 的 `figures/` 等）整组放进 `<论文名>_<skill>/` 子目录、引用不破。论文目录只读时 slides 回退到 `~/.cache/paper2anything/slides/`；`.paper2anything/` 已在包根 `.gitignore` 忽略。
 
 ---
 

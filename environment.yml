@@ -13,7 +13,7 @@
 #     libreoffice（pptx → pdf，视觉 QA 用）............................. paper2slides
 #     Node.js + pptxgenjs（PPT 渲染）+ react-icons/react/react-dom/sharp
 #       （icon 光栅，仅 icon 元素需要）................................. paper2slides
-#     playwright 浏览器内核（装好后跑一次 `playwright install chromium`） paper2poster
+#     playwright 浏览器内核（装好后跑一次 `playwright install chromium`） paper2poster / paper2html
 #     md2wechat（已在下方 pip 装；如需源码版见 paper2wechat/SKILL.md）.... paper2wechat
 name: paper2anything
 channels:
@@ -30,9 +30,9 @@ dependencies:
       - requests>=2.31.0
       - openai>=1.50.0      # paper2xhs / paper2wechat 封面生成（可选）
       # ---- 浏览器渲染 / 截图 ----
-      - playwright>=1.45.0  # paper2poster 渲染（截图）
+      - playwright>=1.45.0  # paper2poster / paper2html 渲染（截图 / render_check）
       # ---- 进度输出 / 配置 ----
-      - rich>=13.0.0        # paper2xhs / paper2wechat（Rich 进度输出）
+      - rich>=13.0.0        # 进度输出（多 skill 脚本通用）
       - python-dotenv>=1.0.0
-      # ---- 公众号格式化（paper2wechat Stage 7）----
+      # ---- 公众号格式化（paper2wechat md2wechat 排版/草稿箱）----
       - md2wechat

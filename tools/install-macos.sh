@@ -190,7 +190,7 @@ if command -v npm >/dev/null 2>&1; then
   fi
 fi
 
-# playwright chromium（paper2poster / paper2xhs）—— macOS 缓存在 ~/Library/Caches/ms-playwright
+# playwright chromium（paper2poster / paper2html）—— macOS 缓存在 ~/Library/Caches/ms-playwright
 if compgen -G "$HOME/Library/Caches/ms-playwright/chromium-*" >/dev/null 2>&1; then
   green "  [ok] playwright chromium (~/Library/Caches/ms-playwright)"
 else

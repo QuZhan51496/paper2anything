@@ -1,9 +1,12 @@
 # Agent Design Rules from Reference Posters
 
 These rules are distilled from the local examples in `references/poster_examples/`.
-They are intended for the Paper2Poster planner, critic, and renderer agents.
+Apply them yourself as you design, render, and self-critique the poster — this skill
+has no separate planner/critic/renderer agents; you are the conductor (with the
+geometry gate and the blind-reader quiz as your checks). Where the text below says
+"planner" / "critic" / "renderer", it means you in that role.
 
-Before placing content, the planner should pick a structure that fits the paper.
+Before placing content, pick a structure that fits the paper.
 Strong posters are not one template; they use different structures for
 method papers, benchmark papers, theory papers, visual papers, and diagnostic
 analysis papers.

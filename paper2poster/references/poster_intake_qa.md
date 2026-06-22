@@ -90,5 +90,5 @@ When possible, store the final answers in the generated outline under:
 }
 ```
 
-Downstream layout and critique agents should treat `poster_intake` as a hard
+When you lay out and critique the poster, treat `poster_intake` as a hard
 constraint unless the user later changes it.

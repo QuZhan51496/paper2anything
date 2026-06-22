@@ -158,6 +158,7 @@ result | discussion | conclusion | references | other
 | `slides[].bullets` | string[] | 是 | 提炼后的要点（非整段搬运）；条数与长度由版面填充决定，见 [outline-heuristics.md](outline-heuristics.md)；title slide 等可空 |
 | `slides[].needs_figure` | bool | 是 | 是否需要论文 figure（method/result 通常 true）。**=false 不代表无视觉**——每页都须有视觉元素，Stage 3 用 icon/shape/chart 等承载 |
 | `slides[].figure_ref` | string\|null | 是 | 引用 `paper_meta.json/figures[].id`（如 `"figure2"`），或 `null` |
+| `slides[].equation_ref` | string\|null | 否 | 引用 `paper_meta.json/equations[].id`（如 `"eq_5"`），或省略/`null`；与 `figure_ref` 平行 |
 | `slides[].source_section_ids` | string[] | 是 | 哪些 paper section 提供了内容（便于追溯）|
 | `slides[].speaker_notes` | string | 是 | 1–3 句话，给讲者用 |
 
@@ -341,9 +342,10 @@ icon 在 Stage 4 由 react-icons → SVG → sharp 实时光栅成 PNG 嵌入，
 > 图实体由 MinerU 写入 `figures/`。某 figure 在原文是矢量图、`figures/` 里没有清晰实体时，
 > 回退用 `page_renders` 同页 PNG 裁剪（`scripts/page_screenshot.py` 提供）。
 
-### `captions[].bbox`（仅 `kind == "table"`）
+### `captions[].bbox`（figure 与 table 均可有）
 
-MinerU 解析时给检测到的表格区域附 bbox，匹配到 caption 的就把 bbox 写到该 caption 上：
+MinerU 解析时给检测到的 figure / table 区域附 bbox，匹配到 caption 的就把 bbox 写到该 caption 上
+（Stage 4 裁图硬门禁的"第一刀"坐标即逐值取自此；字段缺省=未定位）：
 
 | 字段 | 含义 |
 |---|---|

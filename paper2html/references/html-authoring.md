@@ -12,7 +12,7 @@ method_components/bibtex）。**不要编造**数字、作者、机构或论文�
 
 - 产物是 `<workdir>/index.html` + 同级 `<workdir>/images/`，可直接丢 GitHub Pages。
 - 图片用**相对路径** `images/<filename>`（文件名取自 `manifest.figures[].file` / `tables[].image`，
-  stage1 已把它们复制进 `images/`）。**不要**写绝对路径或 `../` 跨目录引用。
+  parse_pdf 已把它们复制进 `images/`）。**不要**写绝对路径或 `../` 跨目录引用。
 - 每张 `<img>` 都要有**非空 `alt`**（用图注）。不要留 `href="#"` 空锚点。
 - CSS/JS 尽量内联或用 CDN（如 MathJax），保证单文件打开即用。用 MathJax 写公式（`$…$` / `$$…$$`）时，
   定界符内的 `<` `>` 须写成 `\lt` `\gt`——裸 `<` 紧跟字母会被浏览器当 HTML 起始标签、割裂公式致 MathJax
