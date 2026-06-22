@@ -138,7 +138,7 @@ conda run -n paper2anything --no-capture-output \
   python "${SKILL_DIR}/scripts/cover.py" --workdir "$WORKDIR"
 ```
 
-逻辑：优先复用 `understanding.important_figures` 里 `suitable_for_cover` 最高分的论文原图；没有合适原图且配了 `OPENAI_API_KEY` 时用 `OPENAI_IMAGE_MODEL`（默认 `gpt-image-1`）按 `cover_text` 生成竖版封面；都没有则 `skipped`（不阻断流程）。产出 `cover.png`。
+逻辑：优先复用 `understanding.important_figures` 里 `suitable_for_cover` 最高分的论文原图；没有合适原图且配了 `OPENAI_API_KEY` 时用 `OPENAI_IMAGE_MODEL`（默认 `gpt-image-2`）按 `cover_text` 生成竖版封面；都没有则 `skipped`（不阻断流程）。产出 `cover.png`。
 
 ---
 

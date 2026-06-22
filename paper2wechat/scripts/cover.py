@@ -2,7 +2,7 @@
 cover — 封面生成（可选）
 
 优先使用论文原图（suitable_for_cover=True 的图），裁剪至微信封面尺寸 900×383。
-若无合适原图，调用 OpenAI 生成专业学术风格封面图（1792×1024，再 resize）。
+若无合适原图，调用 OpenAI 生成专业学术风格封面图（1920×816，再 resize）。
 输出 cover.jpg（微信推荐 JPG 格式）。
 """
 
@@ -178,10 +178,10 @@ def generate_cover_ai(client, paper_title: str, method_name: str, keywords: list
     print_info(f"封面 Prompt: {prompt[:200]}...")
     try:
         response = client.images.generate(
-            model=os.environ.get("OPENAI_IMAGE_MODEL", "gpt-image-1"),
+            model=os.environ.get("OPENAI_IMAGE_MODEL", "gpt-image-2"),
             prompt=prompt,
-            size="1792x1024",  # 横版，最接近 900×383 的 API 支持尺寸
-            quality="standard",
+            size="1920x816",  # 横版 2.35:1（微信公众号最常用封面比例，≈900×383）
+            quality="high",
             n=1,
         )
         image_data = response.data[0].b64_json

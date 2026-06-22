@@ -1,6 +1,6 @@
 """
 cover — 封面生成（可选）
-使用 GPT Image API (gpt-image-1) 生成小红书封面图
+使用 GPT Image API (gpt-image-2) 生成小红书封面图
 输出：cover.png
 """
 
@@ -60,8 +60,8 @@ def _fit_font(draw, text: str, max_w: int, max_h: int, start: int = 110, min_siz
     return ImageFont.truetype(_CJK_FONT, min_size), lines, int(min_size * 1.32)
 
 
-def _compose_xhs_cover(fig_path: Path, cover_text: str, out_path: Path, w: int = 1080, h: int = 1620) -> bool:
-    """合成小红书竖版封面（2:3）：深色底 + 顶部 cover_text 大字 + 白卡内嵌等比原图。失败返回 False。"""
+def _compose_xhs_cover(fig_path: Path, cover_text: str, out_path: Path, w: int = 1080, h: int = 1440) -> bool:
+    """合成小红书竖版封面（3:4）：深色底 + 顶部 cover_text 大字 + 白卡内嵌等比原图。失败返回 False。"""
     try:
         from PIL import Image, ImageDraw
         if not os.path.exists(_CJK_FONT):
@@ -114,6 +114,18 @@ def _get_openai_client():
     return OpenAI(api_key=api_key, base_url=base_url)
 
 
+def _clip_title(title: str, limit: int = 90) -> str:
+    """英文副标题：优先取冒号前的主标题（更精炼且语义完整），过短则用全称；
+    超长再按词边界截断加省略号——避免半句硬截把原意截反（如 "Still Do Not Transfer" 截成 "Still Do"）。"""
+    t = " ".join((title or "").split())
+    head = re.split(r"[:：]", t, 1)[0].strip()
+    if len(head) >= 16:
+        t = head
+    if len(t) <= limit:
+        return t
+    return t[:limit].rsplit(" ", 1)[0].rstrip(" ,.;:-") + "…"
+
+
 def _build_image_prompt(
     paper_title: str,
     cover_text: str,
@@ -129,10 +141,10 @@ def _build_image_prompt(
 - 整体风格：科技感、简洁、现代、学术
 - 背景：深色渐变（深蓝或深紫色调）或白色简洁背景
 - 主要文字（大字）："{cover_text}"
-- 副标题文字（小字）："{paper_title[:40]}"
+- 副标题文字（小字）："{_clip_title(paper_title)}"
 - 装饰元素：与 AI/机器学习相关的抽象图形（神经网络节点、数据流、几何图形）
 - 关键词标签：{kw_str}
-- 图片比例：2:3（竖版，适合小红书）
+- 图片比例：3:4（竖版，适合小红书）
 - 文字要清晰可读，颜色对比度高
 - 整体要有视觉冲击力，吸引 AI 研究者点击
 {fig_hint}
@@ -180,14 +192,14 @@ def generate_cover(
 
     try:
         response = client.images.generate(
-            model=os.environ.get("OPENAI_IMAGE_MODEL", "gpt-image-1"),
+            model=os.environ.get("OPENAI_IMAGE_MODEL", "gpt-image-2"),
             prompt=prompt,
-            size="1024x1536",  # 竖版 2:3 比例
-            quality="standard",
+            size="1152x1536",  # 竖版 3:4 比例（小红书最常用封面比例）
+            quality="high",
             n=1,
         )
 
-        # gpt-image-1 返回 base64
+        # gpt-image-2 返回 base64
         image_data = response.data[0].b64_json
         if image_data:
             img_bytes = base64.b64decode(image_data)
