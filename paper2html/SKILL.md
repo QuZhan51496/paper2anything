@@ -141,20 +141,40 @@ conda run -n paper2anything --no-capture-output \
 
 ---
 
+## Step 5：把成品归集到 PDF 旁（与 slides 的 `.pptx` 同级）
+
+成品默认埋在 `.paper2anything/html/` 里不好找。定稿后把它复制一份到**与 PDF 同级**的
+`<stem>_html/` 目录（`.paper2anything` 内副本保留不动），让用户在论文旁直接打开：
+
+```bash
+pdf_path="/path/to/paper.pdf"
+WORKDIR="$(dirname "$pdf_path")/.paper2anything/html"
+DEST="${pdf_path%.*}_html"            # 与 PDF 同目录、同名 + _html 后缀
+mkdir -p "$DEST"
+cp "$WORKDIR/index.html" "$DEST/"
+cp -r "$WORKDIR/images" "$DEST/"      # index.html 以 images/<file> 相对引用，须一并带上
+```
+
+`index.html` 是引用 `images/` 的单页站点，故整组放进 `<stem>_html/` 子目录、引用不破；
+打开 `<stem>_html/index.html` 即最终主页。
+
+---
+
 ## 产物位置
 
-全部落在论文旁 `<pdf目录>/.paper2anything/html/`：
+中间产物落在论文旁 `<pdf目录>/.paper2anything/html/`，**最终成品另复制到 PDF 同级的 `<stem>_html/`**（Step 5）：
 
 | 路径 | 内容 | 谁写 |
 |---|---|---|
-| `clean.md` | normalize 后的全文 markdown | parse_pdf |
-| `manifest.json` | 确定性抽取的事实（闸门1） | parse_pdf |
-| `images/` | 页面引用的图 + 结果表截图 | parse_pdf |
-| `index.html` | 自包含单页项目主页 | **你** |
-| `validation.json` `qa_report.md` | QA 结果（闸门2） | validate |
-| `parsed/` `logs/` | MinerU 原始解析 / 各步骤 *_result.json | 脚本 |
+| `.paper2anything/html/clean.md` | normalize 后的全文 markdown | parse_pdf |
+| `.paper2anything/html/manifest.json` | 确定性抽取的事实（闸门1） | parse_pdf |
+| `.paper2anything/html/images/` | 页面引用的图 + 结果表截图 | parse_pdf |
+| `.paper2anything/html/index.html` | 自包含单页项目主页 | **你** |
+| `.paper2anything/html/validation.json` `qa_report.md` | QA 结果（闸门2） | validate |
+| `.paper2anything/html/parsed/` `logs/` | MinerU 原始解析 / 各步骤 *_result.json | 脚本 |
+| **`<pdf目录>/<stem>_html/`** | **成品归集**：`index.html` + `images/`，与 PDF 同级、可直接打开 | **你（Step 5）** |
 
-重跑覆盖同一目录（无 task_id）。要留旧版本就先把 `index.html` 改名备份。stage1 重跑默认复用 `parsed/full.md`（不再调 MinerU）。
+重跑覆盖同一目录（无 task_id）。要留旧版本就先把 `index.html` 改名备份。Step 1 重跑默认复用 `parsed/full.md`（不再调 MinerU）。
 
 ---
 

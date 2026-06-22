@@ -158,19 +158,40 @@ conda run -n paper2anything --no-capture-output \
 
 ---
 
+## Step 6：把成品归集到 PDF 旁（与 slides 的 `.pptx` 同级）
+
+成品默认埋在 `.paper2anything/wechat/` 里不好找。长文+配图+封面定稿后（无论是否走 Step 5 排版），把它们复制
+一份到**与 PDF 同级**的 `<stem>_wechat/` 目录（`.paper2anything` 内副本保留不动），让用户在论文旁直接取用：
+
+```bash
+pdf_path="/path/to/paper.pdf"
+WORKDIR="$(dirname "$pdf_path")/.paper2anything/wechat"
+DEST="${pdf_path%.*}_wechat"          # 与 PDF 同目录、同名 + _wechat 后缀
+mkdir -p "$DEST"
+cp "$WORKDIR/wechat_article.md" "$WORKDIR/wechat_article.json" "$DEST/"
+[ -f "$WORKDIR/cover.jpg" ] && cp "$WORKDIR/cover.jpg" "$DEST/"                  # 封面可能 skipped，存在才复制
+[ -f "$WORKDIR/wechat_article.html" ] && cp "$WORKDIR/wechat_article.html" "$DEST/"  # md2wechat 排版结果（若 Step 5 跑了）
+cp -r "$WORKDIR/figures" "$DEST/"     # 正文以 figures/<name> 相对引用配图，须一并带上
+```
+
+`wechat_article.md` 以 `![图注](figures/<name>)` 相对引用配图，故长文与 `figures/` 整组放进 `<stem>_wechat/` 子目录、引用不破。
+
+---
+
 ## 产物位置
 
-全部落在论文旁 `<pdf目录>/.paper2anything/wechat/`（成品与 parsed/ 等平级，无嵌套子目录）：
+中间产物落在论文旁 `<pdf目录>/.paper2anything/wechat/`，**最终成品另复制到 PDF 同级的 `<stem>_wechat/`**（Step 6）：
 
 | 路径 | 内容 | 谁写 |
 |---|---|---|
-| `parsed/` | MinerU PIR（meta/sections/figures_index/tables_index/references） | parse_pdf |
-| `figures/` | 论文插图 + 表格图实体 | parse_pdf |
-| `understanding/paper_understanding.json` | 论文理解 + important_figures | **你** |
-| `wechat_article.md` `.json` | 深度解读长文 + 元数据 | **你** |
-| `cover.jpg` | 横版封面 | cover |
-| `wechat_article.html` | md2wechat 排版结果 | publish |
-| `logs/` | 各脚本 `*_result.json` | 脚本 |
+| `.paper2anything/wechat/parsed/` | MinerU PIR（meta/sections/figures_index/tables_index/references） | parse_pdf |
+| `.paper2anything/wechat/figures/` | 论文插图 + 表格图实体 | parse_pdf |
+| `.paper2anything/wechat/understanding/paper_understanding.json` | 论文理解 + important_figures | **你** |
+| `.paper2anything/wechat/wechat_article.md` `.json` | 深度解读长文 + 元数据 | **你** |
+| `.paper2anything/wechat/cover.jpg` | 横版封面 | cover |
+| `.paper2anything/wechat/wechat_article.html` | md2wechat 排版结果 | publish |
+| `.paper2anything/wechat/logs/` | 各脚本 `*_result.json` | 脚本 |
+| **`<pdf目录>/<stem>_wechat/`** | **成品归集**：`wechat_article.md` + `.json` + `cover.jpg` + `figures/`，与 PDF 同级 | **你（Step 6）** |
 
 重跑覆盖同一目录（无 task_id）。要留旧版本就先把工作区 `.paper2anything/wechat/` 改名备份。
 

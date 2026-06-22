@@ -435,6 +435,24 @@ When approved, report the final `poster.png` from the run directory (`outline.po
 
 ---
 
+## Step 9: Collect the deliverable next to the PDF (sibling to slides' `.pptx`)
+
+成品默认埋在 `.paper2anything/poster/` 里不好找。定稿后把它复制一份到**与 PDF 同级**的
+`<stem>_poster/` 目录（`.paper2anything` 内副本保留不动），让用户在论文旁直接打开：
+
+```bash
+pdf_path="/path/to/paper.pdf"
+RUN_DIR="$(dirname "$pdf_path")/.paper2anything/poster"   # 若 Step 2 改了 output_dir，则取你实际运行目录
+DEST="${pdf_path%.*}_poster"          # 与 PDF 同目录、同名 + _poster 后缀
+mkdir -p "$DEST"
+cp "$RUN_DIR/poster.png" "$RUN_DIR/poster.html" "$DEST/"
+```
+
+`poster.png` 与 `poster.html`（图已 base64 内联、自包含）放进 `<stem>_poster/` 子目录，
+与其余 skill 的归集目录一致；`<stem>_poster/poster.png` 即最终海报。
+
+---
+
 ## Outline JSON Format
 
 ```json

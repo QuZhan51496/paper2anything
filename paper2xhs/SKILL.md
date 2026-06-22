@@ -155,18 +155,37 @@ conda run -n paper2anything --no-capture-output \
 
 ---
 
+## Step 6：把成品归集到 PDF 旁（与 slides 的 `.pptx` 同级）
+
+成品默认埋在 `.paper2anything/xhs/` 里不好找。文案+封面定稿后（无论是否走 Step 5 发布），把它们复制一份
+到**与 PDF 同级**的 `<stem>_xhs/` 目录（`.paper2anything` 内副本保留不动），让用户在论文旁直接取用：
+
+```bash
+pdf_path="/path/to/paper.pdf"
+WORKDIR="$(dirname "$pdf_path")/.paper2anything/xhs"
+DEST="${pdf_path%.*}_xhs"             # 与 PDF 同目录、同名 + _xhs 后缀
+mkdir -p "$DEST"
+cp "$WORKDIR/xhs_post.md" "$WORKDIR/xhs_post.json" "$DEST/"
+[ -f "$WORKDIR/cover.png" ] && cp "$WORKDIR/cover.png" "$DEST/"   # 封面可能 skipped，存在才复制
+```
+
+`xhs_post.md` 以 `![封面](cover.png)` 相对引用封面，故文案与封面整组放进 `<stem>_xhs/` 子目录、引用不破。
+
+---
+
 ## 产物位置
 
-全部落在论文旁 `<pdf目录>/.paper2anything/xhs/`（成品与 parsed/ 等平级，无嵌套子目录）：
+中间产物落在论文旁 `<pdf目录>/.paper2anything/xhs/`，**最终成品另复制到 PDF 同级的 `<stem>_xhs/`**（Step 6）：
 
 | 路径 | 内容 | 谁写 |
 |---|---|---|
-| `parsed/` | MinerU PIR（meta/sections/figures_index/references） | parse_pdf |
-| `figures/` | 论文插图实体 | parse_pdf |
-| `understanding/paper_understanding.json` | 论文理解 + important_figures | **你** |
-| `xhs_post.json` `xhs_post.md` | 小红书文案 | **你** |
-| `cover.png` | 封面 | cover |
-| `logs/` | 各脚本 `*_result.json` | 脚本 |
+| `.paper2anything/xhs/parsed/` | MinerU PIR（meta/sections/figures_index/references） | parse_pdf |
+| `.paper2anything/xhs/figures/` | 论文插图实体 | parse_pdf |
+| `.paper2anything/xhs/understanding/paper_understanding.json` | 论文理解 + important_figures | **你** |
+| `.paper2anything/xhs/xhs_post.json` `xhs_post.md` | 小红书文案 | **你** |
+| `.paper2anything/xhs/cover.png` | 封面 | cover |
+| `.paper2anything/xhs/logs/` | 各脚本 `*_result.json` | 脚本 |
+| **`<pdf目录>/<stem>_xhs/`** | **成品归集**：`xhs_post.md` + `.json` + `cover.png`，与 PDF 同级 | **你（Step 6）** |
 
 重跑覆盖同一目录（无 task_id）。要保留旧版本就先把工作区 `.paper2anything/xhs/` 改名备份。
 
