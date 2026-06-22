@@ -13,6 +13,7 @@ import json
 import os
 import re
 import shutil
+import subprocess
 import time
 import zipfile
 from pathlib import Path
@@ -243,6 +244,7 @@ def _parse_content_list(content_list_path: Path) -> tuple:
                     "caption": caption,
                     "image_path": img_path,
                     "page": page,
+                    "_block_type": itype,  # image / chart：供高清重裁按对应 layout 池配 bbox
                 })
 
         elif itype == "table":
@@ -257,6 +259,7 @@ def _parse_content_list(content_list_path: Path) -> tuple:
                     "html": html,
                     "image_path": img_path,
                     "page": page,
+                    "_block_type": "table",  # 供高清重裁按 layout table 池配 bbox
                 })
 
     flush_section()
@@ -314,24 +317,123 @@ def _parse_markdown(md_path: Path) -> tuple:
     return meta, sections, figures
 
 
-def _copy_figures(mineru_out: Path, figures_dir: Path, figures_index: list,
-                  id_field: str = "figure_id") -> list:
-    """将图片复制到工作区 figures/ 目录，更新路径；跳过 <1.5KB 的噪声碎片图
-    （空白小方块 / 被拆碎的子面板）——真实插图/表图均远大于此，不会误删。"""
+def _load_layout(mineru_out: Path) -> "dict | None":
+    """MinerU 的 layout.json：每图/表 bbox 的可靠来源（content_list 的 bbox 坐标系不一致，不用）。"""
+    p = mineru_out / "layout.json"
+    if not p.exists():
+        cands = sorted(mineru_out.glob("*layout*.json"))
+        p = cands[0] if cands else None
+    if not p or not p.exists():
+        return None
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
+def _bbox_pools(layout: dict) -> dict:
+    """按 reading order 预聚合各页 image/chart/table 块 bbox（不排序，与 content 元素序对齐）。"""
+    pools = {"image": {}, "chart": {}, "table": {}}
+    for page_idx, page in enumerate(layout.get("pdf_info", [])):
+        for blk in page.get("para_blocks", []):
+            bt = blk.get("type")
+            if bt in pools and blk.get("bbox"):
+                pools[bt].setdefault(page_idx, []).append(blk["bbox"])
+    return pools
+
+
+def _norm_bbox(bbox_pts: list, layout: dict, page_idx: int) -> list:
+    """[x0,y0,x1,y1] 绝对像素(top-origin) → [x,y,w,h] (0..1)。"""
+    W, H = layout["pdf_info"][page_idx]["page_size"]
+    x0, y0, x1, y1 = bbox_pts
+    return [x0 / float(W), y0 / float(H), (x1 - x0) / float(W), (y1 - y0) / float(H)]
+
+
+def _render_pages(pdf_path: Path, pages_dir: Path, dpi: int = 300) -> bool:
+    """整页 300dpi 渲染到 pages/page-NN.png（学术小字清晰阈值），-hide-annotations 去超链接框。"""
+    pages_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        subprocess.run(
+            ["pdftoppm", "-png", "-r", str(dpi), "-hide-annotations",
+             str(pdf_path), str(pages_dir / "page")],
+            check=True, capture_output=True,
+        )
+        return any(pages_dir.glob("page-*.png"))
+    except (subprocess.CalledProcessError, FileNotFoundError, OSError) as e:
+        print_warning(f"整页渲染失败（pdftoppm 不可用？）：{e}；图像回退复用 MinerU 抽出图")
+        return False
+
+
+def _crop_from_page(pages_dir: Path, page_no: int, bbox: list, out_path: Path,
+                    pad: float = 0.005) -> bool:
+    """从 pages/page-NN.png 按归一化 bbox(+pad) 裁出高清图到 out_path。"""
+    from PIL import Image
+    cands = (list(pages_dir.glob(f"page-{page_no}.png"))
+             + list(pages_dir.glob(f"page-{page_no:02d}.png"))
+             + list(pages_dir.glob(f"page-{page_no:03d}.png")))
+    if not cands:
+        return False
+    try:
+        with Image.open(cands[0]) as im:
+            W, H = im.size
+            x, y, w, h = bbox
+            box = (int(max(0.0, x - pad) * W), int(max(0.0, y - pad) * H),
+                   int(min(1.0, x + w + pad) * W), int(min(1.0, y + h + pad) * H))
+            if box[2] - box[0] < 8 or box[3] - box[1] < 8:
+                return False
+            im.crop(box).save(out_path)
+        return True
+    except Exception:
+        return False
+
+
+def _recrop_or_copy(mineru_out: Path, figures_dir: Path, pages_dir: Path,
+                    layout, pools: dict, consumed: dict, items: list,
+                    have_pages: bool, id_field: str = "figure_id") -> list:
+    """每个图/表：优先按 layout bbox 从高清整页重裁；无 bbox / 无页渲染 / 裁剪失败则回退
+    复用 MinerU 抽出图（跳过 <1.5KB 噪声碎片）。"""
     updated = []
-    for fig in figures_index:
-        src = Path(fig["image_path"])
-        if not src.is_absolute():
-            src = mineru_out / src
-        if src.exists():
-            if src.stat().st_size < 1500:
-                continue  # 噪声碎片，不收进 index
+    for it in items:
+        kind = it.pop("_block_type", "image")
+        page_no = it.get("page", 0)
+        page_idx = page_no - 1
+        done = False
+        if have_pages and layout is not None and page_idx >= 0:
+            avail = pools.get(kind, {}).get(page_idx, [])
+            i = consumed.get((kind, page_idx), 0)
+            if i < len(avail):
+                consumed[(kind, page_idx)] = i + 1
+                out_path = figures_dir / f"{it[id_field]}.png"
+                if _crop_from_page(pages_dir, page_no, _norm_bbox(avail[i], layout, page_idx), out_path):
+                    it = dict(it); it["image_path"] = str(out_path)
+                    done = True
+        if not done:
+            src = Path(it["image_path"])
+            if not src.is_absolute():
+                src = mineru_out / src
+            if not src.exists() or src.stat().st_size < 1500:
+                continue  # 缺失或噪声碎片，不收进 index
             dest = figures_dir / src.name
             shutil.copy2(src, dest)
-            fig = dict(fig)
-            fig["image_path"] = str(dest)
-        updated.append(fig)
+            it = dict(it); it["image_path"] = str(dest)
+        updated.append(it)
     return updated
+
+
+def _highres_figures(pdf_path, mineru_out: Path, figures_dir: Path, pages_dir: Path,
+                     figures: list, tables: list) -> tuple:
+    """figure/表格图统一走"高清整页重裁优先、复用抽出图兜底"。清晰度来源：pdftoppm 300dpi
+    整页渲染 + MinerU layout.json 的 bbox（content_list 抽出图为降采样、偏糊）。"""
+    figures_dir.mkdir(parents=True, exist_ok=True)
+    layout = _load_layout(mineru_out)
+    pools = _bbox_pools(layout) if layout else {}
+    have_pages = bool(layout) and _render_pages(Path(pdf_path), pages_dir)
+    consumed: dict = {}
+    figures = _recrop_or_copy(mineru_out, figures_dir, pages_dir, layout, pools, consumed,
+                              figures, have_pages, "figure_id")
+    tables = _recrop_or_copy(mineru_out, figures_dir, pages_dir, layout, pools, consumed,
+                             tables, have_pages, "table_id")
+    return figures, tables
 
 
 def _copy_pages(mineru_out: Path, pages_dir: Path) -> None:
@@ -427,9 +529,10 @@ def run(pdf_path: str, workdir: str) -> dict:
                 print_error("MinerU 输出中未找到可解析文件")
                 return {"status": "failed", "error": "MinerU 输出无法解析"}
 
-        # 复制图片/表格图到工作区 figures/
-        figures = _copy_figures(mineru_out, figures_dir, figures)
-        tables = _copy_figures(mineru_out, figures_dir, tables, id_field="table_id")
+        # figure/表格图：优先按 layout.json 的 bbox 从 pdftoppm 300dpi 整页渲染里高清重裁，
+        # 无 bbox / 无页渲染时回退复用 MinerU 抽出图（含 <1.5KB 噪声跳过）
+        figures, tables = _highres_figures(
+            pdf_path, mineru_out, figures_dir, workspace["root"] / "pages", figures, tables)
     else:
         print_error("MinerU 未生成输出目录")
         return {"status": "failed", "error": "MinerU 未生成输出"}

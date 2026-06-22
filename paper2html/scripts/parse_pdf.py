@@ -49,6 +49,12 @@ def run(input_path: str, workdir: str, *, paper_url=None, code_url=None,
         Path(parsed_dir).mkdir(parents=True, exist_ok=True)
         (Path(parsed_dir) / "full.md").write_text(raw_markdown, encoding="utf-8")
 
+    # 高清重裁：MinerU 抽出图是降采样的（偏糊）。在拷图到 images/ 前，按 layout.json 的 bbox
+    # 从 pdftoppm 300dpi 整页里重裁、原地覆盖 parsed/ 下被引用的源图（不改文件名/manifest）。
+    # 仅 PDF 输入且有 parsed_dir 时执行；MD 输入（无 PDF）则跳过。
+    if parsed_dir is not None and source.suffix.lower() == ".pdf":
+        core._recrop_inplace(source, Path(parsed_dir))
+
     markdown = core.normalize_markdown(raw_markdown)
     (root / "clean.md").write_text(markdown, encoding="utf-8")
     print_success(f"clean.md 已写（{len(markdown)} 字符）")

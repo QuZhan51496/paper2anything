@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import re
 import shutil
+import subprocess
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Iterable
@@ -390,6 +391,143 @@ def render_qa_report(qa: QAResult, manifest: PaperManifest) -> str:
             lines.append(f"- {key}: {value}")
 
     return "\n".join(lines) + "\n"
+
+
+# ── 高清重裁 ──────────────────────────────────────────────────────────────
+# MinerU 抽出的图是降采样的（偏糊）。把 PDF 整页用 pdftoppm 300dpi 渲染，再按 MinerU
+# layout.json 的 bbox 从高清整页重裁，原地覆盖 parsed/ 下的同名源图——下游 copy_manifest_images
+# 拷的就是高清版（不改文件名/manifest/引用 schema）。bbox 用 layout.json 而非 content_list
+# （后者坐标系不一致），按 reading order 与 v2 的 image/chart/table 块顺序配对。
+
+
+def _load_layout(parsed_dir):
+    p = Path(parsed_dir) / "layout.json"
+    if not p.exists():
+        c = sorted(Path(parsed_dir).glob("*layout*.json")); p = c[0] if c else None
+    if not p or not p.exists(): return None
+    try: return json.loads(p.read_text(encoding="utf-8"))
+    except Exception: return None
+
+
+def _bbox_pools(layout):
+    """按 reading order 预聚合各页 image/chart/table 块 bbox（不排序，与 content 元素序对齐）。"""
+    pools = {"image": {}, "chart": {}, "table": {}}
+    for pi, page in enumerate(layout.get("pdf_info", [])):
+        for blk in page.get("para_blocks", []):
+            bt = blk.get("type")
+            if bt in pools and blk.get("bbox"):
+                pools[bt].setdefault(pi, []).append(blk["bbox"])
+    return pools
+
+
+def _norm_bbox(b, layout, pi):
+    """[x0,y0,x1,y1] 绝对像素(top-origin) → [x,y,w,h] (0..1)。"""
+    W, H = layout["pdf_info"][pi]["page_size"]
+    x0, y0, x1, y1 = b
+    return [x0/float(W), y0/float(H), (x1-x0)/float(W), (y1-y0)/float(H)]
+
+
+def _render_pages(pdf_path, pages_dir, dpi=300):
+    """整页 300dpi 渲染到 pages/page-NN.png（学术小字清晰阈值），-hide-annotations 去超链接框。"""
+    Path(pages_dir).mkdir(parents=True, exist_ok=True)
+    try:
+        subprocess.run(["pdftoppm","-png","-r",str(dpi),"-hide-annotations",
+                        str(pdf_path), str(Path(pages_dir)/"page")], check=True, capture_output=True)
+        return any(Path(pages_dir).glob("page-*.png"))
+    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
+        return False
+
+
+def _crop_from_page(pages_dir, page_no, bbox, out_path, pad=0.005):
+    """从 pages/page-NN.png 按归一化 bbox(+pad) 裁出高清图到 out_path。"""
+    from PIL import Image
+    cands = (list(Path(pages_dir).glob(f"page-{page_no}.png"))
+             + list(Path(pages_dir).glob(f"page-{page_no:02d}.png"))
+             + list(Path(pages_dir).glob(f"page-{page_no:03d}.png")))
+    if not cands: return False
+    try:
+        with Image.open(cands[0]) as im:
+            W, H = im.size; x, y, w, h = bbox
+            box = (int(max(0.0,x-pad)*W), int(max(0.0,y-pad)*H),
+                   int(min(1.0,x+w+pad)*W), int(min(1.0,y+h+pad)*H))
+            if box[2]-box[0] < 8 or box[3]-box[1] < 8: return False
+            im.crop(box).save(out_path)
+        return True
+    except Exception: return False
+
+
+def _recrop_inplace(pdf_path: Path, parsed_dir: Path) -> dict[str, int]:
+    """按 layout.json 的 bbox 从 pdftoppm 300dpi 整页重裁，原地覆盖 parsed/ 下被引用的源图。
+
+    遍历 *_content_list_v2.json（list[页][block]）每页 block，遇 image/chart/table，从
+    pools[kind][page_idx] 顺序弹一个 bbox（consumed 计数器，仿 paper2wechat 的 reading-order
+    配对），重裁覆盖该 block content.image_source.path 指向的源文件（相对 parsed_dir 定位）。
+    配不到 bbox / 裁剪失败保留原图。无 layout 或 pdftoppm 不可用则整体跳过（保留原图）。
+
+    返回 {"recropped": n, "total": m}。覆盖的是 copy_manifest_images 会拷的源文件，故后续
+    copy 到 images/ 的就是高清版——不改文件名 / manifest / 下游引用 schema。
+    """
+    parsed_dir = Path(parsed_dir)
+    stats = {"recropped": 0, "total": 0}
+
+    layout = _load_layout(parsed_dir)
+    if not layout:
+        print("[paper2html] 无 layout.json，跳过高清重裁（保留 MinerU 抽出图）。")
+        return stats
+
+    v2_files = sorted(parsed_dir.glob("*_content_list_v2.json"))
+    if not v2_files:
+        print("[paper2html] 无 content_list_v2.json，跳过高清重裁（保留 MinerU 抽出图）。")
+        return stats
+    try:
+        v2 = json.loads(v2_files[0].read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        print("[paper2html] content_list_v2.json 无法解析，跳过高清重裁（保留 MinerU 抽出图）。")
+        return stats
+
+    pages_dir = parsed_dir / "pages"
+    if not _render_pages(Path(pdf_path), pages_dir):
+        print("[paper2html] 整页渲染失败（pdftoppm 不可用？），跳过高清重裁（保留 MinerU 抽出图）。")
+        return stats
+
+    pools = _bbox_pools(layout)
+    consumed: dict = {}
+    for page_idx, page in enumerate(v2):
+        if not isinstance(page, list):
+            continue
+        for blk in page:
+            if not isinstance(blk, dict):
+                continue
+            kind = blk.get("type")
+            if kind not in ("image", "chart", "table"):
+                continue
+            content = blk.get("content")
+            rel = ""
+            if isinstance(content, dict):
+                src = content.get("image_source")
+                if isinstance(src, dict):
+                    rel = str(src.get("path") or "")
+            if not rel:
+                continue
+            stats["total"] += 1
+            # image_source.path 相对 parsed_dir；定位已落地的源图（取 basename 兜底）
+            src_path = parsed_dir / rel
+            if not src_path.exists():
+                src_path = parsed_dir / "images" / Path(rel).name
+            if not src_path.exists():
+                continue
+            avail = pools.get(kind, {}).get(page_idx, [])
+            i = consumed.get((kind, page_idx), 0)
+            if i >= len(avail):
+                continue  # 配不到 bbox，保留原图
+            consumed[(kind, page_idx)] = i + 1
+            page_no = page_idx + 1  # pdftoppm 页码 1-based
+            if _crop_from_page(pages_dir, page_no, _norm_bbox(avail[i], layout, page_idx), src_path):
+                stats["recropped"] += 1
+            # 裁剪失败保留原图（src_path 未被覆盖）
+
+    print(f"[paper2html] 高清重裁：{stats['recropped']}/{stats['total']} 张已用 300dpi 重裁覆盖。")
+    return stats
 
 
 def copy_manifest_images(
