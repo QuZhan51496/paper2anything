@@ -24,14 +24,14 @@
 
 ## 环境安装
 
-**Claude Code一键安装（推荐）**：在包根跑对应系统脚本——自动注册 5 个 skill，并一并核对 **conda 环境、系统依赖、`.env` 凭据**：
+**Claude Code一键安装（推荐）**：
 
 ```bash
 bash tools/install-linux.sh --create-env --shell-init     # Linux
 bash tools/install-macos.sh --create-env --shell-init     # macOS
 ```
 
-脚本做三件事：① 把 5 个 skill 符号链接进 `~/.claude/skills/`；② 没有 `.env` 时从 `.env.example` 引导一份；③ 检查 conda 环境、系统依赖与 `MINERU_API_TOKEN`（用于论文提取）。命令里两个 flag 的作用（不需要可省去）：
+安装脚本会：① 把 5 个 skill 符号链接进 `~/.claude/skills/`；② 没有 `.env` 时从 `.env.example` 引导一份；③ 检查 conda 环境、系统依赖与 `MINERU_API_TOKEN`（用于论文提取）。命令里两个 flag 的作用（不需要可省去）：
 
 - `--create-env`：顺手 `conda env create`（已存在则按 `environment.yml` 更新）+ 装 playwright chromium + 跑 pip 自检；
 - `--shell-init`：（可选）把 `.env` 自动导出写进 shell 启动文件（幂等），新开 shell 即加载凭据。
@@ -173,5 +173,5 @@ paper2anything/
 
 ## 致谢
 
-- 小红书发布能力由开源项目 **[xiaohongshu-mcp](https://github.com/xpzouying/xiaohongshu-mcp)**（作者 xpzouying）提供。
-- 公众号发布与排版能力由开源项目 **[md2wechat](https://github.com/zkkython/md2wechat)**（作者 zkkython）提供。
+- 小红书发布能力由 **[xiaohongshu-mcp](https://github.com/xpzouying/xiaohongshu-mcp)** 提供。
+- 公众号发布与排版能力由 **[md2wechat](https://pypi.org/project/md2wechat/)** 提供。
