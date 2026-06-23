@@ -1,7 +1,7 @@
 ---
 name: paper2wechat
-description: 把学术论文 PDF 转成微信公众号深度解读推文（长文 + 配图 + 封面）。你主导设计的协调式：机械活（MinerU 解析 PDF、生成封面、md2wechat 排版）交给 scripts/ 下的小工具，论文理解、文章结构、长文撰写由你亲自完成并在关键点与用户确认。当用户说“论文转公众号”、“paper2wechat”、“把论文写成公众号文章”、“论文转微信推文”、“PDF 转公众号”时触发。
-allowed-tools: Bash, Read, Write, Glob, Grep, AskUserQuestion
+description: 把学术论文 PDF 转成微信公众号深度解读推文（长文 + 配图 + 封面）。你主导设计的协调式：机械活（MinerU 解析 PDF、生成封面、md2wechat 发布草稿箱）交给 scripts/ 下的小工具，论文理解、文章结构、长文撰写由你亲自完成并在关键点与用户确认。当用户说“论文转公众号”、“paper2wechat”、“把论文写成公众号文章”、“论文转微信推文”、“PDF 转公众号”时触发。
+allowed-tools: Bash, Read, Write, Glob, Grep, AskUserQuestion, SendUserFile
 ---
 
 # paper2wechat — 论文转公众号深度解读（你主导的协调式）
@@ -18,7 +18,7 @@ PDF
  → 你读懂论文       (读 parsed/ + 看 figures/) → understanding/paper_understanding.json   [确认切入角度]
  → 你写深度解读长文  (结构自由、配图、忠实准确) → wechat_article.md + .json          [确认]
  → 封面            (cover.py：默认 API 生图 gpt-image-2 横版 900×383；无 key/key 不可用回退本地合成复用原图)
- → md2wechat 排版   (publish.py：→ 公众号 HTML / 草稿)
+ → 发布草稿箱       (publish.py：md2wechat 直推公众号草稿箱；无凭据/失败→本地样式化 HTML)
  → 公众号推文
 ```
 
@@ -50,13 +50,14 @@ set -a; source <paper2anything 包根>/.env; set +a
 本 skill 用到的 key（**理解与撰文由你亲自做，不调用任何 LLM API**）：
 - `MINERU_API_TOKEN` — 解析 PDF（必填）
 - `OPENAI_API_KEY`(+ `OPENAI_BASE_URL`) — 封面默认走它生图（gpt-image-2）；无 key 或 key 不可用时回退本地合成（复用论文原图）
-- `MD2WECHAT_CMD` / `MD2WECHAT_THEME` — md2wechat 排版（不在 PATH 时填 CMD；主题默认 `default`）
+- `WECHAT_APPID` / `WECHAT_APP_SECRET` — 直推公众号草稿箱用（md2wechat 调官方 API；获取见「排错」）；**留空则降级**为本地生成样式化 HTML 供手动粘贴
+- `MD2WECHAT_THEME` — 排版样式（默认 `default`→学术灰，另有 `tech`/`festival`/`announcement`）
 
 依赖自检（缺啥按提示装；依赖统一在 `environment.yml`）：
 
 ```bash
 conda run -n paper2anything --no-capture-output python -c "import requests, rich, dotenv" 2>&1
-md2wechat --help >/dev/null 2>&1 && echo "md2wechat 就绪" || echo "md2wechat 未就绪（可后置；缺它 Step 5 会降级为输出 Markdown 供手动粘贴）"
+md2wechat --help >/dev/null 2>&1 && echo "md2wechat 就绪" || echo "md2wechat 未就绪（可后置；缺它 Step 5 会降级为本地样式化 HTML 供手动粘贴）"
 ```
 
 ---
@@ -150,16 +151,32 @@ conda run -n paper2anything --no-capture-output \
 
 ---
 
-## Step 5：md2wechat 排版与发布准备（脚本）
+## Step 5：发布到公众号草稿箱（脚本 + 你确认，可选）
 
+`publish.py` 用 md2wechat 把文章直接推到**公众号草稿箱**（上传封面+正文图到素材库 → 建草稿）。需 `WECHAT_APPID`/`WECHAT_APP_SECRET` + 服务器出口 IP 在白名单 + 认证公众号；**没配凭据 / 上传失败 → 自动降级**为本地生成样式化 HTML 供手动粘贴。不发布可跳过本步、把产物给用户。
+
+**① 查凭据**（决定走直推还是本地降级）：
 ```bash
-pdf_path="/path/to/paper.pdf"
-WORKDIR="$(dirname "$pdf_path")/.paper2anything/wechat"
-conda run -n paper2anything --no-capture-output \
-  python "${SKILL_DIR}/scripts/publish.py" --workdir "$WORKDIR"
+export SKILL_DIR=<本 skill 目录>
+conda run -n paper2anything --no-capture-output python "${SKILL_DIR}/scripts/publish.py" --check-creds
 ```
+`0` = 有凭据可直推（走 ②）；`2` = 没配，走 ③ 本地降级。
 
-读 `wechat_article.md`（+ `.json` 的 title/digest）+ `cover.jpg`，调 md2wechat 转成公众号 HTML 草稿；**md2wechat 不可用时自动降级**为“把 Markdown 手动粘贴到公众号编辑器”的指引（不报错）。脚本会打印发布步骤（mp.weixin.qq.com → 新建图文 → 粘贴 → 传封面 → 发布）。
+**② 有凭据 → 发布前给用户过目并确认**（直推是外发到你的公众号）：`Read` `wechat_article.json` 把**标题 + 摘要**发给用户看、`SendUserFile` 发 `cover.jpg`；用 `AskUserQuestion` 让用户**确认上传草稿**（草稿非公开，仍需用户去后台群发才公开）。确认后上传：
+```bash
+pdf_path="/path/to/paper.pdf"; export SKILL_DIR=<本 skill 目录>
+WORKDIR="$(dirname "$pdf_path")/.paper2anything/wechat"
+conda run -n paper2anything --no-capture-output python "${SKILL_DIR}/scripts/publish.py" --workdir "$WORKDIR"
+```
+成功打印 `media_id`；提示用户去 mp.weixin.qq.com → 草稿箱 预览 / 群发。（md2wechat 要求至少一张图作封面，确保 `cover.jpg` 已生成。）
+
+**③ 没凭据（或用户不想直推）→ 本地降级**：
+```bash
+pdf_path="/path/to/paper.pdf"; export SKILL_DIR=<本 skill 目录>
+WORKDIR="$(dirname "$pdf_path")/.paper2anything/wechat"
+conda run -n paper2anything --no-capture-output python "${SKILL_DIR}/scripts/publish.py" --workdir "$WORKDIR" --local-only
+```
+产出 `wechat_article.html`，提示用户打开、全选复制、粘贴到公众号编辑器。
 
 ---
 
@@ -175,7 +192,7 @@ DEST="${pdf_path%.*}_wechat"          # 与 PDF 同目录、同名 + _wechat 后
 mkdir -p "$DEST"
 cp "$WORKDIR/wechat_article.md" "$WORKDIR/wechat_article.json" "$DEST/"
 [ -f "$WORKDIR/cover.jpg" ] && cp "$WORKDIR/cover.jpg" "$DEST/"                  # 封面可能 skipped，存在才复制
-[ -f "$WORKDIR/wechat_article.html" ] && cp "$WORKDIR/wechat_article.html" "$DEST/"  # md2wechat 排版结果（若 Step 5 跑了）
+[ -f "$WORKDIR/wechat_article.html" ] && cp "$WORKDIR/wechat_article.html" "$DEST/"  # 降级时的本地样式化 HTML（直推草稿成功则没有此文件）
 cp -r "$WORKDIR/figures" "$DEST/"     # 正文以 figures/<name> 相对引用配图，须一并带上
 ```
 
@@ -194,7 +211,7 @@ cp -r "$WORKDIR/figures" "$DEST/"     # 正文以 figures/<name> 相对引用配
 | `.paper2anything/wechat/understanding/paper_understanding.json` | 论文理解 + important_figures | **你** |
 | `.paper2anything/wechat/wechat_article.md` `.json` | 深度解读长文 + 元数据 | **你** |
 | `.paper2anything/wechat/cover.jpg` | 横版封面 | cover |
-| `.paper2anything/wechat/wechat_article.html` | md2wechat 排版结果 | publish |
+| `.paper2anything/wechat/wechat_article.html` | 降级时本地生成的样式化 HTML（直推草稿成功则不产此文件） | publish |
 | `.paper2anything/wechat/logs/` | 各脚本 `*_result.json` | 脚本 |
 | **`<pdf目录>/<stem>_wechat/`** | **成品归集**：`wechat_article.md` + `.json` + `cover.jpg` + `figures/`，与 PDF 同级 | **你（Step 6）** |
 
@@ -206,5 +223,6 @@ cp -r "$WORKDIR/figures" "$DEST/"     # 正文以 figures/<name> 相对引用配
 
 - **MinerU 解析失败**：核对 `MINERU_API_TOKEN`；PDF ≤200MB / ≤200 页；能访问 `mineru.net`。重跑 Step 1（覆盖）。
 - **封面没生成（`skipped`）**：通常是既没配可用 `OPENAI_API_KEY`、又没有可复用的论文原图。配上 key 走 AI 生图，或确保 `understanding.important_figures` 有 `suitable_for_cover:true` 且 `image_path` 存在的**横版**图以供本地合成回退。
-- **md2wechat 不可用**：Step 5 自动降级为输出 Markdown 供手动粘贴；要排版就装 md2wechat 或在 `.env` 配 `MD2WECHAT_CMD`。
+- **发布到草稿箱报错**：需 `WECHAT_APPID`/`WECHAT_APP_SECRET`（从微信开发者平台 developers.weixin.qq.com 获取；AppSecret 重置后旧的失效）+ **本机出口 IP 加到「API IP白名单」** + **认证公众号**（未认证号无 `draft/add` 权限，报 404）。按 errcode 排查：`40164` IP 不在白名单、`40001` AppSecret 错、`40013` AppID 错、`404` 未认证。**查本机出口 IP**：用真凭据打一次 `GET https://api.weixin.qq.com/cgi-bin/token`，`40164` 的 errmsg 会直接写出微信看到的 IP（只打印 errmsg、勿回显 secret）。md2wechat 还要求至少一张图作封面，确保 `cover.jpg` 存在。
+- **没凭据 / 不想直推**：Step 5 用 `--local-only` 降级为本地样式化 HTML（`wechat_article.html`）手动粘贴。
 - **理解/撰文不需要 API key**：这两步是你亲自做的，不调用任何 LLM API。

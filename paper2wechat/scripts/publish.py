@@ -1,27 +1,26 @@
 """
-publish — md2wechat 格式化与发布准备
+publish — 发布到微信公众号草稿箱（封装 md2wechat 2.0.1）
 
-流程：
-  1. 读取 wechat_article.md
-  2. 调用 md2wechat 将 Markdown 转换为微信兼容 HTML
-  3. 输出 wechat_article.html（可直接复制到公众号编辑器）
-  4. 打印发布指引
+md2wechat 2.0.1 经公众号官方 API 直接把文章上传到「草稿箱」：解析 md → 上传封面与正文图到素材库
+→ draft/add 建草稿 → stdout 打印含 media_id 的 JSON，本身不产本地文件。本脚本据此分两路：
+  - 有凭据（WECHAT_APPID / WECHAT_APP_SECRET）→ 调 md2wechat 建草稿，解析其 stdout JSON
+  - 无凭据 / 指定 --local-only / 上传失败 → 降级：用 md2wechat 自带 converter 本地生成样式化
+    HTML（wechat_article.html）供手动粘贴到公众号编辑器
 
-md2wechat 安装：
-  pip install md2wechat
-  或从源码：git clone https://github.com/geekjourneyx/md2wechat-skill && pip install -e .
-
-配置（.env）：
-  MD2WECHAT_CMD=/path/to/md2wechat   # 如果不在 PATH 中
-  MD2WECHAT_THEME=default             # 主题，可选：default / academic / tech / dark
+凭据获取：微信开发者平台 developers.weixin.qq.com（AppID / AppSecret）；并把本机出口 IP 加入
+「API IP白名单」；草稿接口需认证公众号。详见 SKILL.md「Step 5」与「排错」。
 """
 
+import argparse
+import json
 import os
-import subprocess
+import re
 import shutil
+import subprocess
+import sys
 from pathlib import Path
 
-import _env  # noqa: F401  # 独立运行时兜底加载包根 .env（MD2WECHAT_CMD / MD2WECHAT_THEME 等）
+import _env  # noqa: F401  # 兜底加载包根 .env（WECHAT_APPID/APP_SECRET、MD2WECHAT_* 等）
 
 from utils import (
     load_json,
@@ -34,194 +33,232 @@ from utils import (
     save_stage_result,
 )
 
+# skill 主题词 → md2wechat 的 --style（也接受直接传 md2wechat 原生样式名）
+_THEME_TO_STYLE = {
+    "default": "academic_gray", "academic": "academic_gray",
+    "tech": "tech", "dark": "announcement",
+}
+_VALID_STYLES = {"academic_gray", "festival", "tech", "announcement"}
+
+
+def _style_from_theme(theme: str) -> str:
+    style = _THEME_TO_STYLE.get(theme, theme)
+    return style if style in _VALID_STYLES else "academic_gray"
+
+
+def _creds_present() -> bool:
+    return bool(os.environ.get("WECHAT_APPID") and os.environ.get("WECHAT_APP_SECRET"))
+
 
 def _get_md2wechat_cmd() -> str:
-    """查找 md2wechat 可执行文件路径"""
     custom = os.environ.get("MD2WECHAT_CMD", "").strip()
-    if custom:
-        return custom
-    # 尝试在 PATH 中找
-    found = shutil.which("md2wechat")
-    if found:
-        return found
-    return "md2wechat"  # 假设在 PATH 中，让 subprocess 报错
+    return custom or shutil.which("md2wechat") or "md2wechat"
 
 
-def _check_md2wechat(cmd: str) -> bool:
-    """检查 md2wechat 是否可用"""
+def _md2wechat_available(cmd: str) -> bool:
     try:
-        result = subprocess.run(
-            [cmd, "--help"],
-            capture_output=True,
-            text=True,
-            timeout=10,
-        )
-        return result.returncode == 0 or "--markdown" in (result.stdout + result.stderr)
+        r = subprocess.run([cmd, "--help"], capture_output=True, text=True, timeout=10)
+        return r.returncode == 0 or "--markdown" in (r.stdout + r.stderr)
     except (FileNotFoundError, subprocess.TimeoutExpired):
         return False
 
 
-def _run_md2wechat(cmd: str, input_path: Path, output_path: Path, theme: str,
-                   title: str = "", summary: str = "", cover_path: Path | None = None) -> bool:
-    """调用 md2wechat 推送到微信草稿箱。"""
-    style_map = {"academic": "academic_gray", "tech": "tech",
-                 "dark": "announcement", "default": "academic_gray"}
-    style = style_map.get(theme, theme)
-    args = [
-        cmd,
-        "--markdown", str(input_path),
-        "--style", style,
-    ]
+def _local_html(md_path: Path, html_path: Path, style: str) -> bool:
+    """降级：用 md2wechat 自带 converter 离线生成样式化 HTML（不调 API）。"""
+    try:
+        from skills.md2wechat.scripts.parsers import MarkdownParser
+    except ImportError:
+        print_warning("无法导入 md2wechat converter，跳过本地 HTML 生成")
+        return False
+    try:
+        pr = MarkdownParser().parse(str(md_path), style=style)
+        doc = (
+            '<!DOCTYPE html>\n<html lang="zh-CN">\n<head>\n<meta charset="utf-8">\n'
+            '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
+            f"<title>{pr.title}</title>\n</head>\n<body>\n{pr.content}\n</body>\n</html>\n"
+        )
+        html_path.write_text(doc, encoding="utf-8")
+        return True
+    except Exception as e:
+        print_warning(f"本地生成 HTML 失败：{e}")
+        return False
+
+
+def _extract_json(stdout: str) -> dict | None:
+    """从 md2wechat stdout（进度行 + 末尾结果 JSON）里抠出结果 JSON。"""
+    m = re.search(r"\{.*\}", stdout, re.DOTALL)  # 进度行不含 {，贪婪取整段结果 JSON
+    if m:
+        try:
+            return json.loads(m.group(0))
+        except ValueError:
+            pass
+    for line in reversed(stdout.splitlines()):
+        line = line.strip()
+        if line.startswith("{"):
+            try:
+                return json.loads(line)
+            except ValueError:
+                continue
+    return None
+
+
+def _upload_draft(cmd: str, md_path: Path, style: str, title: str,
+                  summary: str, cover_path: Path | None) -> dict:
+    """调 md2wechat 建草稿。返回 {ok, media_id?, error?, code?, stderr?}。"""
+    args = [cmd, "--markdown", str(md_path), "--style", style]
     if title:
-        args += ["--title", title]
+        args += ["--title", title[:64]]
     if summary:
         args += ["--summary", summary[:120]]
-    if cover_path and cover_path.exists():
-        args += ["--cover", str(cover_path)]
-    print_info(f"执行: {' '.join(args)}")
+    has_cover = bool(cover_path and cover_path.exists())
+    if has_cover:
+        args += ["--cover", str(cover_path.resolve())]
+    print_info(f"执行：md2wechat --markdown … --style {style}"
+               + (" --cover cover.jpg" if has_cover else ""))
     try:
-        result = subprocess.run(
-            args,
-            capture_output=True,
-            text=True,
-            timeout=60,
-        )
-        if result.stdout:
-            for line in result.stdout.strip().splitlines():
-                print_info(f"  {line}")
-        if result.returncode != 0:
-            print_error(f"md2wechat 返回错误码 {result.returncode}")
-            if result.stderr:
-                print_error(f"stderr: {result.stderr[:300]}")
-            return False
-        return True
+        r = subprocess.run(args, capture_output=True, text=True, timeout=180)
     except FileNotFoundError:
-        print_error(f"找不到 md2wechat 命令: {cmd}")
-        print_info("请安装 md2wechat：pip install md2wechat")
-        print_info("或在 .env 中设置 MD2WECHAT_CMD=/path/to/md2wechat")
-        return False
+        return {"ok": False, "error": f"找不到 md2wechat：{cmd}", "code": "NO_CMD"}
     except subprocess.TimeoutExpired:
-        print_error("md2wechat 执行超时（>60s）")
-        return False
+        return {"ok": False, "error": "md2wechat 执行超时（>180s）", "code": "TIMEOUT"}
+
+    data = _extract_json(r.stdout)
+    if data and data.get("success"):
+        d = data.get("data", {})
+        return {"ok": True, "media_id": d.get("media_id"), "raw": d}
+    err = (data or {}).get("error") or (r.stderr or "").strip() or "md2wechat 未返回成功结果"
+    code = (data or {}).get("code") or f"exit{r.returncode}"
+    return {"ok": False, "error": err, "code": code, "stderr": (r.stderr or "")[:500]}
 
 
-def _fallback_copy_markdown(input_path: Path, output_path: Path) -> None:
-    """降级方案：md2wechat 不可用时直接使用已有 Markdown 文件"""
-    print_warning(f"Markdown 文件已就绪: {input_path}")
-    print_warning("请手动将内容粘贴到微信公众号编辑器，或安装 md2wechat 后重试")
+def _hint_for_error(up: dict) -> None:
+    s = f"{up.get('code')} {up.get('error')} {up.get('stderr', '')}".lower()
+    if "40164" in s or ("ip" in s and "whitelist" in s):
+        print_info("  → IP 白名单：把本机出口 IP 加到 developers.weixin.qq.com 的「API IP白名单」")
+    elif "40001" in s or "appsecret" in s:
+        print_info("  → AppSecret 无效：核对 / 重置 WECHAT_APP_SECRET（重置后旧的失效）")
+    elif "40013" in s or "appid" in s:
+        print_info("  → AppID 无效：WECHAT_APPID 应以 wx 开头")
+    elif "404" in s:
+        print_info("  → 草稿接口不可用：需认证公众号（未认证号无 draft/add 权限）")
+    elif "missing_cover" in s or "封面" in s:
+        print_info("  → 缺封面：确保 cover.jpg 存在（先跑封面步骤）")
 
 
-def _print_publish_guide(article_path: Path, html_path: Path, md_path: Path, article: dict) -> None:
-    """打印发布指引"""
-    print_info("\n" + "═" * 60)
-    print_success("【md2wechat 完成】格式化成功")
-    print_info("═" * 60)
-    print_info(f"\n文章标题：{article.get('title', '')}")
-    print_info(f"文章摘要：{article.get('digest', '')[:80]}...")
-    print_info(f"\n生成文件：")
+def _guide_draft(media_id: str | None, title: str) -> None:
+    print_info("─" * 56)
+    print_success("草稿已上传到公众号草稿箱")
+    print_info(f"  标题：{title}")
+    if media_id:
+        print_info(f"  media_id：{media_id}")
+    print_info("  下一步：登录 mp.weixin.qq.com → 草稿箱 → 预览确认 → 群发 / 发表")
+    print_info("─" * 56)
+
+
+def _guide_local(html_path: Path, md_path: Path, had_creds: bool) -> None:
+    print_info("─" * 56)
+    if html_path.exists():
+        print_success(f"已生成样式化 HTML：{html_path}")
+        print_info("  打开它、全选复制，粘贴到公众号编辑器（mp.weixin.qq.com → 新建图文）")
     print_info(f"  Markdown 原文：{md_path}")
-    print_info(f"  微信 HTML：{html_path}")
-    print_info(f"\n【发布步骤】")
-    print_info("  1. 打开微信公众平台：https://mp.weixin.qq.com")
-    print_info("  2. 新建图文消息")
-    print_info("  3. 打开 wechat_article.html，全选复制内容")
-    print_info("  4. 粘贴到公众号编辑器（格式应自动保留）")
-    print_info("  5. 上传封面图：cover.jpg（900×383）")
-    print_info("  6. 填写摘要（已在文件中）")
-    print_info("  7. 预览确认后发布")
-    print_info("═" * 60 + "\n")
+    if not had_creds:
+        print_info("  想一键直推草稿箱：配 WECHAT_APPID / WECHAT_APP_SECRET（developers.weixin.qq.com）"
+                   " + 本机出口 IP 加入「API IP白名单」+ 用认证公众号")
+    print_info("─" * 56)
 
 
-def run(workdir: str) -> dict:
-    """
-    md2wechat 排版：把 wechat/wechat_article.md 转成公众号 HTML（草稿）；
-    md2wechat 不可用时降级为“手动粘贴 Markdown”指引。
-
-    输入：wechat/wechat_article.md（+ wechat_article.json 的 title/digest）+ cover.jpg（可选）
-    """
-    print_stage_header("md2wechat 排版与发布准备")
-
+def run(workdir: str, local_only: bool) -> dict:
+    print_stage_header("发布到微信公众号草稿箱（md2wechat）")
     workspace = resolve_workspace(workdir)
     md_path = workspace["wechat"] / "wechat_article.md"
     html_path = workspace["wechat"] / "wechat_article.html"
-    article_json_path = workspace["wechat"] / "wechat_article.json"
+    cover_path = workspace["wechat"] / "cover.jpg"
 
     if not md_path.exists():
-        print_error(f"Markdown 文件不存在: {md_path}")
+        print_error(f"文章不存在：{md_path}")
         return {"status": "failed", "error": "wechat_article.md 不存在"}
 
-    # 加载文章元数据
     article = {}
-    if article_json_path.exists():
+    json_path = workspace["wechat"] / "wechat_article.json"
+    if json_path.exists():
         try:
-            article = load_json(article_json_path)
+            article = load_json(json_path)
         except Exception:
             pass
+    title = (article.get("title") or "").strip()
+    summary = (article.get("digest") or "").strip()
+    style = _style_from_theme(os.environ.get("MD2WECHAT_THEME", "default"))
 
+    # —— 降级路：--local-only 或没凭据 → 本地出 HTML，不碰 API ——
+    if local_only or not _creds_present():
+        reason = "指定 --local-only" if local_only else "未配 WECHAT_APPID/WECHAT_APP_SECRET"
+        print_warning(f"{reason}：走本地排版（不上传草稿）")
+        _local_html(md_path, html_path, style)
+        _guide_local(html_path, md_path, had_creds=_creds_present())
+        res = {"status": "local", "reason": reason, "title": title,
+               "markdown_path": str(md_path)}
+        if html_path.exists():
+            res["html_path"] = str(html_path)
+        save_stage_result(res, "publish", workspace)
+        return res
+
+    # —— 上传草稿路 ——
     cmd = _get_md2wechat_cmd()
-    theme = os.environ.get("MD2WECHAT_THEME", "default")
+    if not _md2wechat_available(cmd):
+        print_warning(f"md2wechat 不可用（{cmd}），降级本地排版")
+        _local_html(md_path, html_path, style)
+        _guide_local(html_path, md_path, had_creds=True)
+        return {"status": "degraded", "reason": "md2wechat 不可用",
+                "html_path": str(html_path) if html_path.exists() else None}
 
-    print_info(f"md2wechat 命令: {cmd}")
-    print_info(f"主题: {theme}")
+    if not cover_path.exists():
+        print_warning("未找到 cover.jpg —— md2wechat 需至少一张图作封面，否则 MISSING_COVER_IMAGE")
+    print_info(f"标题：{title[:40]} ｜ 摘要 {len(summary)} 字 ｜ 样式 {style}")
 
-    # 检查 md2wechat 是否可用
-    if not _check_md2wechat(cmd):
-        print_warning(f"md2wechat 不可用（命令: {cmd}）")
-        print_warning("降级处理：直接使用 Markdown 文件")
-        _fallback_copy_markdown(md_path, html_path)
-        _print_publish_guide(article_json_path, html_path.with_suffix(".md"), md_path, article)
-        return {
-            "status": "degraded",
-            "reason": "md2wechat 不可用，已降级为直接输出 Markdown",
-            "markdown_path": str(md_path),
-        }
+    up = _upload_draft(cmd, md_path, style, title, summary, cover_path)
+    if up["ok"]:
+        _guide_draft(up.get("media_id"), title)
+        res = {"status": "success", "media_id": up.get("media_id"),
+               "title": title, "target": "草稿箱"}
+        save_stage_result(res, "publish", workspace)
+        return res
 
-    # 执行转换
-    cover_path = workspace["wechat"] / "cover.jpg"
-    success = _run_md2wechat(
-        cmd, md_path, html_path, theme,
-        title=article.get("title", ""),
-        summary=article.get("digest", ""),
-        cover_path=cover_path if cover_path.exists() else None,
-    )
+    # 上传失败：可操作提示 + 仍本地出 HTML 兜底
+    print_error(f"上传草稿失败（{up.get('code')}）：{up.get('error')}")
+    _hint_for_error(up)
+    _local_html(md_path, html_path, style)
+    _guide_local(html_path, md_path, had_creds=True)
+    res = {"status": "failed", "error": up.get("error"), "code": up.get("code")}
+    if html_path.exists():
+        res["html_path"] = str(html_path)
+    save_stage_result(res, "publish", workspace)
+    return res
 
-    if not success:
-        print_warning("md2wechat 转换失败，降级处理")
-        _fallback_copy_markdown(md_path, html_path)
-        return {
-            "status": "degraded",
-            "reason": "md2wechat 转换失败，已降级为直接输出 Markdown",
-            "markdown_path": str(md_path),
-        }
 
-    if not html_path.exists():
-        print_warning(f"md2wechat 未生成 HTML 文件（期望路径: {html_path}）")
-        print_warning("可能 md2wechat 使用了不同的输出路径，请检查")
-        _fallback_copy_markdown(md_path, html_path)
+def main() -> int:
+    parser = argparse.ArgumentParser(description="发布到微信公众号草稿箱（md2wechat 封装）")
+    parser.add_argument("--workdir", help="工作区目录，约定 <pdf目录>/.paper2anything/wechat")
+    parser.add_argument("--local-only", action="store_true",
+                        help="只本地生成样式化 HTML，不上传草稿（无需凭据）")
+    parser.add_argument("--check-creds", action="store_true",
+                        help="只检查 WECHAT_APPID/APP_SECRET 是否就位（0=有 / 2=无）")
+    args = parser.parse_args()
 
-    _print_publish_guide(article_json_path, html_path, md_path, article)
+    if args.check_creds:
+        if _creds_present():
+            print_success("WECHAT_APPID / WECHAT_APP_SECRET 已配置")
+            return 0
+        print_warning("未配置 WECHAT_APPID / WECHAT_APP_SECRET")
+        return 2
 
-    result = {
-        "status": "success",
-        "html_path": str(html_path),
-        "markdown_path": str(md_path),
-        "title": article.get("title", ""),
-        "word_count": article.get("word_count", 0),
-    }
-    save_stage_result(result, "publish", workspace)
-    return result
+    if not args.workdir:
+        print_error("需要 --workdir")
+        return 1
+
+    res = run(args.workdir, args.local_only)
+    # success / local / degraded 均不算失败（local、degraded 都已产出可用产物）
+    return 0 if res.get("status") in ("success", "local", "degraded") else 1
 
 
 if __name__ == "__main__":
-    import argparse
-    import sys
-
-    parser = argparse.ArgumentParser(description="md2wechat 排版与发布准备（协调式机械步骤）")
-    parser.add_argument(
-        "--workdir", required=True,
-        help="工作区目录，约定 <pdf目录>/.paper2anything/wechat",
-    )
-    args = parser.parse_args()
-    res = run(args.workdir)
-    # degraded（md2wechat 不可用，已输出 md 供手动粘贴）不算失败
-    sys.exit(0 if res.get("status") in ("success", "degraded") else 1)
+    sys.exit(main())

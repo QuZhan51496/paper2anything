@@ -146,3 +146,4 @@ set -a; source <paper2anything 包根>/.env; set +a
 ## 致谢
 
 - 小红书发布能力由开源项目 **[xiaohongshu-mcp](https://github.com/xpzouying/xiaohongshu-mcp)**（作者 xpzouying）提供。
+- 公众号发布与排版能力由开源项目 **[md2wechat](https://github.com/zkkython/md2wechat)**（作者 zkkython）提供。
