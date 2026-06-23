@@ -14,7 +14,7 @@
 | --- | --- | --- | --- |
 | **paper2slides** | 演讲幻灯片 | `.pptx` | "把这篇论文做成 PPT"、"生成幻灯片"、"deck this paper" |
 | **paper2poster** | 会议海报 | `poster.html` + `poster.png` | "make a poster from this paper"、"论文转海报" |
-| **paper2html** | 单页项目主页 | `index.html`（自包含） | "论文转网页"、"生成 project page / landing page" |
+| **paper2html** | 单页项目主页 | `index.html` | "论文转网页"、"生成 project page / landing page" |
 | **paper2xhs** | 小红书帖子 | `xhs_post.json/md` + 封面 | "把这篇论文发小红书"、"论文转小红书" |
 | **paper2wechat** | 公众号推文 | `wechat_article.md/html` + 封面 | "把论文写成公众号文章"、"论文转公众号" |
 
@@ -33,8 +33,8 @@ bash tools/install-macos.sh --create-env --shell-init     # macOS
 
 安装脚本会：① 把 5 个 skill 符号链接进 `~/.claude/skills/`；② 没有 `.env` 时从 `.env.example` 引导一份；③ 检查 conda 环境、系统依赖与 `MINERU_API_TOKEN`（用于论文提取）。命令里两个 flag 的作用（不需要可省去）：
 
-- `--create-env`：顺手 `conda env create`（已存在则按 `environment.yml` 更新）+ 装 playwright chromium + 跑 pip 自检；
-- `--shell-init`：（可选）把 `.env` 自动导出写进 shell 启动文件（幂等），新开 shell 即加载凭据。
+- `--create-env`： `conda env create`（已存在则按 `environment.yml` 更新）+ 装 playwright chromium + 跑 pip 自检；
+- `--shell-init`：（可选）把 `.env` 自动导出写进 shell 启动文件，新开 shell 即加载凭据。
 
 跑完照脚本提示再补两步：
 
