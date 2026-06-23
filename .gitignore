@@ -1,23 +1,10 @@
-# paper2anything —— 忽略凭据、产物与缓存
-
-# ── 凭据（绝不提交；含真实 key）──
-.env
-api.sh
-
-# ── Python 缓存 ──
 __pycache__/
 *.py[cod]
 *.egg-info/
 .pytest_cache/
 
-# ── 各 skill 产物 / 工作目录 ──
-# 统一方案：产物落在论文旁的 .paper2anything/<skill>/；下面再兜底忽略手动/默认产物目录
-.paper2anything/
-_work/
-workspace/
-output/
-
-# ── 系统 / 编辑器 ──
 .DS_Store
 .idea/
 .vscode/
+
+.env

@@ -27,19 +27,36 @@
 **Claude Code一键安装（推荐）**：在包根跑对应系统脚本——自动注册 5 个 skill，并一并核对 **conda 环境、系统依赖、`.env` 凭据**：
 
 ```bash
-bash tools/install-linux.sh     # Linux
-bash tools/install-macos.sh     # macOS
+bash tools/install-linux.sh --create-env --shell-init     # Linux
+bash tools/install-macos.sh --create-env --shell-init     # macOS
 ```
 
-脚本做三件事：① 把 5 个 skill 符号链接进 `~/.claude/skills/`；② 没有 `.env` 时从 `.env.example` 引导一份；③ 检查 conda 环境、系统依赖与 `MINERU_API_TOKEN`（用于论文提取）。建议首次安装时添加：
+脚本做三件事：① 把 5 个 skill 符号链接进 `~/.claude/skills/`；② 没有 `.env` 时从 `.env.example` 引导一份；③ 检查 conda 环境、系统依赖与 `MINERU_API_TOKEN`（用于论文提取）。命令里两个 flag 的作用（不需要可省去）：
 
 - `--create-env`：顺手 `conda env create`（已存在则按 `environment.yml` 更新）+ 装 playwright chromium + 跑 pip 自检；
-- `--shell-init`：把 `.env` 自动导出写进 shell 启动文件（幂等），新开 shell 即加载凭据。
+- `--shell-init`：（可选）把 `.env` 自动导出写进 shell 启动文件（幂等），新开 shell 即加载凭据。
 
-跑完照脚本提示再补两步：**填 `.env` 里的 `MINERU_API_TOKEN`**（必需），并**装上它指出的缺失系统级依赖**（脚本会逐项检测并给出安装命令）。需要手动安装时（如只用某个特定 skill、只想装它需要的依赖），下面是等价拆解。
+跑完照脚本提示再补两步：
+
+1. **填 `.env` 里的 `MINERU_API_TOKEN`**（必需）；
+2. **装上它指出的缺失系统级依赖**（脚本会逐项检测并给出安装命令）。
+
+需要手动安装时（如只用某个特定 skill、只想装它需要的依赖），下面是等价拆解。
 
 <details>
-<summary><b>手动安装步骤与凭据配置</b></summary>
+<summary><b>手动安装</b></summary>
+
+### 注册 skill（软链接）
+
+把 5 个 skill 软链接进 `~/.claude/skills/`，Claude Code 才能发现并自动触发：
+
+```bash
+# 在 paper2anything 包根目录
+mkdir -p ~/.claude/skills
+for s in paper2slides paper2poster paper2html paper2xhs paper2wechat; do
+  ln -sfn "$(pwd)/$s" ~/.claude/skills/"$s"
+done
+```
 
 ### conda 环境
 
