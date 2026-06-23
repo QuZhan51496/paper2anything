@@ -20,8 +20,7 @@ IS_OCR = False
 LANGUAGE = "ch"
 
 
-# Output — 默认输出根目录落在输入文件旁的 <input-dir>/.paper2anything/html/，
-# 与 slides/poster/xhs/wechat 的 .paper2anything/<skill>/ 方案统一。
+# Output — 输出根落在输入文件旁的 <input-dir>/.paper2anything/html/，调用方再按 <stem> 分篇（.../html/<stem>/）。
 def default_output_root(source) -> Path:
-    """输入文件同目录下的 .paper2anything/html/。"""
+    """输入文件同目录下的 .paper2anything/html/（输出根，调用方按 <stem> 分篇）。"""
     return Path(source).expanduser().resolve().parent / ".paper2anything" / "html"

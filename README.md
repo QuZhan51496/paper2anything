@@ -24,14 +24,14 @@
 
 ## 环境安装
 
-**一键安装（推荐）**：在包根跑对应系统脚本——自动注册 5 个 skill，并一并核对 **conda 环境、系统依赖、`.env` 凭据**（缺啥只提示、不阻塞）：
+**Claude Code一键安装（推荐）**：在包根跑对应系统脚本——自动注册 5 个 skill，并一并核对 **conda 环境、系统依赖、`.env` 凭据**：
 
 ```bash
 bash tools/install-linux.sh     # Linux
 bash tools/install-macos.sh     # macOS
 ```
 
-脚本做三件事：① 把 5 个 skill 符号链接进 `~/.claude/skills/`；② 没有 `.env` 时从 `.env.example` 引导一份；③ 检查 conda 环境、系统依赖与 `MINERU_API_TOKEN`（用于论文提取），缺什么只提示。建议首次安装时添加：
+脚本做三件事：① 把 5 个 skill 符号链接进 `~/.claude/skills/`；② 没有 `.env` 时从 `.env.example` 引导一份；③ 检查 conda 环境、系统依赖与 `MINERU_API_TOKEN`（用于论文提取）。建议首次安装时添加：
 
 - `--create-env`：顺手 `conda env create`（已存在则按 `environment.yml` 更新）+ 装 playwright chromium + 跑 pip 自检；
 - `--shell-init`：把 `.env` 自动导出写进 shell 启动文件（幂等），新开 shell 即加载凭据。
@@ -43,8 +43,7 @@ bash tools/install-macos.sh     # macOS
 
 ### conda 环境
 
-5 个 skill 共用一个 conda 环境 `paper2anything`，所有 `python` 命令都以
-`conda run -n paper2anything --no-capture-output` 为前缀（或先 `conda activate paper2anything`）。
+5 个 skill 共用一个 conda 环境 `paper2anything`。
 
 ```bash
 # 在 paper2anything 包根目录
@@ -54,31 +53,33 @@ conda activate paper2anything
 
 ### 系统级依赖
 
-| 工具 | 用途 | 哪个 skill |
-| --- | --- | --- |
-| poppler-utils（`pdftoppm`） | PDF 整页渲染 | paper2slides |
-| libreoffice（`soffice`） | pptx → pdf（视觉 QA） | paper2slides |
-| Node.js + pptxgenjs（+ react-icons/react/react-dom/sharp） | PPT 渲染（icon 光栅仅 icon 元素需要） | paper2slides |
-| `playwright install chromium` | 浏览器渲染/截图 | paper2poster / paper2html |
-| md2wechat（已在 conda 内 pip 装；源码版见 paper2wechat/SKILL.md） | Markdown → 公众号草稿箱 | paper2wechat |
+| 工具 | 用途 | 哪个 skill | 安装命令 |
+| --- | --- | --- | --- |
+| poppler-utils（`pdftoppm`） | PDF 渲染 | paper2slides | `sudo apt install poppler-utils`（Linux）/ `brew install poppler`（macOS） |
+| libreoffice（`soffice`） | 视觉 QA | paper2slides | `sudo apt install libreoffice`（Linux）/ `brew install --cask libreoffice`（macOS） |
+| Node.js | JS 运行时 | paper2slides | Linux 用 NodeSource（apt 自带过旧，见表下注）/ `brew install node`（macOS） |
+| pptxgenjs + react-icons/react/react-dom/sharp | PPT 渲染 | paper2slides | `npm install -g pptxgenjs react-icons react react-dom sharp`（Linux 前加 `sudo`） |
+| Playwright Chromium | 浏览器渲染 | paper2poster / paper2html | `conda run -n paper2anything python -m playwright install chromium` |
+
+**Node.js（Linux）**：sharp 要求 Node ≥20.9.0，用 NodeSource 装：
+
+```bash
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash - && sudo apt install -y nodejs
+```
 
 ### 凭据配置
 
-所有 skill 的凭据集中在**包根一个 `.env`**（从 `.env.example` 复制填写，应 gitignore）。
-复制后填入你的 key 即可——各 skill 的脚本启动时会自动 `load_dotenv` 包根 `.env`，
-`conda run -n paper2anything ... python ...` 都能读到，无需每个 shell 手动 source：
+所有 skill 的凭据集中在**包根一个 `.env`**（从 `.env.example` 复制填写）。复制后填入你的 key 即可：
 
 ```bash
 cp .env.example .env          # 首次：复制后填入你的 key
 ```
 
-**更可靠（可选）**：把 `.env` 导出写进 shell 启动文件，凭据即成为真正的环境变量、对所有进程（python / node / soffice / md2wechat …）可见、优先级高于 `.env`（已 export 的同名变量不被 `.env` 覆盖）。装时加 `--shell-init` 自动写入（见「环境安装」），或手动加这一行（Linux `~/.bashrc`、macOS `~/.zshrc`）：
+**可选**：把 `.env` 导出写进 shell 启动文件。安装时加 `--shell-init` 自动写入（见「环境安装」），或手动加这一行：
 
 ```bash
 set -a; source <paper2anything 包根>/.env; set +a
 ```
-
-> 凭据只此一个包根 `.env`，无需各 skill 的局部配置文件。
 
 </details>
 
@@ -88,29 +89,35 @@ set -a; source <paper2anything 包根>/.env; set +a
 
 直接说出你的意图，对应 skill 会被自动触发，例如：
 
-- "把 `~/paper.pdf` 做成 PPT" → **paper2slides**
+- "把 `path/to/paper.pdf` 做成 PPT" → **paper2slides**
 - "用这篇论文做一张会议海报" → **paper2poster**
 - "把这篇 PDF 变成项目主页" → **paper2html**
 - "帮我把这篇论文发小红书" → **paper2xhs**
 - "把这篇论文写成公众号推文" → **paper2wechat**
 
-每个 skill 的完整流水线、阶段协议、产物 schema 与排错见各自的 `SKILL.md`。
+或直接用斜杠命令显式调用，跟上 PDF 路径：
+
+```
+/paper2slides path/to/paper.pdf
+/paper2poster path/to/paper.pdf
+/paper2html   path/to/paper.pdf
+/paper2xhs    path/to/paper.pdf
+/paper2wechat path/to/paper.pdf
+```
 
 ---
 
 ## 产物位置
 
-每个 skill 的**最终成品**都落在**论文同目录**下（跟着论文走、互不干扰）；全部中间产物保留在同目录的 `.paper2anything/<skill>/`：
+每个 skill 的**最终成品**都落在**论文同目录**下（跟着论文走、互不干扰）；全部中间产物保留在同目录的 `.paper2anything/<skill>/<论文名>/`（同目录多篇论文按 `<论文名>` 分篇、互不覆盖）：
 
 | Skill | 最终成品（论文同目录） | 中间产物 |
 | --- | --- | --- |
-| paper2slides | `<论文名>.pptx`（重名 `-v2/-v3`） | `.paper2anything/slides/<论文名>/` |
-| paper2poster | `<论文名>_poster/`（`poster.png` + `poster.html`） | `.paper2anything/poster/` |
-| paper2html | `<论文名>_html/`（`index.html` + `images/`） | `.paper2anything/html/` |
-| paper2xhs | `<论文名>_xhs/`（`xhs_post.md` + `.json` + `cover.png`） | `.paper2anything/xhs/` |
-| paper2wechat | `<论文名>_wechat/`（`wechat_article.md` + `.json` + `cover.jpg` + `figures/`） | `.paper2anything/wechat/` |
-
-> 含相对引用的成品（html 的 `images/`、wechat 的 `figures/` 等）整组放进 `<论文名>_<skill>/` 子目录、引用不破。论文目录只读时 slides 回退到 `~/.cache/paper2anything/slides/`；`.paper2anything/` 已在包根 `.gitignore` 忽略。
+| paper2slides | `<论文名>_slides/`（`<论文名>.pptx`） | `.paper2anything/slides/<论文名>/` |
+| paper2poster | `<论文名>_poster/`（`poster.png` + `poster.html`） | `.paper2anything/poster/<论文名>/` |
+| paper2html | `<论文名>_html/`（`index.html` + `images/`） | `.paper2anything/html/<论文名>/` |
+| paper2xhs | `<论文名>_xhs/`（`xhs_post.md` + `.json` + `cover.png`） | `.paper2anything/xhs/<论文名>/` |
+| paper2wechat | `<论文名>_wechat/`（`wechat_article.md` + `.json` + `cover.jpg` + `figures/`） | `.paper2anything/wechat/<论文名>/` |
 
 ---
 

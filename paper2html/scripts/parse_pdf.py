@@ -4,7 +4,7 @@
 PDF → MinerU 解析 → normalize → extract_manifest（title/authors/abstract/links/claims/
 figures/tables/method/bibtex，附录过滤，抽不到留空交你兜底）→ 复制页面图。
 
-产物（落在 --workdir，即 <pdf目录>/.paper2anything/html/）：
+产物（落在 --workdir，即 <pdf目录>/.paper2anything/html/<stem>/）：
   clean.md       normalize 后的 markdown（你通读全文用）
   manifest.json  确定性抽取的事实（你创作只能用这里的真实素材）
   parsed/        MinerU 原始解析（含 full.md 供重跑复用、images/ 所有裁图）
@@ -12,7 +12,7 @@ figures/tables/method/bibtex，附录过滤，抽不到留空交你兜底）→ 
   logs/parse_pdf_result.json
 
 用法：
-  python parse_pdf.py <paper.pdf> --workdir <.paper2anything/html> [--paper-url URL] [--code-url URL] [--lite]
+  python parse_pdf.py <paper.pdf> --workdir <pdf目录>/.paper2anything/html/<stem> [--paper-url URL] [--code-url URL] [--lite]
 """
 import argparse
 import sys
@@ -111,7 +111,7 @@ def run(input_path: str, workdir: str, *, paper_url=None, code_url=None,
 def main() -> int:
     ap = argparse.ArgumentParser(description="paper2html parse_pdf: 解析 + 确定性抽取")
     ap.add_argument("input", help="论文 PDF（或已解析的 Markdown）")
-    ap.add_argument("--workdir", required=True, help="工作目录（<pdf目录>/.paper2anything/html）")
+    ap.add_argument("--workdir", required=True, help="工作目录（<pdf目录>/.paper2anything/html/<stem>）")
     ap.add_argument("--paper-url", default=None, help="论文规范链接（不传则留空，不假设 arxiv）")
     ap.add_argument("--code-url", default=None, help="代码仓库链接覆盖")
     ap.add_argument("--lite", action="store_true", help="用 MinerU 轻量解析 API")

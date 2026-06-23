@@ -31,7 +31,7 @@ allowed-tools: Bash, Read, Write, Glob, Grep, Agent, AskUserQuestion
 /paper2slides <paper.pdf> [output.pptx] [--from-stage <name>] [--force]
 ```
 
-- `output.pptx` 缺省 → `<paper-dir>/<paper-stem>.pptx`，重名自动 `-v2 -v3`
+- `output.pptx` 缺省 → `<paper-dir>/<paper-stem>_slides/<paper-stem>.pptx`，重名目录自动 `_v2 _v3`
 - 中间产物落在 `<paper-dir>/.paper2anything/slides/<paper-stem>/`，论文目录只读时回退到 `~/.cache/paper2anything/slides/`
 
 **Python 环境**：所有脚本跑在 `paper2anything` conda 环境。命令前缀
@@ -150,7 +150,7 @@ conda run -n paper2anything --no-capture-output python -m scripts.render_pptx \
     <workdir>/slide_spec.json <workdir>/output.pptx
 ```
 
-产物 `<workdir>/output.pptx`，渲染成功后复制到 Stage 0 给出的最终 `output_path`。
+产物 `<workdir>/output.pptx`，渲染成功后复制到 Stage 0 给出的最终 `output_path`（先 `mkdir -p` 其父目录 `<paper-stem>_slides/`）。
 **陷阱**：依赖 `node`+`pptxgenjs`（全局装），node 不在 PATH 脚本会报错；失败先
 `--dry-run` 只生成 `render/build.js` 定位 spec 问题。前置依赖与常见错误见
 [references/pipeline.md](references/pipeline.md) §Stage 4。
@@ -166,7 +166,7 @@ conda run -n paper2anything --no-capture-output python -m scripts.render_pptx \
 
 | 输入 | 默认 |
 |---|---|
-| `output.pptx` 缺省 | `<paper-dir>/<paper-stem>.pptx`；重名追加 `-v2`、`-v3` |
+| `output.pptx` 缺省 | `<paper-dir>/<paper-stem>_slides/`（内含 `<paper-stem>.pptx`）；重名目录追加 `_v2`、`_v3` |
 | 工作目录写不进论文目录 | 回退到 `~/.cache/paper2anything/slides/<paper-stem>-<hash12>/` |
 | 同一论文重跑 | 已完成阶段（产物文件已存在）自动跳过 |
 | `config.json` 已存在 | Stage 0.5 跳过提问，沿用上次配置；要改配置走 `--from-stage configure` |

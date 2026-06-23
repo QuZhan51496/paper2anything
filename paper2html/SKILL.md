@@ -25,7 +25,7 @@ PDF
 1. **一步步来**：机械步骤用 `Bash` 调脚本（绝对路径，无需 cd），设计与撰写你自己用 `Read`/`Write` 做。
 2. **每个 Bash 块开头就地算 `WORKDIR`**（各 Bash 调用是独立 shell、不共享变量）：
    ```bash
-   WORKDIR="$(dirname "$pdf_path")/.paper2anything/html"
+   WORKDIR="$(dirname "$pdf_path")/.paper2anything/html/$(basename "${pdf_path%.*}")"
    ```
    `$pdf_path` 是用户给的论文 PDF（每块重设一次）。脚本在 `${SKILL_DIR}/scripts`——`SKILL_DIR`
    是**本 skill 的目录**（见本 skill 顶部注入的 "Base directory for this skill: …"）；各 Bash 块独立 shell，
@@ -64,7 +64,7 @@ conda run -n paper2anything --no-capture-output python -c "import requests, rich
 
 ```bash
 pdf_path="/path/to/paper.pdf"          # ← 用户的论文 PDF
-WORKDIR="$(dirname "$pdf_path")/.paper2anything/html"
+WORKDIR="$(dirname "$pdf_path")/.paper2anything/html/$(basename "${pdf_path%.*}")"
 conda run -n paper2anything --no-capture-output \
   python "${SKILL_DIR}/scripts/parse_pdf.py" "$pdf_path" --workdir "$WORKDIR"
 ```
@@ -115,7 +115,7 @@ conda run -n paper2anything --no-capture-output \
 
 ```bash
 pdf_path="/path/to/paper.pdf"
-WORKDIR="$(dirname "$pdf_path")/.paper2anything/html"
+WORKDIR="$(dirname "$pdf_path")/.paper2anything/html/$(basename "${pdf_path%.*}")"
 conda run -n paper2anything --no-capture-output \
   python "${SKILL_DIR}/scripts/validate.py" --workdir "$WORKDIR"
 ```
@@ -143,15 +143,16 @@ conda run -n paper2anything --no-capture-output \
 
 ---
 
-## Step 5：把成品归集到 PDF 旁（与 slides 的 `.pptx` 同级）
+## Step 5：把成品归集到 PDF 旁
 
-成品默认埋在 `.paper2anything/html/` 里不好找。定稿后把它复制一份到**与 PDF 同级**的
+成品默认埋在 `.paper2anything/html/<stem>/` 里不好找。定稿后把它复制一份到**与 PDF 同级**的
 `<stem>_html/` 目录（`.paper2anything` 内副本保留不动），让用户在论文旁直接打开：
 
 ```bash
 pdf_path="/path/to/paper.pdf"
-WORKDIR="$(dirname "$pdf_path")/.paper2anything/html"
+WORKDIR="$(dirname "$pdf_path")/.paper2anything/html/$(basename "${pdf_path%.*}")"
 DEST="${pdf_path%.*}_html"            # 与 PDF 同目录、同名 + _html 后缀
+i=2; while [ -e "$DEST" ]; do DEST="${pdf_path%.*}_html_v$i"; i=$((i+1)); done   # 重名则追加 _v2、_v3
 mkdir -p "$DEST"
 cp "$WORKDIR/index.html" "$DEST/"
 cp -r "$WORKDIR/images" "$DEST/"      # index.html 以 images/<file> 相对引用，须一并带上
@@ -164,19 +165,19 @@ cp -r "$WORKDIR/images" "$DEST/"      # index.html 以 images/<file> 相对引�
 
 ## 产物位置
 
-中间产物落在论文旁 `<pdf目录>/.paper2anything/html/`，**最终成品另复制到 PDF 同级的 `<stem>_html/`**（Step 5）：
+中间产物落在论文旁 `<pdf目录>/.paper2anything/html/<stem>/`（同目录多篇论文按 `<stem>` 分篇、互不覆盖），**最终成品另复制到 PDF 同级的 `<stem>_html/`**（Step 5）：
 
 | 路径 | 内容 | 谁写 |
 |---|---|---|
-| `.paper2anything/html/clean.md` | normalize 后的全文 markdown | parse_pdf |
-| `.paper2anything/html/manifest.json` | 确定性抽取的事实（闸门1） | parse_pdf |
-| `.paper2anything/html/images/` | 页面引用的图 + 结果表截图 | parse_pdf |
-| `.paper2anything/html/index.html` | 自包含单页项目主页 | **你** |
-| `.paper2anything/html/validation.json` `qa_report.md` | QA 结果（闸门2） | validate |
-| `.paper2anything/html/parsed/` `logs/` | MinerU 原始解析 / 各步骤 *_result.json | 脚本 |
+| `.paper2anything/html/<stem>/clean.md` | normalize 后的全文 markdown | parse_pdf |
+| `.paper2anything/html/<stem>/manifest.json` | 确定性抽取的事实（闸门1） | parse_pdf |
+| `.paper2anything/html/<stem>/images/` | 页面引用的图 + 结果表截图 | parse_pdf |
+| `.paper2anything/html/<stem>/index.html` | 自包含单页项目主页 | **你** |
+| `.paper2anything/html/<stem>/validation.json` `qa_report.md` | QA 结果（闸门2） | validate |
+| `.paper2anything/html/<stem>/parsed/` `logs/` | MinerU 原始解析 / 各步骤 *_result.json | 脚本 |
 | **`<pdf目录>/<stem>_html/`** | **成品归集**：`index.html` + `images/`，与 PDF 同级、可直接打开 | **你（Step 5）** |
 
-重跑覆盖同一目录（无 task_id）。要留旧版本就先把 `index.html` 改名备份。Step 1 重跑默认复用 `parsed/full.md`，跳过 MinerU 云端解析。
+重跑覆盖工作区 `.paper2anything/html/<stem>/`（中间产物）；归集步骤遇同名 `<stem>_html/` 会另存为 `_v2`、`_v3`，不覆盖旧成品。Step 1 重跑默认复用 `parsed/full.md`，跳过 MinerU 云端解析。
 
 ---
 

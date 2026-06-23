@@ -27,7 +27,7 @@ PDF
 1. **一步步来**：机械步骤用 `Bash` 调脚本，创作步骤你自己用 `Read` / `Write` 做。
 2. **每个 Bash 块开头就地算 `WORKDIR`**（各 Bash 调用是独立 shell、不共享变量）：
    ```bash
-   WORKDIR="$(dirname "$pdf_path")/.paper2anything/wechat"
+   WORKDIR="$(dirname "$pdf_path")/.paper2anything/wechat/$(basename "${pdf_path%.*}")"
    ```
    `$pdf_path` 是用户给的论文 PDF（每块重设一次）。脚本在 `${SKILL_DIR}/scripts`——`SKILL_DIR`
    是**本 skill 的目录**（见本 skill 顶部注入的 "Base directory for this skill: …"）；各 Bash 块独立 shell，
@@ -66,7 +66,7 @@ md2wechat --help >/dev/null 2>&1 && echo "md2wechat 就绪" || echo "md2wechat �
 
 ```bash
 pdf_path="/path/to/paper.pdf"          # ← 用户的论文 PDF
-WORKDIR="$(dirname "$pdf_path")/.paper2anything/wechat"
+WORKDIR="$(dirname "$pdf_path")/.paper2anything/wechat/$(basename "${pdf_path%.*}")"
 conda run -n paper2anything --no-capture-output \
   python "${SKILL_DIR}/scripts/parse_pdf.py" "$pdf_path" --workdir "$WORKDIR"
 ```
@@ -122,7 +122,7 @@ conda run -n paper2anything --no-capture-output \
   5. 意义、应用与局限：能用在哪、有什么不足
   6. 结尾：一句话总结 + 延伸思考
 - 用 H2（`## 小节标题`）分节；关键技术术语首次出现给中英文、可 `**加粗**`。
-- **配图**：在合适位置插 `![图注](figures/<图片名>)`（md 与 figures/ 同在工作区根 `.paper2anything/wechat/` 下，故用 `figures/...`；`<图片名>` 直接取自 `figures_index.json` 的 `image_path` 文件名、**含其真实扩展名**（高清重裁的图为 `.png`、回退复用抽出图为 `.jpg`，以 `image_path` 实际为准），勿臆改后缀）。
+- **配图**：在合适位置插 `![图注](figures/<图片名>)`（md 与 figures/ 同在工作区根 `.paper2anything/wechat/<stem>/` 下，故用 `figures/...`；`<图片名>` 直接取自 `figures_index.json` 的 `image_path` 文件名、**含其真实扩展名**（高清重裁的图为 `.png`、回退复用抽出图为 `.jpg`，以 `image_path` 实际为准），勿臆改后缀）。
 - **忠实准确**：实验数字照实引用，不夸大、不编造；可有解读和洞察，但区分“论文说的”与“你的点评”。
 
 产物 —— `wechat_article.md`：第一行 `# {标题}`，然后正文（含配图）。
@@ -141,7 +141,7 @@ conda run -n paper2anything --no-capture-output \
 
 ```bash
 pdf_path="/path/to/paper.pdf"
-WORKDIR="$(dirname "$pdf_path")/.paper2anything/wechat"
+WORKDIR="$(dirname "$pdf_path")/.paper2anything/wechat/$(basename "${pdf_path%.*}")"
 conda run -n paper2anything --no-capture-output \
   python "${SKILL_DIR}/scripts/cover.py" --workdir "$WORKDIR" \
   --title "你拟的封面主标题"
@@ -165,7 +165,7 @@ conda run -n paper2anything --no-capture-output python "${SKILL_DIR}/scripts/pub
 **② 有凭据 → 发布前给用户过目并确认**（直推是外发到你的公众号）：`Read` `wechat_article.json` 把**标题 + 摘要**发给用户看、`SendUserFile` 发 `cover.jpg`；用 `AskUserQuestion` 让用户**确认上传草稿**（草稿非公开，仍需用户去后台群发才公开）。确认后上传：
 ```bash
 pdf_path="/path/to/paper.pdf"; export SKILL_DIR=<本 skill 目录>
-WORKDIR="$(dirname "$pdf_path")/.paper2anything/wechat"
+WORKDIR="$(dirname "$pdf_path")/.paper2anything/wechat/$(basename "${pdf_path%.*}")"
 conda run -n paper2anything --no-capture-output python "${SKILL_DIR}/scripts/publish.py" --workdir "$WORKDIR"
 ```
 成功打印 `media_id`；提示用户去 mp.weixin.qq.com → 草稿箱 预览 / 群发。（md2wechat 要求至少一张图作封面，确保 `cover.jpg` 已生成。）
@@ -173,22 +173,23 @@ conda run -n paper2anything --no-capture-output python "${SKILL_DIR}/scripts/pub
 **③ 没凭据（或用户不想直推）→ 本地降级**：
 ```bash
 pdf_path="/path/to/paper.pdf"; export SKILL_DIR=<本 skill 目录>
-WORKDIR="$(dirname "$pdf_path")/.paper2anything/wechat"
+WORKDIR="$(dirname "$pdf_path")/.paper2anything/wechat/$(basename "${pdf_path%.*}")"
 conda run -n paper2anything --no-capture-output python "${SKILL_DIR}/scripts/publish.py" --workdir "$WORKDIR" --local-only
 ```
 产出 `wechat_article.html`，提示用户打开、全选复制、粘贴到公众号编辑器。
 
 ---
 
-## Step 6：把成品归集到 PDF 旁（与 slides 的 `.pptx` 同级）
+## Step 6：把成品归集到 PDF 旁
 
-成品默认埋在 `.paper2anything/wechat/` 里不好找。长文+配图+封面定稿后（无论是否走 Step 5 排版），把它们复制
+成品默认埋在 `.paper2anything/wechat/<stem>/` 里不好找。长文+配图+封面定稿后（无论是否走 Step 5 排版），把它们复制
 一份到**与 PDF 同级**的 `<stem>_wechat/` 目录（`.paper2anything` 内副本保留不动），让用户在论文旁直接取用：
 
 ```bash
 pdf_path="/path/to/paper.pdf"
-WORKDIR="$(dirname "$pdf_path")/.paper2anything/wechat"
+WORKDIR="$(dirname "$pdf_path")/.paper2anything/wechat/$(basename "${pdf_path%.*}")"
 DEST="${pdf_path%.*}_wechat"          # 与 PDF 同目录、同名 + _wechat 后缀
+i=2; while [ -e "$DEST" ]; do DEST="${pdf_path%.*}_wechat_v$i"; i=$((i+1)); done   # 重名则追加 _v2、_v3
 mkdir -p "$DEST"
 cp "$WORKDIR/wechat_article.md" "$WORKDIR/wechat_article.json" "$DEST/"
 [ -f "$WORKDIR/cover.jpg" ] && cp "$WORKDIR/cover.jpg" "$DEST/"                  # 封面可能 skipped，存在才复制
@@ -202,20 +203,20 @@ cp -r "$WORKDIR/figures" "$DEST/"     # 正文以 figures/<name> 相对引用配
 
 ## 产物位置
 
-中间产物落在论文旁 `<pdf目录>/.paper2anything/wechat/`，**最终成品另复制到 PDF 同级的 `<stem>_wechat/`**（Step 6）：
+中间产物落在论文旁 `<pdf目录>/.paper2anything/wechat/<stem>/`（同目录多篇论文按 `<stem>` 分篇、互不覆盖），**最终成品另复制到 PDF 同级的 `<stem>_wechat/`**（Step 6）：
 
 | 路径 | 内容 | 谁写 |
 |---|---|---|
-| `.paper2anything/wechat/parsed/` | MinerU PIR（meta/sections/figures_index/tables_index/references） | parse_pdf |
-| `.paper2anything/wechat/figures/` | 论文插图 + 表格图实体 | parse_pdf |
-| `.paper2anything/wechat/understanding/paper_understanding.json` | 论文理解 + important_figures | **你** |
-| `.paper2anything/wechat/wechat_article.md` `.json` | 深度解读长文 + 元数据 | **你** |
-| `.paper2anything/wechat/cover.jpg` | 横版封面 | cover |
-| `.paper2anything/wechat/wechat_article.html` | 降级时本地生成的样式化 HTML（直推草稿成功则不产此文件） | publish |
-| `.paper2anything/wechat/logs/` | 各脚本 `*_result.json` | 脚本 |
+| `.paper2anything/wechat/<stem>/parsed/` | MinerU PIR（meta/sections/figures_index/tables_index/references） | parse_pdf |
+| `.paper2anything/wechat/<stem>/figures/` | 论文插图 + 表格图实体 | parse_pdf |
+| `.paper2anything/wechat/<stem>/understanding/paper_understanding.json` | 论文理解 + important_figures | **你** |
+| `.paper2anything/wechat/<stem>/wechat_article.md` `.json` | 深度解读长文 + 元数据 | **你** |
+| `.paper2anything/wechat/<stem>/cover.jpg` | 横版封面 | cover |
+| `.paper2anything/wechat/<stem>/wechat_article.html` | 降级时本地生成的样式化 HTML（直推草稿成功则不产此文件） | publish |
+| `.paper2anything/wechat/<stem>/logs/` | 各脚本 `*_result.json` | 脚本 |
 | **`<pdf目录>/<stem>_wechat/`** | **成品归集**：`wechat_article.md` + `.json` + `cover.jpg` + `figures/`，与 PDF 同级 | **你（Step 6）** |
 
-重跑覆盖同一目录（无 task_id）。要留旧版本就先把工作区 `.paper2anything/wechat/` 改名备份。
+重跑覆盖工作区 `.paper2anything/wechat/<stem>/`（中间产物）；归集步骤遇同名 `<stem>_wechat/` 会另存为 `_v2`、`_v3`，不覆盖旧成品。
 
 ---
 

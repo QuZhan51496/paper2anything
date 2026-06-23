@@ -237,7 +237,7 @@ def run(workdir: str, local_only: bool) -> dict:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="发布到微信公众号草稿箱（md2wechat 封装）")
-    parser.add_argument("--workdir", help="工作区目录，约定 <pdf目录>/.paper2anything/wechat")
+    parser.add_argument("--workdir", help="工作区目录，约定 <pdf目录>/.paper2anything/wechat/<stem>")
     parser.add_argument("--local-only", action="store_true",
                         help="只本地生成样式化 HTML，不上传草稿（无需凭据）")
     parser.add_argument("--check-creds", action="store_true",

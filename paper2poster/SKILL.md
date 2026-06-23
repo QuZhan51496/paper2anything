@@ -81,10 +81,10 @@ playwright install chromium
 
 ## Step 1: Parse the PDF
 
-产出统一落在**论文旁** `<pdf目录>/.paper2anything/poster/`（与 slides / html / xhs / wechat 一致）。下面每个步骤是**独立的 Bash 调用、互不共享 shell 变量**，所以每个用到运行目录的命令块都在开头就地从 `$pdf_path` 算出 `RUN_DIR`（和始终可用的 `${SKILL_DIR}` 一样、每次都在；切勿只在某一步 `export` 一次就指望后续步骤还在）。脚本仍在 `${SKILL_DIR}/scripts`。
+产出统一落在**论文旁** `<pdf目录>/.paper2anything/poster/<stem>/`（同目录多篇论文按 `<stem>` 分篇、互不覆盖）。下面每个步骤是**独立的 Bash 调用、互不共享 shell 变量**，所以每个用到运行目录的命令块都在开头就地从 `$pdf_path` 算出 `RUN_DIR`（和始终可用的 `${SKILL_DIR}` 一样、每次都在；切勿只在某一步 `export` 一次就指望后续步骤还在）。脚本仍在 `${SKILL_DIR}/scripts`。
 
 ```bash
-RUN_DIR="$(dirname "$pdf_path")/.paper2anything/poster"
+RUN_DIR="$(dirname "$pdf_path")/.paper2anything/poster/$(basename "${pdf_path%.*}")"
 mkdir -p "$RUN_DIR"
 conda run -n paper2anything --no-capture-output python ${SKILL_DIR}/scripts/parse_pdf.py "$pdf_path" \
   --output-dir "${RUN_DIR}/parsed"
@@ -113,7 +113,7 @@ Before designing anything, collect the few choices that actually change the post
 The output is an HTML/PNG poster (`poster.html` + `poster.png`). If the user just says "make a poster" with no answers, state the defaults you're using and proceed — don't block. **Record the answers in `outline.poster_intake`** (Step 4) so the design and any critique treat them as hard constraints. The size you settle on here is what Step 5 renders at (e.g. `20x15 in` → `1920x1440 px`, `48x36 in` → `2304x1728` at 48 dpi or scale to taste).
 
 ```bash
-RUN_DIR="$(dirname "$pdf_path")/.paper2anything/poster"
+RUN_DIR="$(dirname "$pdf_path")/.paper2anything/poster/$(basename "${pdf_path%.*}")"
 conda run -n paper2anything --no-capture-output python ${SKILL_DIR}/scripts/auto_outline.py \
   --parsed-dir "${RUN_DIR}/parsed" \
   --output     "${RUN_DIR}/digest.json"
@@ -242,7 +242,7 @@ like your previous poster, that's a signal to rethink, not a shortcut to take.
    poster's exact pixel size with the standalone screenshot instrument:
 
    ```bash
-   RUN_DIR="$(dirname "$pdf_path")/.paper2anything/poster"
+   RUN_DIR="$(dirname "$pdf_path")/.paper2anything/poster/$(basename "${pdf_path%.*}")"
    conda run -n paper2anything --no-capture-output python ${SKILL_DIR}/scripts/screenshot.py \
      "${RUN_DIR}/poster.html" \
      "${RUN_DIR}/poster.png" \
@@ -435,21 +435,21 @@ When approved, report the final `poster.png` from the run directory (`outline.po
 
 ---
 
-## Step 9: Collect the deliverable next to the PDF (sibling to slides' `.pptx`)
+## Step 9: Collect the deliverable next to the PDF
 
-成品默认埋在 `.paper2anything/poster/` 里不好找。定稿后把它复制一份到**与 PDF 同级**的
+成品默认埋在 `.paper2anything/poster/<stem>/` 里不好找。定稿后把它复制一份到**与 PDF 同级**的
 `<stem>_poster/` 目录（`.paper2anything` 内副本保留不动），让用户在论文旁直接打开：
 
 ```bash
 pdf_path="/path/to/paper.pdf"
-RUN_DIR="$(dirname "$pdf_path")/.paper2anything/poster"   # 若 Step 2 改了 output_dir，则取你实际运行目录
+RUN_DIR="$(dirname "$pdf_path")/.paper2anything/poster/$(basename "${pdf_path%.*}")"   # 若 Step 2 改了 output_dir，则取你实际运行目录
 DEST="${pdf_path%.*}_poster"          # 与 PDF 同目录、同名 + _poster 后缀
+i=2; while [ -e "$DEST" ]; do DEST="${pdf_path%.*}_poster_v$i"; i=$((i+1)); done   # 重名则追加 _v2、_v3
 mkdir -p "$DEST"
 cp "$RUN_DIR/poster.png" "$RUN_DIR/poster.html" "$DEST/"
 ```
 
-`poster.png` 与 `poster.html`（图已 base64 内联、自包含）放进 `<stem>_poster/` 子目录，
-与其余 skill 的归集目录一致；`<stem>_poster/poster.png` 即最终海报。
+`poster.png` 与 `poster.html`（图已 base64 内联、自包含）放进 `<stem>_poster/` 子目录；`<stem>_poster/poster.png` 即最终海报。
 
 ---
 
@@ -466,7 +466,7 @@ cp "$RUN_DIR/poster.png" "$RUN_DIR/poster.html" "$DEST/"
     "venue": "AAAI poster session",
     "author_policy": "parsed",
     "output_target": "html_png",
-    "output_dir": "<pdf目录>/.paper2anything/poster",
+    "output_dir": "<pdf目录>/.paper2anything/poster/<stem>",
     "visual_policy": "original_figures_or_text"
   },
   "color_scheme": {

@@ -142,7 +142,7 @@ def run(workdir: str, visibility: str, mcp_url: str) -> dict:
 def main() -> int:
     parser = argparse.ArgumentParser(description="发布到小红书（xiaohongshu-mcp REST 客户端）")
     parser.add_argument(
-        "--workdir", help="工作区目录，约定 <pdf目录>/.paper2anything/xhs"
+        "--workdir", help="工作区目录，约定 <pdf目录>/.paper2anything/xhs/<stem>"
     )
     parser.add_argument(
         "--visibility",

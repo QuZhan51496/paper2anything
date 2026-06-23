@@ -26,7 +26,7 @@ PDF
 1. **一步步来**：机械步骤用 `Bash` 调脚本，创作步骤你自己用 `Read` / `Write` 做。不要试图一条命令跑完。
 2. **每个 Bash 块开头就地算 `WORKDIR`**——各 Bash 调用是独立 shell、不共享变量，所以别指望 `export` 跨步存活：
    ```bash
-   WORKDIR="$(dirname "$pdf_path")/.paper2anything/xhs"
+   WORKDIR="$(dirname "$pdf_path")/.paper2anything/xhs/$(basename "${pdf_path%.*}")"
    ```
    其中 `$pdf_path` 是用户给的论文 PDF 路径（每个块都重新设一次）。脚本在 `${SKILL_DIR}/scripts`——`SKILL_DIR`
    是**本 skill 的目录**（见本 skill 顶部注入的 "Base directory for this skill: …"）；各 Bash 块独立 shell，
@@ -63,7 +63,7 @@ conda run -n paper2anything --no-capture-output python -c "import requests, rich
 
 ```bash
 pdf_path="/path/to/paper.pdf"          # ← 用户的论文 PDF
-WORKDIR="$(dirname "$pdf_path")/.paper2anything/xhs"
+WORKDIR="$(dirname "$pdf_path")/.paper2anything/xhs/$(basename "${pdf_path%.*}")"
 conda run -n paper2anything --no-capture-output \
   python "${SKILL_DIR}/scripts/parse_pdf.py" "$pdf_path" --workdir "$WORKDIR"
 ```
@@ -137,7 +137,7 @@ conda run -n paper2anything --no-capture-output \
 
 ```bash
 pdf_path="/path/to/paper.pdf"
-WORKDIR="$(dirname "$pdf_path")/.paper2anything/xhs"
+WORKDIR="$(dirname "$pdf_path")/.paper2anything/xhs/$(basename "${pdf_path%.*}")"
 conda run -n paper2anything --no-capture-output \
   python "${SKILL_DIR}/scripts/cover.py" --workdir "$WORKDIR" \
   --title "你拟的封面主标题大字" --subtitle "你拟的副标题小字"
@@ -202,7 +202,7 @@ conda run -n paper2anything --no-capture-output python "${SKILL_DIR}/scripts/xhs
 **⑤ 发布**（传入用户选的可见性）：
 ```bash
 pdf_path="/path/to/paper.pdf"
-WORKDIR="$(dirname "$pdf_path")/.paper2anything/xhs"
+WORKDIR="$(dirname "$pdf_path")/.paper2anything/xhs/$(basename "${pdf_path%.*}")"
 conda run -n paper2anything --no-capture-output \
   python "${SKILL_DIR}/scripts/publish.py" --workdir "$WORKDIR" --visibility "公开可见"
 ```
@@ -210,15 +210,16 @@ conda run -n paper2anything --no-capture-output \
 
 ---
 
-## Step 6：把成品归集到 PDF 旁（与 slides 的 `.pptx` 同级）
+## Step 6：把成品归集到 PDF 旁
 
-成品默认埋在 `.paper2anything/xhs/` 里不好找。文案+封面定稿后（无论是否走 Step 5 发布），把它们复制一份
+成品默认埋在 `.paper2anything/xhs/<stem>/` 里不好找。文案+封面定稿后（无论是否走 Step 5 发布），把它们复制一份
 到**与 PDF 同级**的 `<stem>_xhs/` 目录（`.paper2anything` 内副本保留不动），让用户在论文旁直接取用：
 
 ```bash
 pdf_path="/path/to/paper.pdf"
-WORKDIR="$(dirname "$pdf_path")/.paper2anything/xhs"
+WORKDIR="$(dirname "$pdf_path")/.paper2anything/xhs/$(basename "${pdf_path%.*}")"
 DEST="${pdf_path%.*}_xhs"             # 与 PDF 同目录、同名 + _xhs 后缀
+i=2; while [ -e "$DEST" ]; do DEST="${pdf_path%.*}_xhs_v$i"; i=$((i+1)); done   # 重名则追加 _v2、_v3
 mkdir -p "$DEST"
 cp "$WORKDIR/xhs_post.md" "$WORKDIR/xhs_post.json" "$DEST/"
 [ -f "$WORKDIR/cover.png" ] && cp "$WORKDIR/cover.png" "$DEST/"   # 封面可能 skipped，存在才复制
@@ -230,19 +231,19 @@ cp "$WORKDIR/xhs_post.md" "$WORKDIR/xhs_post.json" "$DEST/"
 
 ## 产物位置
 
-中间产物落在论文旁 `<pdf目录>/.paper2anything/xhs/`，**最终成品另复制到 PDF 同级的 `<stem>_xhs/`**（Step 6）：
+中间产物落在论文旁 `<pdf目录>/.paper2anything/xhs/<stem>/`（同目录多篇论文按 `<stem>` 分篇、互不覆盖），**最终成品另复制到 PDF 同级的 `<stem>_xhs/`**（Step 6）：
 
 | 路径 | 内容 | 谁写 |
 |---|---|---|
-| `.paper2anything/xhs/parsed/` | MinerU PIR（meta/sections/figures_index/references） | parse_pdf |
-| `.paper2anything/xhs/figures/` | 论文插图实体 | parse_pdf |
-| `.paper2anything/xhs/understanding/paper_understanding.json` | 论文理解 + important_figures | **你** |
-| `.paper2anything/xhs/xhs_post.json` `xhs_post.md` | 小红书文案 | **你** |
-| `.paper2anything/xhs/cover.png` | 封面 | cover |
-| `.paper2anything/xhs/logs/` | 各脚本 `*_result.json` | 脚本 |
+| `.paper2anything/xhs/<stem>/parsed/` | MinerU PIR（meta/sections/figures_index/references） | parse_pdf |
+| `.paper2anything/xhs/<stem>/figures/` | 论文插图实体 | parse_pdf |
+| `.paper2anything/xhs/<stem>/understanding/paper_understanding.json` | 论文理解 + important_figures | **你** |
+| `.paper2anything/xhs/<stem>/xhs_post.json` `xhs_post.md` | 小红书文案 | **你** |
+| `.paper2anything/xhs/<stem>/cover.png` | 封面 | cover |
+| `.paper2anything/xhs/<stem>/logs/` | 各脚本 `*_result.json` | 脚本 |
 | **`<pdf目录>/<stem>_xhs/`** | **成品归集**：`xhs_post.md` + `.json` + `cover.png`，与 PDF 同级 | **你（Step 6）** |
 
-重跑覆盖同一目录（无 task_id）。要保留旧版本就先把工作区 `.paper2anything/xhs/` 改名备份。
+重跑覆盖工作区 `.paper2anything/xhs/<stem>/`（中间产物）；归集步骤遇同名 `<stem>_xhs/` 会另存为 `_v2`、`_v3`，不覆盖旧成品。
 
 ---
 

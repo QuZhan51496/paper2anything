@@ -2,8 +2,7 @@
 paper2wechat 工具函数模块
 
 协调式（你主导）下的基础设施：日志、工作区解析、JSON 读写、Rich 输出。
-工作区固定落在论文旁 `<pdf目录>/.paper2anything/wechat/`（无 task_id 子目录），
-与 poster 的 RUN_DIR、slides 的 .paper2anything/slides/ 方案一致。
+工作区落在论文旁 `<pdf目录>/.paper2anything/wechat/<stem>/`（同目录多篇论文按 `<stem>` 分篇）。
 """
 
 import json
@@ -34,10 +33,10 @@ logger = setup_logging()
 
 
 def resolve_workspace(workdir: str | Path) -> dict[str, Path]:
-    """解析协调式工作区（root = 论文旁 .paper2anything/wechat/），按需创建子目录。
+    """解析协调式工作区（root = 论文旁 .paper2anything/wechat/<stem>/），按需创建子目录。
 
     供机械脚本（parse/cover/publish）共用：每个脚本拿到同一个 --workdir 即对齐到
-    同一组产物目录，无需 task_id。成品（wechat_article.md/json、cover.jpg）落在工作区根，
+    同一组产物目录。成品（wechat_article.md/json、cover.jpg）落在工作区根，
     与 parsed/ figures/ understanding/ 平级——不再套同名 wechat/ 子目录。
     """
     base = Path(workdir).expanduser().resolve()

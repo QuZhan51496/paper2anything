@@ -14,7 +14,7 @@
   logs/validate_result.json
 
 用法：
-  python validate.py --workdir <.paper2anything/html>
+  python validate.py --workdir <pdf目录>/.paper2anything/html/<stem>
 """
 import argparse
 import sys
@@ -77,7 +77,7 @@ def run(workdir: str) -> dict:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="paper2html validate: QA 校验 index.html")
-    ap.add_argument("--workdir", required=True, help="工作目录（<pdf目录>/.paper2anything/html）")
+    ap.add_argument("--workdir", required=True, help="工作目录（<pdf目录>/.paper2anything/html/<stem>）")
     args = ap.parse_args()
     result = run(args.workdir)
     # QA FAIL 不算脚本错误（你据报告修后重跑）；仅真正异常返回非零

@@ -14,7 +14,7 @@ API 端点（v4）：
     （把 .cn 走出境会触发 SNI 探测）。download_zip 内部 session.proxies={"http":None,
     "https":None} + trust_env=False，强制无代理直连
   - Token 通过参数显式传入（调用方读 MINERU_API_TOKEN env）；本模块只读可选的
-    MINERU_API_BASE（端点根，默认 https://mineru.net，与 html/poster 统一），不读 token
+    MINERU_API_BASE（端点根，默认 https://mineru.net），不读 token
 
 CLI（调试用）：
   python -m scripts.lib.mineru_client submit <pdf-path> [--token-from-env]

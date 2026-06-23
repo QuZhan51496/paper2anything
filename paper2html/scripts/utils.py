@@ -2,10 +2,9 @@
 paper2html 工具函数模块
 
 协调式（你主导）下的基础设施：日志、工作区解析、JSON 读写、Rich 输出。
-工作区固定落在论文旁 `<pdf目录>/.paper2anything/html/`，与 slides/poster/xhs/wechat
-的 .paper2anything/<skill>/ 方案一致（无 task_id 子目录）。
+工作区落在论文旁 `<pdf目录>/.paper2anything/html/<stem>/`（同目录多篇论文按 `<stem>` 分篇）。
 
-布局（root = .paper2anything/html/）：
+布局（root = .paper2anything/html/<stem>/）：
   root/clean.md       normalize 后的 markdown（parse_pdf 写，你读）
   root/manifest.json  确定性抽取的事实（parse_pdf 写，闸门1）
   root/index.html     你亲手写的单页网站
@@ -43,10 +42,10 @@ logger = setup_logging()
 
 
 def resolve_workspace(workdir: str | Path) -> dict[str, Path]:
-    """解析协调式工作区（root = 论文旁 .paper2anything/html/），按需创建子目录。
+    """解析协调式工作区（root = 论文旁 .paper2anything/html/<stem>/），按需创建子目录。
 
     供机械脚本（parse/extract/validate）共用：每个脚本拿到同一个 --workdir 即对齐到
-    同一组产物目录，无需 task_id。index.html / clean.md / manifest.json 直接落在 root。
+    同一组产物目录。index.html / clean.md / manifest.json 直接落在 root。
     """
     base = Path(workdir).expanduser().resolve()
     dirs = {

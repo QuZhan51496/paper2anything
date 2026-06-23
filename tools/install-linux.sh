@@ -158,7 +158,7 @@ check() {
 }
 
 check "conda"       "conda"  "装 miniconda/anaconda"
-check "node"        "node"   "装 Node.js v20+（NodeSource）；paper2slides 渲染 PPT 用"
+check "node"        "node"   "装 Node ≥20.9.0（apt 自带过旧，用 NodeSource）: curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash - && sudo apt install -y nodejs"
 check "pdftoppm"    "pdftoppm"  "sudo apt install poppler-utils（paper2slides 整页渲染）"
 check "libreoffice" "soffice"   "sudo apt install libreoffice（paper2slides 视觉 QA）"
 

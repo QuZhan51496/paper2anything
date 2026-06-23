@@ -7,7 +7,7 @@
 
 检查（都得真渲染才看得到，故 validate.py 结构上抓不到）：
   1. 图变形：每张 <img> 的 rendered 宽高比与 natural 宽高比之差 ≤ 0.02（content-box，
-     减 border/padding 取小数——与 poster geom_check 同口径；`width:100%;height:auto` 的好图恒过，
+     减 border/padding 取小数；`width:100%;height:auto` 的好图恒过，
      强行设死宽高的真形变仍抓）。html-authoring.md "渲染后自检" 一条说的正是这项，本脚本把它工具化。
   2. 图破损：naturalWidth==0（src 路径错/文件缺），渲染出来是裂图。
   3. 横向溢出：documentElement.scrollWidth 明显超视口宽 → 有元素把页面撑横，移动端横向滚动。

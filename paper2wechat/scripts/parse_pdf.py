@@ -35,7 +35,7 @@ from utils import (
 )
 
 
-# host-root 形式，URL 处自拼 /api/v4（与 slides/poster/html 统一；勿写成 .../api/v4）
+# host-root 形式，URL 处自拼 /api/v4（勿写成 .../api/v4）
 MINERU_API_BASE = os.environ.get("MINERU_API_BASE", "https://mineru.net")
 MINERU_POLL_INTERVAL = 5
 MINERU_POLL_TIMEOUT = 600  # 10 分钟
@@ -463,7 +463,7 @@ def run(pdf_path: str, workdir: str) -> dict:
     MinerU 云端解析 PDF → parsed/ 下的 PIR（paper_meta / sections / figures_index /
     tables_index / references）+ figures/
 
-    输入：PDF 路径 + 工作区目录（<pdf目录>/.paper2anything/wechat）
+    输入：PDF 路径 + 工作区目录（<pdf目录>/.paper2anything/wechat/<stem>）
     输出：parsed/*.json、figures/*
     """
     print_stage_header("MinerU 解析 PDF")
@@ -537,7 +537,7 @@ def run(pdf_path: str, workdir: str) -> dict:
         print_error("MinerU 未生成输出目录")
         return {"status": "failed", "error": "MinerU 未生成输出"}
 
-    # ── 验证（参考 slides：摘要交给下游兜底，不作为 abort 条件）──
+    # ── 验证（摘要交给下游兜底，不作为 abort 条件）──
     # 很多论文（含本测试论文）摘要是作者行后的无标题段落，确定性抽取会落空；
     # 这本是你在 understanding/深读文章 阶段亲自填的内容，不应在此把整个解析 abort。
     checks = _validate(meta, sections)
@@ -592,7 +592,7 @@ if __name__ == "__main__":
     parser.add_argument("pdf_path", help="论文 PDF 路径")
     parser.add_argument(
         "--workdir", required=True,
-        help="工作区目录，约定 <pdf目录>/.paper2anything/wechat",
+        help="工作区目录，约定 <pdf目录>/.paper2anything/wechat/<stem>",
     )
     args = parser.parse_args()
     res = run(args.pdf_path, args.workdir)

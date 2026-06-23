@@ -2,8 +2,8 @@
 workdir.py — paper2slides 工作目录与默认参数解析
 
 集中实现：
-  - 默认输出路径解析（缺省 .pptx 落在论文同目录，重名追加 -v2/-v3）
-  - 工作目录解析（论文同目录 .paper2anything/slides/，论文目录只读时回退到 ~/.cache）
+  - 默认输出路径解析（缺省落在论文同级 <stem>_slides/<stem>.pptx，重名目录追加 _v2/_v3）
+  - 工作目录解析（论文同目录 .paper2anything/slides/<stem>/，论文目录只读时回退到 ~/.cache）
   - 阶段完成判定与 --from-stage 跳过逻辑
 
 被 SKILL.md 与所有 helper 脚本统一调用，避免规则散落各处。
@@ -130,15 +130,15 @@ def resolve_output_path(paper_path: Path, requested: Path | None) -> Path:
     if requested is not None:
         return requested.expanduser().resolve()
     paper_path = paper_path.resolve()
-    base = paper_path.parent / f"{paper_path.stem}.pptx"
-    if not base.exists():
-        return base
+    # 成品落在论文同级的 <stem>_slides/ 子目录；
+    # 重名时目录追加 _v2、_v3，不覆盖旧成品。pptx 文件名保持 <stem>.pptx。
+    parent, stem = paper_path.parent, paper_path.stem
+    out_dir = parent / f"{stem}_slides"
     i = 2
-    while True:
-        candidate = paper_path.parent / f"{paper_path.stem}-v{i}.pptx"
-        if not candidate.exists():
-            return candidate
+    while out_dir.exists():
+        out_dir = parent / f"{stem}_slides_v{i}"
         i += 1
+    return out_dir / f"{stem}.pptx"
 
 
 def resolve_workspace(paper_path: Path,

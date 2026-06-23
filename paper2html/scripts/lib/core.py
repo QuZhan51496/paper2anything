@@ -460,7 +460,7 @@ def _recrop_inplace(pdf_path: Path, parsed_dir: Path) -> dict[str, int]:
     """按 layout.json 的 bbox 从 pdftoppm 300dpi 整页重裁，原地覆盖 parsed/ 下被引用的源图。
 
     遍历 *_content_list_v2.json（list[页][block]）每页 block，遇 image/chart/table，从
-    pools[kind][page_idx] 顺序弹一个 bbox（consumed 计数器，仿 paper2wechat 的 reading-order
+    pools[kind][page_idx] 顺序弹一个 bbox（consumed 计数器，按 reading-order
     配对），重裁覆盖该 block content.image_source.path 指向的源文件（相对 parsed_dir 定位）。
     配不到 bbox / 裁剪失败保留原图。无 layout 或 pdftoppm 不可用则整体跳过（保留原图）。
 

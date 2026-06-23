@@ -151,7 +151,7 @@ def _clip_title(title: str, limit: int = 90) -> str:
 def _paper_brief(understanding: dict) -> str:
     """把论文理解拼成「核心内容」简介，供模型理解论文、构思贴切主视觉（不必逐条画进图里）。"""
     g = understanding.get
-    findings = g("highlights", []) or g("contributions", []) or []  # xhs 用 highlights，wechat 用 contributions
+    findings = g("highlights", []) or g("contributions", []) or []
     results = g("experiment_results", []) or []
     rows = [
         ("标题", g("paper_title", "")),
@@ -346,7 +346,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="生成小红书封面（协调式机械步骤）")
     parser.add_argument(
         "--workdir", required=True,
-        help="工作区目录，约定 <pdf目录>/.paper2anything/xhs",
+        help="工作区目录，约定 <pdf目录>/.paper2anything/xhs/<stem>",
     )
     parser.add_argument("--title", default="", help="封面主标题大字（你在此步拟定；留空回退 xhs_post.cover_text）")
     parser.add_argument("--subtitle", default="", help="封面副标题小字（你拟定；留空回退论文标题精简）")

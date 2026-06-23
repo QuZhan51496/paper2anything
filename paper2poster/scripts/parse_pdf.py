@@ -168,7 +168,7 @@ def extract_with_mineru(pdf_path: str, output_dir: str, token: str = None):
             elif lower.endswith("content_list_v2.json"):
                 # MinerU v2 content list：list[页][typed block]，block.content 为含
                 # title_content/paragraph_content/level 的 dict，存成 mineru_raw.json 供
-                # auto_outline.build_digest 消费（与 paper2slides 的 mineru_parser 同源、同读 v2）。
+                # auto_outline.build_digest 消费。
                 # 只认 v2——zip 内其它 .json（middle/model/v1 content_list）对 poster digest 无用。
                 json_path = os.path.join(output_dir, "mineru_raw.json")
                 with open(json_path, "wb") as f:
@@ -265,7 +265,7 @@ def _recrop_inplace(pdf_path, out_dir):
 
     读 mineru_raw.json(v2：list[页][block]) 与 layout.json，渲染整页到 out_dir/pages/，
     遍历 v2 每页 block，遇 image/chart（表图 table）即从对应 pools[kind][page_idx] 顺序弹一个
-    bbox（consumed 计数器，仿 paper2wechat 的 _recrop_or_copy），图文件名取自该 block
+    bbox（consumed 计数器），图文件名取自该 block
     content.image_source.path 的 basename，裁出的高清图**原地覆盖该 basename 实际所在文件**
     （extract_with_mineru 按文件名是否含 "table" 分流到 figures/ 或 tables/，而 MinerU v2 图名
     是内容 hash 无 "table" 字样 → 表图实际也落 figures/；故覆盖位置以 basename 实际所在为准，
