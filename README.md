@@ -31,12 +31,12 @@ bash tools/install-linux.sh     # Linux
 bash tools/install-macos.sh     # macOS
 ```
 
-脚本做三件事：① 把 5 个 skill 符号链接进 `~/.claude/skills/`；② 没有 `.env` 时从 `.env.example` 引导一份；③ 检查 conda 环境、系统依赖与 `MINERU_API_TOKEN`，缺什么只提示。建议首次安装时添加：
+脚本做三件事：① 把 5 个 skill 符号链接进 `~/.claude/skills/`；② 没有 `.env` 时从 `.env.example` 引导一份；③ 检查 conda 环境、系统依赖与 `MINERU_API_TOKEN`（用于论文提取），缺什么只提示。建议首次安装时添加：
 
 - `--create-env`：顺手 `conda env create`（已存在则按 `environment.yml` 更新）+ 装 playwright chromium + 跑 pip 自检；
 - `--shell-init`：把 `.env` 自动导出写进 shell 启动文件（幂等），新开 shell 即加载凭据。
 
-跑完只剩**填 `.env` 里的 key**（见下「凭据配置」）。需要手动安装时，下面是等价拆解。
+跑完照脚本提示再补两步：**填 `.env` 里的 `MINERU_API_TOKEN`**（必需），并**装上它指出的缺失系统级依赖**（脚本会逐项检测并给出安装命令）。需要手动安装时（如只用某个特定 skill、只想装它需要的依赖），下面是等价拆解。
 
 <details>
 <summary><b>手动安装步骤与凭据配置</b></summary>
@@ -84,6 +84,20 @@ set -a; source <paper2anything 包根>/.env; set +a
 
 ---
 
+## 怎么用
+
+直接说出你的意图，对应 skill 会被自动触发，例如：
+
+- "把 `~/paper.pdf` 做成 PPT" → **paper2slides**
+- "用这篇论文做一张会议海报" → **paper2poster**
+- "把这篇 PDF 变成项目主页" → **paper2html**
+- "帮我把这篇论文发小红书" → **paper2xhs**
+- "把这篇论文写成公众号推文" → **paper2wechat**
+
+每个 skill 的完整流水线、阶段协议、产物 schema 与排错见各自的 `SKILL.md`。
+
+---
+
 ## 产物位置
 
 每个 skill 的**最终成品**都落在**论文同目录**下（跟着论文走、互不干扰）；全部中间产物保留在同目录的 `.paper2anything/<skill>/`：
@@ -97,20 +111,6 @@ set -a; source <paper2anything 包根>/.env; set +a
 | paper2wechat | `<论文名>_wechat/`（`wechat_article.md` + `.json` + `cover.jpg` + `figures/`） | `.paper2anything/wechat/` |
 
 > 含相对引用的成品（html 的 `images/`、wechat 的 `figures/` 等）整组放进 `<论文名>_<skill>/` 子目录、引用不破。论文目录只读时 slides 回退到 `~/.cache/paper2anything/slides/`；`.paper2anything/` 已在包根 `.gitignore` 忽略。
-
----
-
-## 怎么用
-
-直接说出你的意图，对应 skill 会被自动触发，例如：
-
-- "把 `~/paper.pdf` 做成 PPT" → **paper2slides**
-- "用这篇论文做一张会议海报" → **paper2poster**
-- "把这篇 PDF 变成项目主页" → **paper2html**
-- "帮我把这篇论文发小红书" → **paper2xhs**
-- "把这篇论文写成公众号推文" → **paper2wechat**
-
-每个 skill 的完整流水线、阶段协议、产物 schema 与排错见各自的 `SKILL.md`。
 
 ---
 
