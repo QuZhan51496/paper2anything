@@ -8,7 +8,7 @@
 
 </div>
 
-把一篇学术论文 PDF 一键转成**任意一种**对外产物的 skills 包。一个包，五个 skill，覆盖论文对外传播的主要形态：
+把一篇学术论文 PDF 一键转成**任意一种**宣传产物的 skills 包，覆盖论文传播的主要形态：
 
 | Skill | 把论文变成 | 产物 | 触发词（举例） |
 | --- | --- | --- | --- |
@@ -24,22 +24,33 @@
 
 ## 环境安装
 
+**一键安装（推荐）**：在包根跑对应系统脚本——自动注册 5 个 skill，并一并核对 **conda 环境、系统依赖、`.env` 凭据**（缺啥只提示、不阻塞）：
+
+```bash
+bash tools/install-linux.sh     # Linux
+bash tools/install-macos.sh     # macOS
+```
+
+脚本做三件事：① 把 5 个 skill 符号链接进 `~/.claude/skills/`；② 没有 `.env` 时从 `.env.example` 引导一份；③ 检查 conda 环境、系统依赖与 `MINERU_API_TOKEN`，缺什么只提示。建议首次安装时添加：
+
+- `--create-env`：顺手 `conda env create`（已存在则按 `environment.yml` 更新）+ 装 playwright chromium + 跑 pip 自检；
+- `--shell-init`：把 `.env` 自动导出写进 shell 启动文件（幂等），新开 shell 即加载凭据。
+
+跑完只剩**填 `.env` 里的 key**（见下「凭据配置」）。需要手动安装时，下面是等价拆解。
+
+<details>
+<summary><b>手动安装步骤与凭据配置</b></summary>
+
+### conda 环境
+
 5 个 skill 共用一个 conda 环境 `paper2anything`，所有 `python` 命令都以
 `conda run -n paper2anything --no-capture-output` 为前缀（或先 `conda activate paper2anything`）。
-
-**一键注册 + 自检**：在包根跑对应系统的脚本（Linux `bash tools/install-linux.sh`，macOS `bash tools/install-macos.sh`）—— 把 5 个 skill 符号链接进
-`~/.claude/skills/`、没有 `.env` 时从 `.env.example` 引导一份、并检查 conda 环境与系统依赖
-（缺啥只提示、不阻塞）；加 `--create-env` 还会顺手 `conda env create` + 装 playwright chromium +
-跑 pip 自检。下面是等价的手动步骤。
 
 ```bash
 # 在 paper2anything 包根目录
 conda env create -f environment.yml
 conda activate paper2anything
 ```
-
-`environment.yml` 已合并 5 个 skill 的全部 Python 依赖（Pillow / markitdown /
-requests / openai / playwright / rich / python-dotenv / md2wechat …）。
 
 ### 系统级依赖
 
@@ -49,11 +60,9 @@ requests / openai / playwright / rich / python-dotenv / md2wechat …）。
 | libreoffice（`soffice`） | pptx → pdf（视觉 QA） | paper2slides |
 | Node.js + pptxgenjs（+ react-icons/react/react-dom/sharp） | PPT 渲染（icon 光栅仅 icon 元素需要） | paper2slides |
 | `playwright install chromium` | 浏览器渲染/截图 | paper2poster / paper2html |
-| md2wechat（已在 conda 内 pip 装；源码版见 paper2wechat/SKILL.md） | Markdown → 公众号 HTML | paper2wechat |
+| md2wechat（已在 conda 内 pip 装；源码版见 paper2wechat/SKILL.md） | Markdown → 公众号草稿箱 | paper2wechat |
 
----
-
-## 凭据配置
+### 凭据配置
 
 所有 skill 的凭据集中在**包根一个 `.env`**（从 `.env.example` 复制填写，应 gitignore）。
 复制后填入你的 key 即可——各 skill 的脚本启动时会自动 `load_dotenv` 包根 `.env`，
@@ -63,30 +72,15 @@ requests / openai / playwright / rich / python-dotenv / md2wechat …）。
 cp .env.example .env          # 首次：复制后填入你的 key
 ```
 
-**推荐（更可靠）**：把导出写进 shell 启动文件，每个新 shell 自动加载凭据——凭据成为真正的环境变量，对所有进程（python / node / soffice / md2wechat …）可见，且优先级高于 `.env`（已 export 的同名变量不被 `.env` 覆盖）。用对应系统的安装脚本一键写入（幂等）：
-
-```bash
-bash tools/install-linux.sh --shell-init   # Linux（默认写 ~/.bashrc，zsh 则 ~/.zshrc）
-bash tools/install-macos.sh --shell-init   # macOS（默认写 ~/.zshrc，bash 则 ~/.bash_profile）
-```
-
-或手动把这一行加进你的 shell 启动文件（Linux `~/.bashrc`、macOS `~/.zshrc`）：
+**更可靠（可选）**：把 `.env` 导出写进 shell 启动文件，凭据即成为真正的环境变量、对所有进程（python / node / soffice / md2wechat …）可见、优先级高于 `.env`（已 export 的同名变量不被 `.env` 覆盖）。装时加 `--shell-init` 自动写入（见「环境安装」），或手动加这一行（Linux `~/.bashrc`、macOS `~/.zshrc`）：
 
 ```bash
 set -a; source <paper2anything 包根>/.env; set +a
 ```
 
-各 skill 实际用到的 key（不用的留空即可）：
-
-| Skill | 用到的 key |
-| --- | --- |
-| paper2slides | `MINERU_API_TOKEN`（云解析，必填） |
-| paper2poster | `MINERU_API_TOKEN`（设计 / 视觉评审 / 内容自测由你与盲审子代理完成，不调用外部 VLM）|
-| paper2html | `MINERU_API_TOKEN`（页面设计与撰写由你亲自完成，不调用任何 LLM API） |
-| paper2xhs | `MINERU_API_TOKEN`（封面另需 `OPENAI_API_KEY`；发布用 xiaohongshu-mcp，二进制首次自动下载） |
-| paper2wechat | `MINERU_API_TOKEN`（封面另需 `OPENAI_API_KEY`；排版用 `md2wechat`，已在统一环境内） |
-
 > 凭据只此一个包根 `.env`，无需各 skill 的局部配置文件。
+
+</details>
 
 ---
 
