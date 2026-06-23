@@ -144,17 +144,20 @@ set -a; source <paper2anything 包根>/.env; set +a
 
 ```
 paper2anything/
-├── environment.yml          # 统一 conda 环境定义（覆盖全部 5 个 skill）
-├── .env.example             # 统一凭据模板（复制为 .env 填写）
-├── .gitignore               # 忽略 .env / 各 skill 产出目录 / __pycache__ 等
+├── environment.yml          # python 环境
+├── .env.example             # 凭据模板（复制为 .env 填写）
+├── .gitignore               # 忽略 .env / __pycache__ 等
+├── LICENSE                  # MIT
 ├── README.md                # 本文件
-├── paper2slides/            # 论文 → .pptx
+├── tools/                   # 安装脚本
+├── assets/                  # 静态文件
+├── paper2slides/            # 论文 → slides
 │   ├── SKILL.md
 │   ├── references/          # 设计风格、大纲启发式、pipeline、schema、pptxgenjs
 │   └── scripts/             # parse_pdf / render_pptx / page_screenshot / workdir + lib/
 ├── paper2poster/            # 论文 → 海报 HTML/PNG
 │   ├── SKILL.md
-│   ├── references/          # 海报示例（真实海报 PNG）、配色、版式指南
+│   ├── references/          # 海报示例、配色、版式指南
 │   └── scripts/             # parse_pdf / auto_outline / geom_check / embed_figures / screenshot / check_env
 ├── paper2html/              # 论文 → 单页项目主页
 │   ├── SKILL.md
@@ -162,7 +165,7 @@ paper2anything/
 │   └── scripts/             # parse_pdf / validate / render_check 等 + lib/（解析/抽取/QA，无渲染器）
 ├── paper2xhs/               # 论文 → 小红书
 │   ├── SKILL.md
-│   ├── references/          # 发布登录指引（xiaohongshu-mcp）
+│   ├── references/          # 发布指引
 │   └── scripts/             # parse_pdf / cover / publish / xhs_login + utils
 └── paper2wechat/            # 论文 → 公众号
     ├── SKILL.md
