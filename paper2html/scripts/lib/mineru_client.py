@@ -71,6 +71,7 @@ class MineruClient:
 
         payload = {
             "files": [{"name": filename, "data_id": "paper_0"}],
+            "model_version": "vlm",
             "enable_table": ENABLE_TABLE,
             "enable_formula": ENABLE_FORMULA,
             "is_ocr": IS_OCR,
