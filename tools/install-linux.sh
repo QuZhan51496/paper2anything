@@ -113,10 +113,6 @@ if [[ "$SHELL_INIT" == 1 ]]; then
     green "已写入 $rc_file —— 新开 shell 生效；当前 shell 先手动 source 一次："
     echo "    set -a; source \"$repo_root/.env\"; set +a"
   fi
-else
-  yellow "提示：把 .env 导出写进 $rc_file（每个新 shell 自动加载凭据、对所有进程可见）："
-  echo "    set -a; source \"$repo_root/.env\"; set +a"
-  yellow "  一键自动写入：重跑本脚本加 --shell-init。"
 fi
 
 # ---------- 3.（可选）创建/更新 conda 环境 ----------
@@ -171,12 +167,17 @@ if command -v conda >/dev/null 2>&1; then
   fi
 fi
 
-# pptxgenjs（npm 全局，paper2slides）
+# pptxgenjs + react-icons/react/react-dom/sharp（npm 全局，paper2slides）
 if command -v npm >/dev/null 2>&1; then
-  if npm list -g --depth=0 2>/dev/null | grep -q pptxgenjs; then
-    green "  [ok] pptxgenjs (npm global)"
+  npm_ls="$(npm list -g --depth=0 2>/dev/null)"
+  npm_missing=""
+  for pkg in pptxgenjs react-icons react react-dom sharp; do
+    printf '%s\n' "$npm_ls" | grep -q "${pkg}@" || npm_missing="$npm_missing $pkg"
+  done
+  if [[ -z "$npm_missing" ]]; then
+    green "  [ok] pptxgenjs + react-icons/react/react-dom/sharp (npm global)"
   else
-    yellow "  [missing] pptxgenjs (npm global) — 跑: sudo npm install -g pptxgenjs react-icons react react-dom sharp"
+    yellow "  [missing] npm 全局包:$npm_missing — 跑: sudo npm install -g pptxgenjs react-icons react react-dom sharp"
   fi
 fi
 
