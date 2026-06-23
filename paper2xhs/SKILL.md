@@ -1,7 +1,7 @@
 ---
 name: paper2xhs
 description: 把学术论文 PDF 转成小红书帖子（标题 + 正文 + 标签 + 封面）。你主导设计的协调式：机械活（MinerU 解析 PDF、生成封面、半自动发布）交给 scripts/ 下的小工具，论文理解、选题角度、文案撰写由你亲自完成并在关键点与用户确认。当用户说“论文转小红书”、“paper2xhs”、“把这篇论文发小红书”、“论文转社交媒体”、“PDF 转小红书帖子”时触发。
-allowed-tools: Bash, Read, Write, Glob, Grep, AskUserQuestion
+allowed-tools: Bash, Read, Write, Glob, Grep, AskUserQuestion, SendUserFile
 ---
 
 # paper2xhs — 论文转小红书（你主导的协调式）
@@ -49,7 +49,7 @@ set -a; source <paper2anything 包根>/.env; set +a
 本 skill 用到的 key（**理解与文案由你亲自做，不调用任何 LLM API**）：
 - `MINERU_API_TOKEN` — 解析 PDF（必填）
 - `OPENAI_API_KEY`(+ `OPENAI_BASE_URL`) — 封面默认走它生图（gpt-image-2）；无 key 或 key 不可用时回退本地合成（复用论文原图）
-- `XHS_SKILLS_DIR` — 仅半自动发布（克隆 [xiaohongshu-skills](https://github.com/autoclaw-cc/xiaohongshu-skills)）；不发布可不配
+- `XHS_MCP_BIN` — 可选：自定义 [xiaohongshu-mcp](https://github.com/xpzouying/xiaohongshu-mcp) 二进制位置；**不设则发布时 skill 自动按平台下载**到 `~/.paper2anything/xhs/`。另可选 `XHS_MCP_URL`（自定义服务地址/端口，默认 `http://localhost:18060`）。
 
 依赖自检（缺啥按提示装；依赖统一在 `environment.yml`）：
 
@@ -147,16 +147,66 @@ conda run -n paper2anything --no-capture-output \
 
 ---
 
-## Step 5：半自动发布（脚本，可选）
+## Step 5：发布到小红书（脚本 + 你协调，可选）
 
+发布走开源的 **[xiaohongshu-mcp](https://github.com/xpzouying/xiaohongshu-mcp)**（自带无头 Chromium 的单二进制 + REST API）。**登录一次后 cookies 持久、之后免登录**。二进制由 ① 自动备好（`XHS_MCP_BIN` 仅自定义位置时配，见 Step 0）。**首次配置/登录的分环境完整步骤见 `references/publish-guide.md`**——先 `Read` 它。不发布就跳过本步，把产物路径告诉用户手动发。
+
+**① 确保 mcp 二进制就位并在固定持久目录运行**（二进制不存在会自动下载；cookies 落这里、跨论文复用）：
+```bash
+export XHS_MCP_DIR="$HOME/.paper2anything/xhs"; mkdir -p "$XHS_MCP_DIR"
+# 解析二进制：优先 .env 的 XHS_MCP_BIN；否则用持久目录里的；都没有就按平台自动下载
+if [ -n "$XHS_MCP_BIN" ] && [ -x "$XHS_MCP_BIN" ]; then BIN="$XHS_MCP_BIN"; else
+  case "$(uname -s)-$(uname -m)" in
+    Linux-x86_64)  ASSET=xiaohongshu-mcp-linux-amd64 ;;
+    Darwin-arm64)  ASSET=xiaohongshu-mcp-darwin-arm64 ;;
+    Darwin-x86_64) ASSET=xiaohongshu-mcp-darwin-amd64 ;;
+    *) ASSET= ; echo "未知平台，请手动下载 xiaohongshu-mcp 并在 .env 设 XHS_MCP_BIN" ;;
+  esac
+  BIN="$XHS_MCP_DIR/$ASSET"
+  if [ -n "$ASSET" ] && [ ! -x "$BIN" ]; then
+    echo "未找到 mcp 二进制，自动下载 $ASSET …"
+    curl -fL -o "$XHS_MCP_DIR/$ASSET.tar.gz" "https://github.com/xpzouying/xiaohongshu-mcp/releases/latest/download/$ASSET.tar.gz" \
+      && tar xzf "$XHS_MCP_DIR/$ASSET.tar.gz" -C "$XHS_MCP_DIR" && chmod +x "$BIN"
+  fi
+fi
+# 起服务（已在跑就跳过；BIN 不可用则报错、不硬起）
+if ! curl -sf http://localhost:18060/api/v1/login/status >/dev/null 2>&1; then
+  if [ ! -x "$BIN" ]; then
+    echo "mcp 二进制不可用（$BIN）——下载失败或平台不支持，无法发布；手动下载并设 XHS_MCP_BIN，见 references/publish-guide.md"
+  else
+    ( cd "$XHS_MCP_DIR" && nohup "$BIN" -port=:18060 > mcp.log 2>&1 & )
+    for i in $(seq 1 30); do curl -sf http://localhost:18060/api/v1/login/status >/dev/null 2>&1 && break; sleep 2; done
+  fi
+fi
+```
+（首次会下载 mcp 二进制 + 其 Chromium（约 150MB），可能要等；日志见 `$XHS_MCP_DIR/mcp.log`。macOS 若被 Gatekeeper 拦：`xattr -c "$BIN"`。）
+
+**② 查登录态**：
+```bash
+conda run -n paper2anything --no-capture-output python "${SKILL_DIR}/scripts/publish.py" --check-only
+```
+`已登录` → 跳到 ④。`未登录` → 走 ③。
+
+**③ 登录（仅首次或会话失效时）**：登录要换带界面/monitor 的方式起 mcp，**先停掉 ① 起的那个**（按进程名精确停，别用 `pkill -f`，会误杀自身）：
+```bash
+pkill -x xiaohongshu-mcp; sleep 1
+```
+再照 `references/publish-guide.md` 按环境操作。无头服务器要点：带 `-rod "monitor=:9273"` 重起 mcp（保持默认无头）→ `xhs_login.py` 取码 → `SendUserFile` 把 `qr.png` 发用户、提醒**首次可能要先在 monitor 端口(:9273)的浏览器界面里扫一道「新设备验证」码** → `AskUserQuestion` 等用户确认扫完 → 监测 cookies 写出 → 成功后**再 `pkill -x xiaohongshu-mcp` 停掉、回 ① 重启**（去掉 monitor、加载 cookies）。
+```bash
+conda run -n paper2anything --no-capture-output python "${SKILL_DIR}/scripts/xhs_login.py" \
+  --out "$XHS_MCP_DIR/qr.png" --cookies "$XHS_MCP_DIR/cookies.json" --wait
+```
+
+**④ 发布前给用户过目**：`Read` `xhs_post.json` 把**标题 + 正文**发给用户看，`SendUserFile` 发 `cover.png`；用 `AskUserQuestion` 让用户**确认发布并选可见性**（选项默认「公开可见」，另有「仅自己可见」「仅互关好友可见」）。
+
+**⑤ 发布**（传入用户选的可见性）：
 ```bash
 pdf_path="/path/to/paper.pdf"
 WORKDIR="$(dirname "$pdf_path")/.paper2anything/xhs"
 conda run -n paper2anything --no-capture-output \
-  python "${SKILL_DIR}/scripts/publish.py" --workdir "$WORKDIR"
+  python "${SKILL_DIR}/scripts/publish.py" --workdir "$WORKDIR" --visibility "公开可见"
 ```
-
-读 `xhs_post.json`（title/body/hashtags）+ `cover.png`，通过外部 `xiaohongshu-skills` 填到发布页，**用户在浏览器确认后**才点发布。需 `XHS_SKILLS_DIR` + Chrome 扩展；未配置就跳过这步，把产物路径告诉用户让其手动发。
+返回「发布成功」即完成。
 
 ---
 
@@ -200,5 +250,5 @@ cp "$WORKDIR/xhs_post.md" "$WORKDIR/xhs_post.json" "$DEST/"
 
 - **MinerU 解析失败**：核对 `.env` 的 `MINERU_API_TOKEN`（在 https://mineru.net 申请）；PDF 应 ≤200MB / ≤200 页；能访问 `mineru.net`。重跑 Step 1 即可（覆盖）。
 - **封面没生成（`skipped`）**：通常是既没配可用 `OPENAI_API_KEY`、又没有可复用的论文原图。配上 key 走 AI 生图，或确保 `understanding.important_figures` 有 `suitable_for_cover:true` 且 `image_path` 存在的图以供本地合成回退。
-- **发布步骤报错**：多为 `XHS_SKILLS_DIR` 未配或 Chrome 扩展未装；不发布可跳过 Step 5，手动发产物。
+- **发布步骤报错**：`未登录` → 按 `references/publish-guide.md` 完成登录（首次注意「新设备验证」）；`连不上 mcp` → 看 ① 是否成功起服务（二进制下载/启动失败查 `$XHS_MCP_DIR/mcp.log`）。**登录成功后须重启 mcp 才会加载 cookies**。不发布可跳过 Step 5、手动发产物。
 - **理解/文案不需要 API key**：这两步是你亲自做的，不调用任何 LLM API。

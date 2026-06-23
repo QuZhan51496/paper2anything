@@ -36,7 +36,8 @@ paper2anything/
 │   └── scripts/             # parse_pdf / validate / render_check 等 + lib/（解析/抽取/QA，无渲染器）
 ├── paper2xhs/               # 论文 → 小红书
 │   ├── SKILL.md
-│   └── scripts/             # parse_pdf / cover / publish + utils
+│   ├── references/          # 发布登录指引（xiaohongshu-mcp）
+│   └── scripts/             # parse_pdf / cover / publish / xhs_login + utils
 └── paper2wechat/            # 论文 → 公众号
     ├── SKILL.md
     └── scripts/             # parse_pdf / cover / publish + utils
@@ -105,7 +106,7 @@ set -a; source <paper2anything 包根>/.env; set +a
 | paper2slides | `MINERU_API_TOKEN`（云解析，必填） |
 | paper2poster | `MINERU_API_TOKEN`（设计 / 视觉评审 / 内容自测由你与盲审子代理完成，不调用外部 VLM）|
 | paper2html | `MINERU_API_TOKEN`（页面设计与撰写由你亲自完成，不调用任何 LLM API） |
-| paper2xhs | `MINERU_API_TOKEN`（封面另需 `OPENAI_API_KEY`；半自动发布另需 `XHS_SKILLS_DIR`） |
+| paper2xhs | `MINERU_API_TOKEN`（封面另需 `OPENAI_API_KEY`；发布用 xiaohongshu-mcp，二进制首次自动下载） |
 | paper2wechat | `MINERU_API_TOKEN`（封面另需 `OPENAI_API_KEY`；排版用 `md2wechat`，已在统一环境内） |
 
 > 凭据只此一个包根 `.env`，无需各 skill 的局部配置文件。
@@ -139,3 +140,9 @@ set -a; source <paper2anything 包根>/.env; set +a
 - "把这篇论文写成公众号推文" → **paper2wechat**
 
 每个 skill 的完整流水线、阶段协议、产物 schema 与排错见各自的 `SKILL.md`。
+
+---
+
+## 致谢
+
+- 小红书发布能力由开源项目 **[xiaohongshu-mcp](https://github.com/xpzouying/xiaohongshu-mcp)**（作者 xpzouying）提供。
