@@ -1,4 +1,10 @@
+<div align="center">
+
 # paper2anything
+
+[![Claude Code Skill](https://img.shields.io/badge/Claude_Code-Skill-blue?logo=anthropic&logoColor=white)](https://docs.anthropic.com/en/docs/claude-code) [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
+</div>
 
 把一篇学术论文 PDF 一键转成**任意一种**对外产物的 skills 包。一个包，五个 skill，覆盖论文对外传播的主要形态：
 
