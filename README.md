@@ -46,16 +46,18 @@ bash tools/install-macos.sh --create-env --shell-init     # macOS
 <details>
 <summary><b>手动安装</b></summary>
 
-### 注册 skill（软链接）
+### 注册 skill
 
-把 5 个 skill 软链接进 `~/.claude/skills/`，Claude Code 才能发现并自动触发：
+把你要用的 skill 软链接进 `~/.claude/skills/`，Claude Code 才能发现并自动触发它：
 
 ```bash
-# 在 paper2anything 包根目录
+# 在 paper2anything 包根目录；按需复制你要的 skill 那行
 mkdir -p ~/.claude/skills
-for s in paper2slides paper2poster paper2html paper2xhs paper2wechat; do
-  ln -sfn "$(pwd)/$s" ~/.claude/skills/"$s"
-done
+ln -sfn "$(pwd)/paper2slides"  ~/.claude/skills/paper2slides
+ln -sfn "$(pwd)/paper2poster"  ~/.claude/skills/paper2poster
+ln -sfn "$(pwd)/paper2html"    ~/.claude/skills/paper2html
+ln -sfn "$(pwd)/paper2xhs"     ~/.claude/skills/paper2xhs
+ln -sfn "$(pwd)/paper2wechat"  ~/.claude/skills/paper2wechat
 ```
 
 ### conda 环境
