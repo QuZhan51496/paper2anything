@@ -117,9 +117,19 @@ def _poll_batch(batch_id: str) -> dict:
 
 
 def _download_and_unzip(zip_url: str, output_dir: Path) -> None:
-    """下载结果 zip 并解压到 output_dir"""
-    r = _MINERU.get(zip_url, timeout=300)
-    r.raise_for_status()
+    """下载结果 zip 并解压到 output_dir（.cn CDN 偶发 SSL EOF，指数退避重试）。"""
+    backoff = 2.0
+    for attempt in range(1, 4):
+        try:
+            r = _MINERU.get(zip_url, timeout=300)
+            r.raise_for_status()
+            break
+        except Exception as e:
+            if attempt == 3:
+                raise
+            print_warning(f"zip 下载失败（{e}），{backoff:.0f}s 后重试（{attempt}/3）")
+            time.sleep(backoff)
+            backoff *= 2
     with zipfile.ZipFile(io.BytesIO(r.content)) as zf:
         zf.extractall(output_dir)
 

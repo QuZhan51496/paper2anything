@@ -139,8 +139,18 @@ def extract_with_mineru(pdf_path: str, output_dir: str, token: str = None):
         raise RuntimeError(f"No zip URL in result: {extract_results}")
 
     print(f"  Downloading results...")
-    resp = session.get(zip_url, timeout=120)
-    resp.raise_for_status()
+    backoff = 2.0
+    for attempt in range(1, 4):  # .cn CDN 偶发 SSL EOF，指数退避重试
+        try:
+            resp = session.get(zip_url, timeout=120)
+            resp.raise_for_status()
+            break
+        except Exception as e:
+            if attempt == 3:
+                raise
+            print(f"  download failed ({e}); retry in {backoff:.0f}s ({attempt}/3)")
+            time.sleep(backoff)
+            backoff *= 2
 
     # Step 5: Extract zip contents
     md_text = ""

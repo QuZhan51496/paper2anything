@@ -128,9 +128,19 @@ class MineruClient:
         raise TimeoutError(f"MinerU batch {batch_id} timed out after {timeout}s")
 
     def _download_result(self, zip_url: str, output_dir: Path) -> dict:
-        """Download and extract the result ZIP file."""
-        resp = _session.get(zip_url)
-        resp.raise_for_status()
+        """Download and extract the result ZIP file（.cn CDN 偶发 SSL EOF，指数退避重试）."""
+        backoff = 2.0
+        for attempt in range(1, 4):
+            try:
+                resp = _session.get(zip_url, timeout=120)
+                resp.raise_for_status()
+                break
+            except Exception as e:
+                if attempt == 3:
+                    raise
+                print(f"[MinerU] download failed ({e}); retry in {backoff:.0f}s ({attempt}/3)")
+                time.sleep(backoff)
+                backoff *= 2
 
         # Save and extract ZIP
         zip_path = output_dir / "result.zip"
