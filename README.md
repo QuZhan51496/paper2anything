@@ -133,7 +133,7 @@ set -a; source <paper2anything 包根>/.env; set +a
 | Skill | 最终成品（论文同目录） | 中间产物 |
 | --- | --- | --- |
 | paper2slides | `<论文名>_slides/`（`<论文名>.pptx`） | `.paper2anything/slides/<论文名>/` |
-| paper2poster | `<论文名>_poster/`（`poster.png` + `poster.html`） | `.paper2anything/poster/<论文名>/` |
+| paper2poster | `<论文名>_poster/`（`poster.png` + `poster.html` + `images/`） | `.paper2anything/poster/<论文名>/` |
 | paper2html | `<论文名>_html/`（`index.html` + `images/`） | `.paper2anything/html/<论文名>/` |
 | paper2xhs | `<论文名>_xhs/`（`xhs_post.md` + `.json` + `cover.png`） | `.paper2anything/xhs/<论文名>/` |
 | paper2wechat | `<论文名>_wechat/`（`wechat_article.md` + `.json` + `cover.jpg` + `figures/`） | `.paper2anything/wechat/<论文名>/` |
@@ -158,7 +158,7 @@ paper2anything/
 ├── paper2poster/            # 论文 → 海报 HTML/PNG
 │   ├── SKILL.md
 │   ├── references/          # 海报示例、配色、版式指南
-│   └── scripts/             # parse_pdf / auto_outline / geom_check / embed_figures / screenshot / check_env
+│   └── scripts/             # parse_pdf / auto_outline / geom_check / collect_figures / screenshot / check_env
 ├── paper2html/              # 论文 → 单页项目主页
 │   ├── SKILL.md
 │   ├── references/          # 设计语言、HTML 撰写规范、QA 清单

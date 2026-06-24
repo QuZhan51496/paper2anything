@@ -200,9 +200,9 @@ like your previous poster, that's a signal to rethink, not a shortcut to take.
    reference figures by relative path** (`src="parsed/figures/x.jpg"`) —
    screenshot.py and geom_check.py resolve them via `file://`, and the file
    stays small and editable. Only at the end run
-   embed_figures once — `conda run -n paper2anything --no-capture-output python ${SKILL_DIR}/scripts/embed_figures.py "${RUN_DIR}/poster.html"` — to inline them as base64 `data:`
-   URIs for a self-contained, distributable poster (don't hand-paste base64 — it
-   bloats the file beyond what the render/edit loop can handle). Design freely —
+   collect_figures once — `conda run -n paper2anything --no-capture-output python ${SKILL_DIR}/scripts/collect_figures.py "${RUN_DIR}/poster.html"` — to copy the
+   referenced figures into a sibling `images/` directory and rewrite each `src` to
+   `images/<name>`, giving a portable poster (`poster.html` + `images/`). Design freely —
    pick the grid, the type scale, the color blocking, where the claim sits, what
    dominates. Size the poster to the intake (`poster_intake.size`, e.g. 20×15 in
    → 1920×1440 px at 96 dpi). Use the outline you wrote in Step 4 as the content
@@ -447,9 +447,10 @@ DEST="${pdf_path%.*}_poster"          # 与 PDF 同目录、同名 + _poster 后
 i=2; while [ -e "$DEST" ]; do DEST="${pdf_path%.*}_poster_v$i"; i=$((i+1)); done   # 重名则追加 _v2、_v3
 mkdir -p "$DEST"
 cp "$RUN_DIR/poster.png" "$RUN_DIR/poster.html" "$DEST/"
+[ -d "$RUN_DIR/images" ] && cp -r "$RUN_DIR/images" "$DEST/"   # 图按 images/<名> 引用，一并带上
 ```
 
-`poster.png` 与 `poster.html`（图已 base64 内联、自包含）放进 `<stem>_poster/` 子目录；`<stem>_poster/poster.png` 即最终海报。
+`poster.png`、`poster.html` 与 `images/`（poster.html 按 `images/<名>` 引用图）放进 `<stem>_poster/` 子目录；`<stem>_poster/poster.png` 即最终海报。
 
 ---
 

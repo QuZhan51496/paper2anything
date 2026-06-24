@@ -182,7 +182,7 @@ def extract_with_mineru(pdf_path: str, output_dir: str, token: str = None):
 
     # 图像清晰度修复：MinerU 抽出图为降采样（偏糊）。按 layout.json 的 bbox 从 pdftoppm
     # 300dpi 整页渲染里原地重裁，覆盖同名抽出图（保持 figures/<basename> 路径不变，下游
-    # auto_outline/embed_figures 引用 schema 不动）。无 layout 或 pdftoppm 不可用则整体跳过。
+    # auto_outline/collect_figures 引用 schema 不动）。无 layout 或 pdftoppm 不可用则整体跳过。
     _recrop_inplace(pdf_path, output_dir)
 
     return md_text
