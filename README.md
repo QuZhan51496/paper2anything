@@ -78,7 +78,6 @@ conda activate paper2anything
 | libreoffice（`soffice`） | 视觉 QA | paper2slides | `sudo apt install libreoffice`（Linux）/ `brew install --cask libreoffice`（macOS） |
 | Node.js | JS 运行时 | paper2slides | Linux 用 NodeSource（apt 自带过旧，见表下注）/ `brew install node`（macOS） |
 | pptxgenjs + react-icons/react/react-dom/sharp | PPT 渲染 | paper2slides | `npm install -g pptxgenjs react-icons react react-dom sharp`（Linux 前加 `sudo`） |
-| Playwright Chromium | 浏览器渲染 | paper2poster / paper2html | `conda run -n paper2anything python -m playwright install chromium` |
 
 **Node.js（Linux）**：sharp 要求 Node ≥20.9.0，用 NodeSource 装：
 
