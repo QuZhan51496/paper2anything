@@ -21,7 +21,7 @@ PDF
  → 小红书帖子
 ```
 
-## How you run this skill
+## 运行方式
 
 1. **一步步来**：机械步骤用 `Bash` 调脚本，创作步骤你自己用 `Read` / `Write` 做。不要试图一条命令跑完。
 2. **每个 Bash 块开头就地算 `WORKDIR`**——各 Bash 调用是独立 shell、不共享变量，所以别指望 `export` 跨步存活：
