@@ -8,7 +8,7 @@
 
 </div>
 
-把一篇学术论文 PDF 一键转成**任意一种**宣传产物的 skills 包，覆盖论文传播的主要形态：
+把一篇学术论文 PDF 转成任意一种宣传产物的 skills 包，覆盖论文传播的主要形态：
 
 | Skill | 把论文变成 | 产物 | 触发词（举例） |
 | --- | --- | --- | --- |
@@ -18,7 +18,7 @@
 | **paper2xhs** | 小红书帖子 | `xhs_post.json/md` + 封面 | "把这篇论文发小红书"、"论文转小红书" |
 | **paper2wechat** | 公众号推文 | `wechat_article.md/html` + 封面 | "把论文写成公众号文章"、"论文转公众号" |
 
-每个子目录都是一个独立、可自动触发的 skill（各有 `SKILL.md`）。它们共享同一个 conda 环境，但各自的工作流、产物与凭据相互独立。
+每个子目录都是一个独立、可自动触发的 skill（各有 `SKILL.md`）。
 
 ---
 
@@ -41,7 +41,7 @@ bash tools/install-macos.sh --create-env --shell-init     # macOS
 1. **填 `.env` 里的 `MINERU_API_TOKEN`**（必需）；
 2. **装上它指出的缺失系统级依赖**（脚本会逐项检测并给出安装命令）。
 
-需要手动安装时（如只用某个特定 skill、只想装它需要的依赖），下面是等价拆解。
+需要手动安装时（如只用某个特定 skill），下面是等价拆解。
 
 <details>
 <summary><b>手动安装</b></summary>
@@ -93,7 +93,7 @@ curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash - && sudo apt in
 cp .env.example .env          # 首次：复制后填入你的 key
 ```
 
-**可选**：把 `.env` 导出写进 shell 启动文件。安装时加 `--shell-init` 自动写入（见「环境安装」），或手动加这一行：
+可选：把 `.env` 导出写进 shell 启动文件。安装时可加 `--shell-init` 自动写入（见「环境安装」），或手动加这一行：
 
 ```bash
 set -a; source <paper2anything 包根>/.env; set +a
@@ -127,9 +127,9 @@ set -a; source <paper2anything 包根>/.env; set +a
 
 ## 产物位置
 
-每个 skill 的最终成品都落在论文同目录下；全部中间产物保留在同目录的 `.paper2anything/<skill>/<论文名>/`（同目录多篇论文按 `<论文名>` 分篇、互不覆盖）：
+每个 skill 的最终成品都落在论文同目录下；全部中间产物保留在同目录的 `.paper2anything/<skill>/<论文名>/`：
 
-| Skill | 最终成品（论文同目录） | 中间产物 |
+| Skill | 最终成品 | 中间产物 |
 | --- | --- | --- |
 | paper2slides | `<论文名>_slides/`（`<论文名>.pptx`） | `.paper2anything/slides/<论文名>/` |
 | paper2poster | `<论文名>_poster/`（`poster.png` + `poster.html` + `images/`） | `.paper2anything/poster/<论文名>/` |
