@@ -1,262 +1,279 @@
 # Pipeline Protocol
 
-六个阶段的详细执行协议。本文件比 SKILL.md Quick Reference 更细——SKILL.md 是
-索引，本文件是手册。
+Detailed execution protocol for the six stages. This file is more detailed than the
+SKILL.md Quick Reference — SKILL.md is the index, this file is the manual.
 
-## 通用约定
+## General Conventions
 
-- **Python 环境**：所有 `python` 命令默认在 `paper2anything` conda 环境中跑。在
-  Claude Code 里执行时显式用：
+- **Python environment**: all `python` commands run in the `paper2anything` conda
+  environment by default. When executing inside Claude Code, use it explicitly:
 
   ```bash
   conda run -n paper2anything --no-capture-output python -m scripts.<name> ...
   ```
 
-  下文为简洁起见省略前缀，但每条命令都隐含这个前缀。
+  For brevity the prefix is omitted below, but every command implies this prefix.
 
-- **工作目录**：所有阶段共享 `<paper-dir>/.paper2anything/slides/<paper-stem>/`，路径由
-  `scripts/workdir.py resolve <paper.pdf>` 解析。**不要手动拼路径**——规则
-  集中在 workdir.py。
+- **Work directory**: all stages share `<paper-dir>/.paper2anything/slides/<paper-stem>/`,
+  with the path resolved by `scripts/workdir.py resolve <paper.pdf>`. **Do not assemble
+  paths by hand** — the rules are centralized in workdir.py.
 
-- **重跑**：默认按"产物文件存在则跳过"语义，`--from-stage <name>` 强制从某阶段起
-  全跑，`--force` 全部重跑。`config.json`（Stage 0.5 产物）同此语义——已存在则
-  跳过提问沿用上次配置，`--from-stage configure` 重新问。
+- **Re-run**: by default uses "skip if the output file exists" semantics; `--from-stage <name>`
+  forces a full run starting from a given stage, `--force` re-runs everything. `config.json`
+  (the Stage 0.5 output) follows the same semantics — if it already exists, the questions are
+  skipped and the last configuration is reused; `--from-stage configure` asks again.
 
-- **失败处理**：脚本出错时 stderr 给出诊断，据此定位，不要盲目重试。
+- **Failure handling**: when a script errors, stderr gives a diagnostic; locate the problem
+  from it, do not blindly retry.
 
 ---
 
-## Stage 0: 解析 workspace（每次必跑的前置）
+## Stage 0: Resolve workspace (prerequisite that must run every time)
 
 ```bash
 python -m scripts.workdir resolve <paper.pdf> [--output <out.pptx>] --ensure
 ```
 
-输出 JSON 含：`paper_path` / `output_path` / `workdir` / 各产物路径 / 各阶段
-`stage_status`。
+The output JSON contains: `paper_path` / `output_path` / `workdir` / the path of each output /
+each stage's `stage_status`.
 
-**你的职责**：读这份 JSON，决定哪些阶段已完成、哪些要跑。后续所有命令引用
-此处给出的路径，不要拼字符串。
+**Your responsibility**: read this JSON and decide which stages are done and which need to run.
+All subsequent commands reference the paths given here; do not concatenate strings.
 
 ---
 
-## Stage 0.5: Configure（用户对话 → config.json）
+## Stage 0.5: Configure (user dialogue → config.json)
 
-**无脚本**。你用 [AskUserQuestion] 工具在 Stage 0 之后、Stage 1 之前与用户
-确认三项关键参数，把答案用 Write 工具落到 Stage 0 JSON 给出的 `config_path`
-（`<workdir>/config.json`，schema 见 [schemas.md](schemas.md#configjsonstage-05-产物)）。
+**No script**. Using the [AskUserQuestion] tool, after Stage 0 and before Stage 1 you confirm
+three key parameters with the user, then write the answers with the Write tool to the
+`config_path` given by the Stage 0 JSON
+(`<workdir>/config.json`; for the schema see [schemas.md](schemas.md#configjson-stage-05-artifact-stage-2-and-stage-5-input)).
 
-**输入**：用户对话（+ 用户初始请求里已表达的偏好）
+**Input**: user dialogue (+ preferences already expressed in the user's initial request)
 
-**输出**：`workdir/config.json`
+**Output**: `workdir/config.json`
 
-**完成判定**：`config.json` 存在（`stage_status.configure == true`）。
+**Completion criterion**: `config.json` exists (`stage_status.configure == true`).
 
-### 三项确认
+### The three confirmations
 
-| # | 字段 | 选项 | 默认/推荐 |
+| # | Field | Options | Default/recommended |
 |---|---|---|---|
-| 1 | `deck_length` | `精简` ~8–12 张（10 min 短讲/组会快过）/ `标准` ~13–18 张（12–20 min 会议 talk）/ `详尽` ~19–28 张（30–45 min keynote/job talk）/ `自动` 不设页数目标，由叙事+版面决定 | 默认 `自动`；`自动` 完全保留近期"张数不设上下限"哲学 |
-| 2 | `visual_qa` | `true` 跑 soffice→jpg→子代理 视觉闭环 / `false` 只跑便宜的 content QA | **默认 `true`**（采用视觉 QA）；注意它昂贵（token/时间近乎前面所有阶段总和），不需要时选 `false` 省开销 |
-| 3 | `color_scheme` | `自动` 由 Stage 3 按论文气质选 palette / `自定义` 用户用一句话描述配色偏好，写进 config | **默认 `自动`**；自定义只存用户原话，由 Stage 3 解析映射，本阶段不选定具体 palette |
+| 1 | `deck_length` | `concise` ~8–12 slides (10 min short talk / quick group-meeting run-through) / `standard` ~13–18 slides (12–20 min conference talk) / `detailed` ~19–28 slides (30–45 min keynote/job talk) / `auto` no slide-count target, decided by narrative + layout | default `auto`; `auto` fully preserves the recent "no upper/lower bound on slide count" philosophy |
+| 2 | `visual_qa` | `true` runs the soffice→jpg→subagent visual loop / `false` runs only the cheap content QA | **default `true`** (use visual QA); note that it is expensive (token/time nearly the sum of all preceding stages combined), choose `false` when you do not need it to save cost |
+| 3 | `color_scheme` | `auto` lets Stage 3 choose the palette by the paper's character / `custom` the user describes a color-scheme preference in one sentence, written into config | **default `auto`**; custom only stores the user's original wording, parsed and mapped by Stage 3; this stage does not settle on a specific palette |
 
-### config.json 写什么
+### What to write in config.json
 
 ```json
 {
   "schema_version": "0.1",
-  "deck_length": "标准",
+  "deck_length": "standard",
   "deck_length_target": [13, 18],
   "visual_qa": true,
   "color_scheme": null
 }
 ```
 
-- `deck_length_target`：`精简`→`[8,12]`、`标准`→`[13,18]`、`详尽`→`[19,28]`、
-  `自动`→`null`。下游只需读这个区间（`null` = 不约束）。
-- `color_scheme`：选 `自动` 写 `null`；选 `自定义` 把用户原话存成字符串。Stage 3 据此选 palette，本阶段不解析、不定具体 palette。
-- 完整字段语义见 [schemas.md](schemas.md#configjsonstage-05-产物)。
+- `deck_length_target`: `concise`→`[8,12]`, `standard`→`[13,18]`, `detailed`→`[19,28]`,
+  `auto`→`null`. Downstream only needs to read this range (`null` = no constraint).
+- `color_scheme`: choosing `auto` writes `null`; choosing `custom` stores the user's original wording as a string. Stage 3 chooses the palette from this; this stage does not parse it and does not fix a specific palette.
+- For the full field semantics, see [schemas.md](schemas.md#configjson-stage-05-artifact-stage-2-and-stage-5-input).
 
-### 复用与重配
+### Reuse and reconfigure
 
-- **跳过提问**：`config.json` 已存在且未带 `--from-stage configure` / `--force`
-  时不再问，沿用上次配置（与其它阶段"产物存在即跳过"一致）。
-- **重新配置**：`--from-stage configure`（会覆盖旧 `config.json`，并因 configure
-  在 STAGES 最前、其后所有阶段一并重跑）。
-- **预填**：用户初始请求已表达偏好（"做个精简的" / "详尽 keynote" / "顺便做下
-  视觉 QA"）时，把对应项设为 AskUserQuestion 首选项——仍展示确认，不静默替用户决定。
+- **Skip the questions**: when `config.json` already exists and neither `--from-stage configure`
+  nor `--force` is passed, do not ask again; reuse the last configuration (consistent with other
+  stages' "skip if the output exists").
+- **Reconfigure**: `--from-stage configure` (overwrites the old `config.json`, and because configure
+  is at the front of STAGES, all subsequent stages re-run as well).
+- **Pre-fill**: when the user's initial request has already expressed a preference ("make a concise one" /
+  "a detailed keynote" / "do visual QA while you're at it"), set the corresponding item as the
+  AskUserQuestion preferred option — still show the confirmation, do not silently decide for the user.
 
-### 下游消费
+### Downstream consumption
 
-`deck_length_target` → **Stage 2**（大纲粒度软目标）、`color_scheme` → **Stage 3**
-（选 palette）、`visual_qa` → **Stage 5**（视觉 QA 开关）。各字段语义与消费细则见
-[schemas.md](schemas.md#configjsonstage-05-产物) 的"消费方"。
+`deck_length_target` → **Stage 2** (soft target for outline granularity), `color_scheme` → **Stage 3**
+(choose the palette), `visual_qa` → **Stage 5** (visual QA switch). For each field's semantics and
+consumption details, see the "consumers" part of
+[schemas.md](schemas.md#configjson-stage-05-artifact-stage-2-and-stage-5-input).
 
 ---
 
-## Stage 1: Extract（PDF → MinerU 云解析 → 元数据 + 图 + 整页渲染）
+## Stage 1: Extract (PDF → MinerU cloud parse → metadata + figures + full-page render)
 
-解析统一走 **MinerU 云 API**：上传 PDF 到 mineru.net，云端解析后下载结果。必填
-`MINERU_API_TOKEN`（包根 `.env`）；无 token 或解析失败**直接报错**。
+Parsing always goes through the **MinerU cloud API**: upload the PDF to mineru.net, and after the
+cloud parses it, download the result. `MINERU_API_TOKEN` (in the package-root `.env`) is required;
+with no token or on a parse failure it **errors out directly**.
 
 ```bash
 python -m scripts.parse_pdf <paper.pdf> [--dpi 300]
 ```
 
-**输入**：`<paper.pdf>`（绝对路径或相对当前工作目录）
+**Input**: `<paper.pdf>` (absolute path or relative to the current working directory)
 
-**输出**（写到 workdir，由 `lib/mineru_parser` 写）：
+**Output** (written to workdir, by `lib/mineru_parser`):
 
-| 产物 | 内容 |
+| Output | Content |
 |---|---|
-| `paper_meta.json` | title / authors / sections / figures / tables / equations / references_count（结构化元数据，由 MinerU 直接给出）|
-| `figures_index.json` | captions（图/表 caption，table 带 `bbox` + `bbox_source: mineru:vlm`）、figures、page_renders 等列表 |
-| `figures/` | MinerU 抽出的图 / 表实体与高清裁图（表的高清裁图也落 `figures/`，无单独 `tables/` 目录）|
-| `pages/page-NN.png` | pdftoppm 整页渲染，**默认 300 dpi 含 `-hide-annotations`**（去掉 PDF 自带 hyperlink 绿框）；`--dpi 200` 降载、`--dpi 400` 细公式 |
+| `paper_meta.json` | title / authors / sections / figures / tables / equations / references_count (structured metadata, provided directly by MinerU) |
+| `figures_index.json` | lists such as captions (figure/table captions; tables carry `bbox` + `bbox_source: mineru:vlm`), figures, page_renders |
+| `figures/` | figure/table entities extracted by MinerU and high-resolution crops (table high-resolution crops also land in `figures/`; there is no separate `tables/` directory) |
+| `pages/page-NN.png` | pdftoppm full-page render, **300 dpi by default, with `-hide-annotations`** (removes the green hyperlink boxes the PDF carries); `--dpi 200` to reduce load, `--dpi 400` for fine equations |
 
-**完成判定**：`paper_meta.json` + `figures_index.json` 存在。
+**Completion criterion**: `paper_meta.json` + `figures_index.json` exist.
 
-**已知不完美**：
+**Known imperfections**:
 
-- table / figure 的 `bbox` 偶把 `y` 起点压在子图标题 / 图注行上 → 第一刀会切到标题或卷入
-  caption；按 [design-style.md](design-style.md) §3 在原框上对那一条边定向微调，别丢开原框重估。
-- 个别论文 MinerU 抽 title / authors 仍可能不全 → 进 Stage 2 前**必跑** [schemas.md 末尾 4 项校核](schemas.md#你在-stage-2-进入前应做的修订)（title / authors / 同 kind 合并 / 缺关键 kind）核对 `paper_meta.json`；**校核结果不写回 `paper_meta.json`**，直接体现在 outline 里。
+- A table/figure `bbox` occasionally puts the `y` start on a subfigure title / caption line → the first
+  cut clips the title or pulls in the caption; per [design-style.md](design-style.md) §3, make a directed
+  micro-adjustment to that one edge on the original box — do not discard the original box and re-estimate.
+- For some papers MinerU may still extract title/authors incompletely → before entering Stage 2,
+  **you must run** [the 4 checks at the end of schemas.md](schemas.md#revisions-you-should-make-before-entering-stage-2)
+  (title / authors / merge same-kind / missing key kind) to verify `paper_meta.json`; **the check results
+  are not written back to `paper_meta.json`**, they are reflected directly in the outline.
 
-**何时重跑**：换论文、PDF 改了、想换 `--dpi`。
-
----
-
-## Stage 2: Outline（论文元数据 → slide 大纲）
-
-**无脚本**。这是你的工作。
-
-**输入**：`workdir/paper_meta.json`（read-only）+ `workdir/figures_index.json`
-+ `workdir/config.json`（read-only）
-
-**输出**：`workdir/slide_outline.json`（schema 见 [schemas.md](schemas.md)）
-
-**协议**：
-
-1. 读 `paper_meta.json` 与 `figures_index.json`；读 `config.json/deck_length_target`
-2. 跑 [schemas.md](schemas.md) 末尾的 4 项校核（title / authors / 同 kind 合并 / 缺失 kind）
-3. 按 [outline-heuristics.md](outline-heuristics.md) 决定 slide 角色与顺序：
-   `deck_length_target == null`（`自动`）时张数纯由叙事+版面定；非 `null`
-   时把该区间当作**大纲粒度软目标**（调 method/result 拆分细度与可选角色含不含），
-   **不**为凑数砍核心叙事角色，**不**改每页"空间驱动、无留白无溢出"
-4. 为每张 slide 写 `title` / `bullets` / `figure_ref` / `speaker_notes` / `source_section_ids`
-5. 把结果序列化到 `workdir/slide_outline.json`，必跑 `python -c "import json; json.load(open(...))"`
-   验证 JSON 合法
-
-**完成判定**：`slide_outline.json` 存在且 schema 合法。
-
-**Stage 2 常见错误**：
-
-- 直接复制论文 abstract 当 bullets（违反提炼原则——bullet 是要点不是搬运）
-- 一张 method 把所有方法细节塞满
-- bullets 缺主语 + 缺动词，全是名词短语
-- speaker_notes 写成 bullet 的扩展（应该是讲者的口播草稿）
+**When to re-run**: switching papers, the PDF changed, or you want a different `--dpi`.
 
 ---
 
-## Stage 3: Spec（slide 大纲 → 渲染规格）
+## Stage 2: Outline (paper metadata → slide outline)
 
-**无脚本**。你工作。
+**No script**. This is your job.
 
-**输入**：`workdir/slide_outline.json` + `workdir/figures_index.json` + 各种 PNG
+**Input**: `workdir/paper_meta.json` (read-only) + `workdir/figures_index.json`
++ `workdir/config.json` (read-only)
 
-**输出**：`workdir/slide_spec.json`（schema 见 [schemas.md](schemas.md)）
+**Output**: `workdir/slide_outline.json` (for the schema see [schemas.md](schemas.md))
 
-**协议**：
+**Protocol**:
 
-1. 读 `slide_outline.json`
-2. 按 [design-style.md](design-style.md) 选 palette、font_header/body
-3. 为每张 slide 选 `layout_kind`（避免连续相同的 layout）
-4. 把 `title` / `bullets` / 配图 / 形状/线条 等翻译成 `elements` 数组；坐标用英寸
-5. 对图：若 `figure_ref` 给出，先查 `figures_index.json/captions[].id == figure_ref`
-   找到 page；再决定用 `figures/<id>.png`（MinerU 高清裁图）还是用 `page_renders` 整页（必要时
-   `scripts/page_screenshot.py` 裁剪 bbox）
-6. 序列化、JSON 校验
+1. Read `paper_meta.json` and `figures_index.json`; read `config.json/deck_length_target`
+2. Run the 4 checks at the end of [schemas.md](schemas.md) (title / authors / merge same-kind / missing kind)
+3. Per [outline-heuristics.md](outline-heuristics.md), decide slide roles and order:
+   when `deck_length_target == null` (`auto`), the slide count is decided purely by narrative + layout;
+   when not `null`, treat that range as a **soft target for outline granularity** (tune method/result
+   split granularity and whether optional roles are included), **do not** cut core narrative roles to
+   hit a number, **do not** change each slide's "space-driven, no whitespace no overflow"
+4. For each slide write `title` / `bullets` / `figure_ref` / `speaker_notes` / `source_section_ids`
+5. Serialize the result to `workdir/slide_outline.json`; you must run `python -c "import json; json.load(open(...))"`
+   to verify the JSON is valid
 
-**关键约束**（这些是 Stage 3 最易翻车的点）：
+**Completion criterion**: `slide_outline.json` exists and is schema-valid.
 
-- `slide.id` 与 `slide_outline.json` 保持一致
-- 元素坐标 + 尺寸 ≤ slide 尺寸（10 × 5.625 for 16:9）
-- 文本元素的 `text` 字段：**所有数字与术语必须在 paper_meta 或 figures_index 里有出处**
-  （不要 hallucinate 论文里没有的数字）
-- 配图路径：相对 workdir，且文件实际存在
-- text 元素的 `margin: 0` 当对齐 shape/icon 时务必加（PptxGenJS 默认 margin 会偏移）
+**Common Stage 2 mistakes**:
 
-**完成判定**：`slide_spec.json` 存在且 schema 合法。
+- Copying the paper abstract directly as bullets (violates the distillation principle — a bullet is a key point, not a transcription)
+- Cramming all method details into a single method slide
+- Bullets missing a subject + missing a verb, all noun phrases
+- speaker_notes written as an expansion of the bullets (they should be the speaker's spoken-delivery script)
 
 ---
 
-## Stage 4: Render（规格 → .pptx）
+## Stage 3: Spec (slide outline → render spec)
+
+**No script**. Your work.
+
+**Input**: `workdir/slide_outline.json` + `workdir/figures_index.json` + various PNGs
+
+**Output**: `workdir/slide_spec.json` (for the schema see [schemas.md](schemas.md))
+
+**Protocol**:
+
+1. Read `slide_outline.json`
+2. Per [design-style.md](design-style.md), choose the palette and font_header/body
+3. For each slide choose a `layout_kind` (avoid the same layout in a row)
+4. Translate `title` / `bullets` / figures / shapes/lines etc. into the `elements` array; use inches for coordinates
+5. For figures: if `figure_ref` is given, first look up `figures_index.json/captions[].id == figure_ref`
+   to find the page; then decide whether to use `figures/<id>.png` (the MinerU high-resolution crop) or the
+   full page from `page_renders` (when necessary, `scripts/page_screenshot.py` crops the bbox)
+6. Serialize, validate the JSON
+
+**Key constraints** (these are the points where Stage 3 most easily goes wrong):
+
+- `slide.id` stays consistent with `slide_outline.json`
+- Element coordinates + size ≤ slide size (10 × 5.625 for 16:9)
+- The `text` field of text elements: **every number and term must have a source in paper_meta or figures_index**
+  (do not hallucinate numbers that are not in the paper)
+- Figure paths: relative to workdir, and the file actually exists
+- `margin: 0` on text elements must be added when aligning to a shape/icon (PptxGenJS's default margin causes an offset)
+
+**Completion criterion**: `slide_spec.json` exists and is schema-valid.
+
+---
+
+## Stage 4: Render (spec → .pptx)
 
 ```bash
 python -m scripts.render_pptx <slide_spec.json> <output.pptx>
 ```
 
-**输入**：`workdir/slide_spec.json`
+**Input**: `workdir/slide_spec.json`
 
-**输出**：`workdir/output.pptx`（先落 workdir），随后由调用方复制到最终 `output_path`
+**Output**: `workdir/output.pptx` (lands in workdir first), then copied by the caller to the final `output_path`
 
-**机制**：`render_pptx.py` 把 `slide_spec.json` 翻译成 PptxGenJS `.js` 程序，
-存到 `workdir/render/build.js`，然后 `node` 跑出 `.pptx`。
+**Mechanism**: `render_pptx.py` translates `slide_spec.json` into a PptxGenJS `.js` program,
+saves it to `workdir/render/build.js`, then `node` produces the `.pptx`.
 
-**前置依赖**：
+**Prerequisites**:
 
-- `node` 在 PATH 中
-- `pptxgenjs` 已 `npm install -g`（或局部 `npm install` 后 `NODE_PATH` 指向）
-- icon 元素另需 `npm install -g react-icons react react-dom sharp`（缺失时 icon warn+skip，不阻断渲染）
+- `node` is on PATH
+- `pptxgenjs` has been `npm install -g`'d (or, after a local `npm install`, `NODE_PATH` points to it)
+- icon elements additionally need `npm install -g react-icons react react-dom sharp` (when missing, icons warn+skip, without blocking the render)
 
-**完成判定**：`workdir/output.pptx` 存在且 ≥ N 张 slide（N == `slide_spec.json/slides.length`）。
+**Completion criterion**: `workdir/output.pptx` exists and has ≥ N slides (N == `slide_spec.json/slides.length`).
 
-**Stage 4 常见错误**：
+**Common Stage 4 mistakes**:
 
-- 字体名拼错（PptxGenJS 不报错，pptx 打开时回退默认字体）
-- 图片路径相对 workdir 但 render_pptx.py 没正确解析（render_pptx.py 把 workdir 作为参数
-  传给 node、JS 端用 `path.join(workdir, path)` 拼成绝对路径）
-- shape 的 z 排序写错（背景 shape 跑到前景遮挡文字）
+- Misspelled font name (PptxGenJS does not error; the pptx falls back to the default font when opened)
+- Image path relative to workdir but render_pptx.py does not resolve it correctly (render_pptx.py passes workdir
+  as an argument to node, and the JS side uses `path.join(workdir, path)` to build an absolute path)
+- Wrong z-order on a shape (a background shape ends up in the foreground and covers the text)
 
 ---
 
 ## Stage 5: QA
 
-**直接套用官方 pptx skill 的 QA Loop**——不在本文件复述。读官方 pptx skill
-`SKILL.md` 的 "QA (Required)" 一节（绝对路径与 `find ~/.claude` 兜底见
-[SKILL.md](../SKILL.md#where-to-look-when-stuck)）。**先读 `config.json/visual_qa`**，按其流程：
+**Apply the official pptx skill's QA Loop directly** — not repeated in this file. Read the
+"QA (Required)" section of the official pptx skill `SKILL.md` (for the absolute path and the
+`find ~/.claude` fallback see [SKILL.md](../SKILL.md#where-to-look-when-stuck)). **First read
+`config.json/visual_qa`**, then follow its flow:
 
-### A. Content QA — 始终跑
+### A. Content QA — always runs
 
-1. `python -m markitdown <workdir>/output.pptx`，grep "lorem|xxxx|placeholder|TODO"
-2. **追加项**（论文 deck 特别检查）：
-   - 数字一致性：所有 stat callout 的数字在 paper_meta 或 figures_index 里有出处
-   - bullet 不是论文 abstract 的复制粘贴
-   - title slide 没有遗留的"YOUR TITLE HERE"
+1. `python -m markitdown <workdir>/output.pptx`, grep "lorem|xxxx|placeholder|TODO"
+2. **Additional items** (special checks for paper decks):
+   - Number consistency: every number in a stat callout has a source in paper_meta or figures_index
+   - bullets are not a copy-paste of the paper abstract
+   - the title slide has no leftover "YOUR TITLE HERE"
 
-### B. Visual QA — 仅 `config.json/visual_qa == true` 时跑
+### B. Visual QA — runs only when `config.json/visual_qa == true`
 
 3. `soffice --headless --convert-to pdf <workdir>/output.pptx --outdir <workdir>/qa/` →
-   `pdftoppm -jpeg -r 150 <workdir>/qa/output.pdf <workdir>/qa/slide` → 派**单个**子代理
-   批量审多页（对齐官方模板，非每页一个）用官方 prompt 视觉检查
-   `<workdir>/qa/slide-*.jpg`（子代理 prompt + 复检轮范围详见 [design-style.md](design-style.md) 末尾）
+   `pdftoppm -jpeg -r 150 <workdir>/qa/output.pdf <workdir>/qa/slide` → dispatch **a single** subagent
+   to review multiple pages in batch (aligned with the official template, not one per page), using the
+   official prompt to visually check `<workdir>/qa/slide-*.jpg` (for the subagent prompt + re-check
+   round scope see the end of [design-style.md](design-style.md))
 
-> `visual_qa == false`则**整段 B 跳过**——不生成 PDF/JPG、不派子代理。
-> 这是 Stage 0.5 用户基于"昂贵且边际有限"的显式选择，不是遗漏。`qa_log.json`
-> 记 `"visual_qa": false`，**终态报告必须明确告知"视觉 QA 已按 config 跳过，
-> 如需 `--from-stage configure` 改配置后 `--from-stage qa` 重跑"**。
+> When `visual_qa == false`, **the entire section B is skipped** — no PDF/JPG is generated, no subagent
+> is dispatched. This is the user's explicit choice at Stage 0.5 based on "expensive and of limited
+> marginal value", not an omission. `qa_log.json` records `"visual_qa": false`, and **the final report
+> must clearly state "visual QA was skipped per config; to change the configuration, re-run with
+> `--from-stage configure` and then `--from-stage qa`"**.
 
-**B 跑时所有中间产物（PDF + JPG）统一放 `<workdir>/qa/`**——不要写到
-`<workdir>/render/`、`/tmp/` 或 `<workdir>` 根。该目录由 `workdir.py` 在
-`ensure()` 时自动建好；绝对路径用 `python -m scripts.workdir resolve <paper.pdf>`
-输出 JSON 的 `qa_dir` 字段。
+**When B runs, all intermediate outputs (PDF + JPG) go uniformly into `<workdir>/qa/`** — do not write to
+`<workdir>/render/`, `/tmp/`, or the `<workdir>` root. That directory is created automatically by
+`workdir.py` during `ensure()`; for the absolute path use the `qa_dir` field of the JSON output by
+`python -m scripts.workdir resolve <paper.pdf>`.
 
-4. **修问题**：在 `slide_spec.json` 里改对应字段，**不要直接改 .pptx**
-5. 重跑 Stage 4（`--from-stage render` 全量重渲）→ 再 QA，直到无新发现。**复检轮按官方
-   Verification Loop 收窄子代理范围**（第 1 轮全量；第 2 轮起只审 上轮 flagged ∪ 本轮
-   spec 改动页；末轮全量 full pass 兜底），判定标准不变，细则见 [design-style.md](design-style.md) "QA 修问题原则" 第 5 步
+4. **Fix issues**: change the corresponding field in `slide_spec.json`, **do not edit the .pptx directly**
+5. Re-run Stage 4 (`--from-stage render` for a full re-render) → QA again, until there are no new findings.
+   **For re-check rounds, narrow the subagent scope per the official Verification Loop** (round 1 is full;
+   from round 2 on, only review last round's flagged ∪ this round's spec-changed pages; the final round is
+   a full pass as a fallback), the criteria are unchanged; for details see the "QA issue-fixing principles"
+   step 5 in [design-style.md](design-style.md)
 
-**完成判定**：写一份 `qa_log.json`，结构：
+**Completion criterion**: write a `qa_log.json` with the structure:
 
 ```json
 {
@@ -270,21 +287,21 @@ python -m scripts.render_pptx <slide_spec.json> <output.pptx>
 }
 ```
 
-最后一 round `pass: true` 视为流水线完成。把 `workdir/output.pptx` 复制（或重命名）
-到 workspace 给出的最终 `output_path`。
+The last round with `pass: true` is treated as pipeline completion. Copy (or rename) `workdir/output.pptx`
+to the final `output_path` given by the workspace.
 
 ---
 
-## 错误恢复速查
+## Error-Recovery Quick Reference
 
-| 症状 | 多半的根因 | 处理 |
+| Symptom | Most likely root cause | Action |
 |---|---|---|
-| Stage 1 MinerU 解析失败 / 超时 | token 失效 / 网络 / PDF 过大 | 核对 `MINERU_API_TOKEN`、能访问 mineru.net；PDF ≤200MB/200 页；重跑 |
-| `paper_meta.json` 章节数 < 5 | MinerU 章节切分不全 | 你在 Stage 2 校核时手动补 |
-| `paper_meta.json` 章节数 > 15 | 子章节过细 | 检查 paper_meta.json/sections，由你合并 |
-| Stage 3 引用了不存在的 figure | figure_ref 写错 | 查 figures_index.json/captions，改 figure_ref 或改用 page_renders |
-| Stage 4 PptxGenJS 报 image not found | 路径相对 workdir 但 node 工作目录错 | render_pptx.py 把 workdir 作为参数传给 node、JS 端拼成绝对路径 |
-| Stage 5 视觉 QA 报"lorem ipsum 残留" | Stage 3 的你用了占位 | 修 slide_spec.json 对应文本，从 render 重跑 |
-| Stage 5 报"table 底线被切" / "裁切带入下方正文" | bbox 太紧 / 你视觉估算偏差 | `page_screenshot.py` 默认已 +0.005 padding，仍丢手动加大 `--pad 0.01`；优先用 `figures_index.json/captions[i].bbox`（mineru 检出）|
-| Stage 5 报"表/图里 `[N]` 引用出现绿色矩形框" | pdftoppm 默认渲染 PDF 自带的 hyperlink annotation | parse_pdf.py 已默认 `-hide-annotations`；如仍出现，机器 poppler 太旧（< 0.69），升级或 `apt install -y poppler-utils` |
-| Stage 5 报"figure/table 字模糊" | dpi 太低 | 默认已 300 dpi；论文超长降到 `--dpi 200` 时如不够清晰，恢复 300 或升 `--dpi 400` |
+| Stage 1 MinerU parse failure / timeout | token expired / network / PDF too large | verify `MINERU_API_TOKEN`, that mineru.net is reachable; PDF ≤200MB/200 pages; re-run |
+| `paper_meta.json` section count < 5 | MinerU section segmentation incomplete | you fill it in manually during the Stage 2 checks |
+| `paper_meta.json` section count > 15 | subsections too granular | check paper_meta.json/sections, merge them yourself |
+| Stage 3 references a figure that does not exist | figure_ref is wrong | check figures_index.json/captions, fix figure_ref or switch to page_renders |
+| Stage 4 PptxGenJS reports image not found | path relative to workdir but node's working directory is wrong | render_pptx.py passes workdir as an argument to node, and the JS side builds an absolute path |
+| Stage 5 visual QA reports "lorem ipsum leftover" | you used a placeholder in Stage 3 | fix the corresponding text in slide_spec.json, re-run from render |
+| Stage 5 reports "table bottom line is clipped" / "the crop pulls in the body text below" | bbox too tight / your visual estimate is off | `page_screenshot.py` already adds +0.005 padding by default; if it still drops content, manually increase `--pad 0.01`; prefer `figures_index.json/captions[i].bbox` (detected by mineru) |
+| Stage 5 reports "a green rectangle box appears on a `[N]` citation inside a table/figure" | pdftoppm by default renders the hyperlink annotation the PDF carries | parse_pdf.py already defaults to `-hide-annotations`; if it still appears, the machine's poppler is too old (< 0.69), upgrade or `apt install -y poppler-utils` |
+| Stage 5 reports "figure/table text is blurry" | dpi too low | already 300 dpi by default; if you lowered to `--dpi 200` for a very long paper and it is not clear enough, restore 300 or raise to `--dpi 400` |

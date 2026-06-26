@@ -1,17 +1,19 @@
 """
-page_screenshot.py — 从某页 PNG 裁剪指定 bbox 区域
+page_screenshot.py — crop a specified bbox region from a page's PNG
 
-适合 Stage 3 的图表回退路径：当 figure 的嵌入图碎片化或不存在时，从 pages/
-里的整页 PNG 裁出图所在区域当 image 元素用。
+Suited to Stage 3's chart fallback path: when a figure's embedded image is fragmented or
+absent, crop the region where the figure sits from the full-page PNG under pages/ and use
+it as an image element.
 
-输入 bbox 以**相对比例 0..1** 表达，便于你在不知道具体像素时也能下指令。
-比如某图占据整页中段（垂直 30%-65%），传 (x=0, y=0.30, w=1, h=0.35)。
+The input bbox is expressed as a **relative ratio 0..1**, so you can give instructions even
+without knowing the exact pixels. For example, if a figure occupies the middle band of the
+full page (vertically 30%-65%), pass (x=0, y=0.30, w=1, h=0.35).
 
-设计要点：
-  - 默认 `pad=0.005` 四边外扩，clamp 到 [0, 1]：救 booktabs 表底线被 1px 切掉的问题
-  - 文件名按 `(page, x, y, w, h, pad)` 的 SHA1 前 8 位编码：同 bbox → 同名 → 自动幂等，
-    避免 Stage 3 改 bbox 重裁时 render/ 累积孤儿文件
-  - 同名已存在时，默认直接返回（不重写），加 `--replace` 才覆盖
+Design points:
+  - default `pad=0.005` expands all four sides outward, clamped to [0, 1]: rescues the issue of a booktabs table's bottom rule being cut off by 1px
+  - the filename is encoded as the first 8 SHA1 hex digits of `(page, x, y, w, h, pad)`: same bbox → same name → automatic idempotency,
+    avoiding render/ accumulating orphan files when Stage 3 changes the bbox and re-crops
+  - when a same-named file already exists, by default return directly (no rewrite); add `--replace` to overwrite
 
 CLI:
     python -m scripts.page_screenshot <workdir> <page> <x> <y> <w> <h> [--pad P] [--out N] [--replace]
@@ -47,7 +49,7 @@ def crop_page(workdir: Path, page: int,
         raise SystemExit(f"page-{page} render not found in {pages_dir}")
     img_path = candidates[0]
 
-    # 应用 pad 外扩 + clamp
+    # apply pad outward expansion + clamp
     x_p = _clamp01(x - pad)
     y_p = _clamp01(y - pad)
     x2_p = _clamp01(x + w + pad)
@@ -77,11 +79,11 @@ def main() -> None:
     p.add_argument("w", type=float, help="width, relative 0..1")
     p.add_argument("h", type=float, help="height, relative 0..1")
     p.add_argument("--pad", type=float, default=DEFAULT_PAD,
-                   help=f"四边外扩比例（默认 {DEFAULT_PAD}），用于救表格底线/字体粗描边的 1-2px 误差")
+                   help=f"outward expansion ratio on all four sides (default {DEFAULT_PAD}), to rescue the 1-2px error of table bottom rules / bold font strokes")
     p.add_argument("--out", default=None,
-                   help="输出 PNG 文件名（默认 crop-pNN-<hash8>.png，存到 workdir/render/）")
+                   help="output PNG filename (default crop-pNN-<hash8>.png, saved to workdir/render/)")
     p.add_argument("--replace", action="store_true",
-                   help="即使同名 crop 已存在也强制重写（默认幂等：直接返回已有路径）")
+                   help="force a rewrite even if a same-named crop already exists (default is idempotent: return the existing path directly)")
     args = p.parse_args()
 
     out_path = crop_page(args.workdir.resolve(), args.page,

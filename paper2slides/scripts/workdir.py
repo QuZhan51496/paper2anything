@@ -1,12 +1,12 @@
 """
-workdir.py — paper2slides 工作目录与默认参数解析
+workdir.py — paper2slides work directory and default-argument resolution
 
-集中实现：
-  - 默认输出路径解析（缺省落在论文同级 <stem>_slides/<stem>.pptx，重名目录追加 _v2/_v3）
-  - 工作目录解析（论文同目录 .paper2anything/slides/<stem>/，论文目录只读时回退到 ~/.cache）
-  - 阶段完成判定与 --from-stage 跳过逻辑
+Centralized implementation of:
+  - default output path resolution (defaults to <stem>_slides/<stem>.pptx next to the paper; on name collision the directory appends _v2/_v3)
+  - work directory resolution (.paper2anything/slides/<stem>/ in the paper's directory; falls back to ~/.cache when the paper's directory is read-only)
+  - stage-completion determination and --from-stage skip logic
 
-被 SKILL.md 与所有 helper 脚本统一调用，避免规则散落各处。
+Called uniformly by SKILL.md and all helper scripts, to avoid the rules being scattered all over.
 
 CLI:
     python -m scripts.workdir resolve <paper.pdf> [--output <out.pptx>] [--ensure]
@@ -23,13 +23,13 @@ from pathlib import Path
 
 STAGES = ("configure", "extract", "outline", "spec", "render", "qa")
 
-# 每个阶段"已完成"的判据：相对 workdir 的产物路径存在即视为完成。
+# Criterion for each stage being "complete": the existence of the output path (relative to workdir) counts as complete.
 STAGE_MARKERS = {
-    "configure":  "config.json",   # Stage 0.5：AskUserQuestion 三项确认的落盘
+    "configure":  "config.json",   # Stage 0.5: persisting the three AskUserQuestion confirmations
     "extract":    "figures_index.json",
     "outline":    "slide_outline.json",
     "spec":       "slide_spec.json",
-    "render":     "output.pptx",   # 渲染产物先落在 workdir，最后复制到 output_path
+    "render":     "output.pptx",   # the render output first lands in workdir, then is copied to output_path at the end
     "qa":         "qa_log.json",
 }
 
@@ -75,11 +75,11 @@ class Workspace:
 
     def should_run(self, stage: str, from_stage: str | None = None,
                    force: bool = False) -> bool:
-        """决定某阶段是否要执行。
+        """Decide whether a given stage should run.
 
-        - force=True: 无条件执行
-        - from_stage 指定: 从该阶段起所有阶段都执行
-        - 都未指定: 阶段产物已存在则跳过
+        - force=True: run unconditionally
+        - from_stage specified: run all stages from that stage onward
+        - neither specified: skip if the stage's output already exists
         """
         if force:
             return True
@@ -130,8 +130,8 @@ def resolve_output_path(paper_path: Path, requested: Path | None) -> Path:
     if requested is not None:
         return requested.expanduser().resolve()
     paper_path = paper_path.resolve()
-    # 成品落在论文同级的 <stem>_slides/ 子目录；
-    # 重名时目录追加 _v2、_v3，不覆盖旧成品。pptx 文件名保持 <stem>.pptx。
+    # the finished product lands in the <stem>_slides/ subdirectory next to the paper;
+    # on name collision the directory appends _v2, _v3, without overwriting the old product. The pptx filename stays <stem>.pptx.
     parent, stem = paper_path.parent, paper_path.stem
     out_dir = parent / f"{stem}_slides"
     i = 2
@@ -159,13 +159,13 @@ def main() -> None:
     p = argparse.ArgumentParser(description="paper2slides workdir resolver")
     sub = p.add_subparsers(dest="cmd", required=True)
 
-    pr = sub.add_parser("resolve", help="解析 workspace 并打印 JSON")
+    pr = sub.add_parser("resolve", help="resolve the workspace and print JSON")
     pr.add_argument("paper", type=Path)
     pr.add_argument("--output", type=Path, default=None)
     pr.add_argument("--ensure", action="store_true",
-                    help="一并创建 workdir 与子目录")
+                    help="also create the workdir and subdirectories")
 
-    ps = sub.add_parser("status", help="打印各阶段是否已完成")
+    ps = sub.add_parser("status", help="print whether each stage is complete")
     ps.add_argument("paper", type=Path)
 
     args = p.parse_args()

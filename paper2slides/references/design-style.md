@@ -1,39 +1,39 @@
 # Design Style
 
-Stage 3 的你把 `slide_outline.json` 扩展成 `slide_spec.json` 时的视觉决策指南。**核心规则：本文件不复述官方 pptx skill 的设计指南，只补论文场景的特例与取舍**。
+The visual decision guide for you in Stage 3 when expanding `slide_outline.json` into `slide_spec.json`. **Core rule: this file does not restate the official pptx skill's design guide; it only adds the special cases and trade-offs for the paper scenario**.
 
-## 必读：官方 pptx skill 的设计指南
+## Must-read: the official pptx skill's design guide
 
-打开并通读官方 pptx skill 的 `SKILL.md`（绝对路径与 `find ~/.claude` 兜底见
-[SKILL.md](../SKILL.md#where-to-look-when-stuck)），重点 "Design Ideas" 一节，包含：
+Open and read through the official pptx skill's `SKILL.md` (for the absolute path and the `find ~/.claude` fallback, see
+[SKILL.md](../SKILL.md#where-to-look-when-stuck)), focusing on the "Design Ideas" section, which contains:
 
-- 10 套 palette（命名调色板，每个有 primary/secondary/accent）
-- 字体配对（header + body）
-- 6 种 layout 选项（two-column、icon rows、image-half-bleed、stat callout、grid 2x2、timeline）——官方 skill 的版式灵感；本 skill `slide_spec.json/layout_kind` 的合法值以 [schemas.md](schemas.md) 为准
-- 间距、字号、对齐规则
-- "Avoid (Common Mistakes)" 一节——尤其 **NEVER use accent lines under titles**
-  这条，是 AI 生成 deck 的典型痕迹
+- 10 palettes (named palettes, each with primary/secondary/accent)
+- font pairings (header + body)
+- 6 layout options (two-column, icon rows, image-half-bleed, stat callout, grid 2x2, timeline) — the official skill's layout inspiration; the legal values of this skill's `slide_spec.json/layout_kind` are governed by [schemas.md](schemas.md)
+- spacing, font size, and alignment rules
+- the "Avoid (Common Mistakes)" section — especially the **NEVER use accent lines under titles**
+  one, which is a typical fingerprint of AI-generated decks
 
-PptxGenJS API、踩坑点与 **icon 生成**（react-icons → SVG → sharp → base64）见本仓库
-副本 [pptxgenjs.md](pptxgenjs.md) —— 写 spec 配图标时翻它的 "Icons" 节（含学术高频 icon 名表）。
+For the PptxGenJS API, pitfalls, and **icon generation** (react-icons → SVG → sharp → base64), see this repo's
+copy [pptxgenjs.md](pptxgenjs.md) — when writing a spec and choosing icons, consult its "Icons" section (which includes a table of high-frequency academic icon names).
 
-下面只补充**论文场景独有**的规则。
+Below only adds the rules **unique to the paper scenario**.
 
 ---
 
-## Palette 与论文主题的匹配
+## Matching the palette to the paper topic
 
-**先读 `config.json/color_scheme`**（Stage 0.5 落盘）：
+**First read `config.json/color_scheme`** (written to disk in Stage 0.5):
 
-- `null`（用户选了"自动"）：按论文气质从下表 10 套里自选——本节默认路径。
-- 非 `null`（用户的配色描述）：
-  用户意图**优先**。描述直接点名某套 palette 就用那套；是色系/方向描述就从下表 10
-  套里挑最契合的一套。仍遵守下方原则（与主图主色协调、不无脑堆蓝）与 §0 的视觉
-  一致性硬规则。
+- `null` (the user chose "auto"): pick on your own from the 10 in the table below according to the paper's temperament — the default path of this section.
+- non-`null` (the user's color-scheme description):
+  the user's intent **takes priority**. If the description directly names a specific palette, use that one; if it is a color-family / directional description, pick the most fitting one from the 10
+  in the table below. Still obey the principles below (coordinate with the main figure's dominant color, don't mindlessly pile on blue) and the visual-consistency
+  hard rules in §0.
 
-下面 10 套 palette 仅作**灵感**，不是限定——可直接选用，也可据论文气质 /
-用户的 `color_scheme` 描述自造一套协调配色。色号为 6 位 hex（写进 spec 的
-`theme.*` 需带 `#`）：
+The 10 palettes below are only **inspiration**, not a constraint — you may use them directly, or build your own coordinated palette according to the paper's temperament /
+the user's `color_scheme` description. Color codes are 6-digit hex (the `theme.*` written into the
+spec needs a `#`):
 
 | Palette | Primary | Secondary | Accent |
 |---|---|---|---|
@@ -48,14 +48,14 @@ PptxGenJS API、踩坑点与 **icon 生成**（react-icons → SVG → sharp →
 | **Sage Calm** | `84B59F` sage | `69A297` eucalyptus | `50808E` slate |
 | **Cherry Bold** | `990011` cherry | `FCF6F5` off-white | `2F3C7E` navy |
 
-**原则**：
+**Principles**:
 
-- 论文主图的主色是 X？挑 palette 时让 primary 与 X **协调**（同色系或互补），而非冲突
-- **不要每篇论文都选蓝色**。这是 AI 默认的懒惰行为；蓝色已经被 OpenAI/Anthropic/Google 等用烂
+- Is the paper's main figure's dominant color X? When picking a palette, make primary **coordinate** with X (same color family or complementary), rather than clash
+- **Don't pick blue for every paper**. This is AI's default lazy behavior; blue has already been overused by OpenAI/Anthropic/Google and the like
 
-## 字体
+## Fonts
 
-字体配对仅作**灵感**，不是限定——按论文调性自选一组 header + body。下面是配对方案（可直接选用，也可自配）：
+Font pairings are only **inspiration**, not a constraint — pick a header + body pair on your own according to the paper's tone. Below are pairing options (use them directly, or pair your own):
 
 | Header | Body |
 |---|---|
@@ -68,135 +68,135 @@ PptxGenJS API、踩坑点与 **icon 生成**（react-icons → SVG → sharp →
 | Palatino | Garamond |
 | Consolas | Calibri |
 
-**禁忌**：不要用 Comic Sans、Papyrus、Brush Script 这种休闲字体；不要 header
-和 body 都用同一字体（除非是极简风且严格用粗细区分）。
+**Taboos**: don't use casual fonts like Comic Sans, Papyrus, Brush Script; don't use the same font for both header
+and body (unless it's a minimalist style and you strictly distinguish by weight).
 
-## layout_kind 混用
+## Mixing layout_kind
 
-`layout_kind` 由 Stage 3 的你按 slide role + 内容形态自行决定，不预设强制配对。
+`layout_kind` is decided by you in Stage 3 according to slide role + content form on your own, with no preset mandatory pairing.
 
-**反复同一种 layout 是 AI 生成的另一典型痕迹**——一组 slide 至少要混用 4 种以上 layout_kind。
+**Repeating the same layout is another typical fingerprint of AI generation** — a set of slides should mix at least 4 or more layout_kinds.
 
-## 0. 视觉一致性硬规则（**先于所有其他规则**遵守）
+## 0. Visual-consistency hard rules (obey **before all other rules**)
 
-下面 4 条是 Stage 3 写 spec 时**最优先**执行的硬约束。其他设计建议（palette、字体、版式选择）都是在满足这 4 条的前提下做的二阶选择。
+The 4 items below are the **highest-priority** hard constraints to execute when writing a spec in Stage 3. The other design suggestions (palette, fonts, layout choices) are all second-order choices made on the premise of satisfying these 4.
 
-### 0.1 小标题字号、字体、位置 deck 内一致
+### 0.1 Subtitle font size, font, and position consistent within the deck
 
-**所有非 title slide / 非 conclusion 类（含 qna） slide 的 `role: "title"` text element 必须用同一套样式**——`fontSize`、`fontFace`、`color`、`x`、`y`、`w`、`h`、`bold` 都相同。
+**All `role: "title"` text elements on non-title-slide / non-conclusion-class (including qna) slides must use the same style** — `fontSize`, `fontFace`, `color`, `x`, `y`, `w`, `h`, `bold` are all identical.
 
-**具体值由 Stage 3 的你根据论文 / theme / 标题平均长度自行选定**（fontSize 在 28-40pt 区间内、y 在 0.3-0.5 内皆可），**但选定后整 deck 严格一致**：s02 用什么，s03 / s04 / s05 / ... / s11 都用同一组值。
+**The concrete values are chosen by you in Stage 3 on your own according to the paper / theme / average title length** (fontSize anywhere in the 28-40pt range, y anywhere within 0.3-0.5), **but once chosen the entire deck is strictly consistent**: whatever s02 uses, s03 / s04 / s05 / ... / s11 all use the same set of values.
 
-**实现要点**：写第一张非 title slide 的 subtitle 时定一个样式 dict（如 `{"fontFace": "Georgia", "fontSize": 32, "color": "<theme.primary>", "x": 0.5, "y": 0.4, "w": 9.0, "h": 0.9, "bold": true}`），后续每张非 title/conclusion slide 直接**复用同一个 dict 的字段**，不要每张单独估。
+**Implementation point**: when writing the subtitle of the first non-title slide, fix a style dict (e.g. `{"fontFace": "Georgia", "fontSize": 32, "color": "<theme.primary>", "x": 0.5, "y": 0.4, "w": 9.0, "h": 0.9, "bold": true}`), and for every subsequent non-title/conclusion slide directly **reuse the fields of the same dict**, don't estimate each one separately.
 
-**唯一例外**：
+**The only exceptions**:
 
-- title slide（s01）的大标题：通常字号更大（44-48pt）、位置更居中——这是 title slide 这一类自己的样式
-- conclusion / qna slide 的大标题：可以与 title slide 同款（暗色背景 + 大字），形成 sandwich 结构
+- The title slide's (s01) main title: usually a larger font size (44-48pt) and a more centered position — this is the title-slide class's own style
+- The conclusion / qna slide's main title: may match the title slide (dark background + large text), forming a sandwich structure
 
-每一类**内**都要 deck 内一致（不是每张都不同）。
+**Within** each class it must be consistent within the deck (not every slide being different).
 
-### 0.2 标题孤词避免
+### 0.2 Avoiding title orphans
 
-PptxGenJS textbox 文字超长时自动换行；render_pptx.py 已自动给 `role: "title"` 的 text element 加 `autoFit: true`，多数情况会自动缩字号保持单行。即便如此，Stage 3 仍要主动避免孤词：
+When PptxGenJS textbox text is too long it wraps automatically; render_pptx.py already automatically adds `autoFit: true` to `role: "title"` text elements, which in most cases automatically shrinks the font size to keep a single line. Even so, Stage 3 must still proactively avoid orphans:
 
-- 标题字数与 textbox 宽度的搭配应让"绝大多数"标题单行装下；只对极少数特长标题靠 autoFit 兜底
-- **不要**为了某一张特长标题而专门改它的 `fontSize`——那会破坏 0.1 的一致性。长标题的处理是改写更短，或让 autoFit 自动缩
-- title slide 的论文标题特别长（> 8 词）时，把主标题字号从默认大字号下调一档（例如 48 → 36）即可——但 title slide 这一类内的所有标题都用同一字号
+- The pairing of title word count and textbox width should let "the vast majority of" titles fit on a single line; rely on autoFit as a fallback only for the very few extra-long titles
+- **Don't** specially change the `fontSize` of one extra-long title just for it — that breaks 0.1's consistency. The handling of a long title is to rewrite it shorter, or let autoFit shrink it automatically
+- When the title slide's paper title is especially long (> 8 words), just lower the main title's font size one notch from the default large size (e.g. 48 → 36) — but all titles within the title-slide class use the same font size
 
-### 0.3 图片等比缩放（永远不会变形）
+### 0.3 Image proportional scaling (never distorted)
 
-`render_pptx.py` 在生成 `.pptx` 之前会**用 PIL 读每个 image 的真实尺寸**，把 spec 里给的 `(x, y, w, h)` 当作"最大框"，自动算出"按原图比例等比缩放后的实际占位 + 在原 box 内居中"，再喂给 PptxGenJS。这一步发生在渲染管线 Python 端，**与 PptxGenJS 的 sizing 字段无关**，所以**所有图永远不会被横向/纵向拉伸**——表格里的字母数字宽高比始终与原 PNG 一致。
+Before generating the `.pptx`, `render_pptx.py` **reads each image's real dimensions with PIL**, treats the `(x, y, w, h)` given in the spec as a "maximum box", automatically computes "the actual footprint after proportional scaling by the original image's ratio + centering within the original box", and then feeds it to PptxGenJS. This step happens on the Python side of the render pipeline, **independent of PptxGenJS's sizing field**, so **no image is ever stretched horizontally/vertically** — the aspect ratio of letters and numbers in a table always stays consistent with the original PNG.
 
-Stage 3 分配 image 的 `(w, h)` 时仍要尽量贴近原图比例（让等比缩放后空白最少）：
+When Stage 3 assigns an image's `(w, h)`, still try to stay as close to the original image's ratio as possible (so the whitespace after proportional scaling is minimal):
 
-1. **先看原图实际宽高比**：`Image.open(path).size` 或目测整页 PNG 中 figure/table 的相对比例
-2. 选 layout 内可用 box（如 `image_half_bleed` 的右半区域、`grid_2x2` 的某格）
-3. **让 box 宽高比尽量接近原图比例**——这样图填满框、留白最少，视觉饱满
-4. 不知道原图比例时，**用方形 box** (`w == h`) 是最安全的——render 会自动按原比例缩放并居中，永远不会变形
+1. **First look at the original image's actual aspect ratio**: `Image.open(path).size` or eyeball the relative proportions of the figure/table in the full-page PNG
+2. Choose an available box within the layout (e.g. the right half of `image_half_bleed`, a cell of `grid_2x2`)
+3. **Make the box's aspect ratio as close to the original image's ratio as possible** — this way the image fills the box, whitespace is minimal, and it looks visually full
+4. When you don't know the original image's ratio, **using a square box** (`w == h`) is safest — render will automatically scale by the original ratio and center it, never distorted
 
-注：spec 里**不需要**写 `sizing` 字段——render 端会忽略它（因为已经在 Python 端把 (w, h) 调成实际占位，不依赖 PptxGenJS 的 sizing）。写了也无害，会被自动 pop 掉。
+Note: the spec **does not need** a `sizing` field — the render side ignores it (because (w, h) has already been adjusted to the actual footprint on the Python side, independent of PptxGenJS's sizing). Writing it is harmless; it gets popped automatically.
 
-### 0.4 元素整体均衡分布（**整页 + 子区域**都要检查）
+### 0.4 Overall balanced distribution of elements (check **both the full page + sub-regions**)
 
-**原则**：slide 是 10" × 5.625" 的画布；所有 element 应**尽量铺满整张画布**，**不留某个方向上的大块空白**——既不能上下偏，也不能左右偏，更**不能某子区域内偏**。
+**Principle**: a slide is a 10" × 5.625" canvas; all elements should **fill the entire canvas as much as possible**, **leaving no large blank in any direction** — it can't be skewed top-bottom, can't be skewed left-right, and even more so **can't be skewed within some sub-region**.
 
-> **QA 阶段强制执行**：本节 0.4.a / 0.4.b / 0.4.c 列的任何一项被违反在 QA 阶段
-> 都按 **hard issue** 处理——必须改 `slide_spec.json` 修掉，不允许标 soft / 略过。
-> 子代理 prompt 已要求按 hard 报告（见本文件末"QA 时的视觉子代理 prompt"节），
-> 你自己复审子代理报告时也不要把这些塞进 "soft" 桶——一句"看起来 OK / 略
-> 空属软问题"就跳过的判断是本 skill **最常翻车的错误**。详见末节"QA 修问题原则"。
+> **Enforced in the QA phase**: any item listed in 0.4.a / 0.4.b / 0.4.c of this section, if violated, in the QA phase
+> is handled as a **hard issue** — you must change `slide_spec.json` to fix it; marking it soft / skipping it is not allowed.
+> The subagent prompt already requires reporting them as hard (see the "Visual Subagent Prompt for QA" section at the end of this file),
+> and when you yourself review the subagent's report, don't stuff these into the "soft" bucket either — the judgment of skipping with a single
+> "looks OK / slight whitespace is a soft issue" is this skill's **most common derailment mistake**. See the final section "Principles for Fixing QA Issues" for details.
 
-#### 0.4.a 整页 bbox 检查
+#### 0.4.a Full-page bbox check
 
-- **垂直**：`max(y + h)` ≥ 4.0"（元素延伸到 slide 的 ~70% 高度以下）
-- **水平**：`max(x + w)` ≥ 8.5" 且 `min(x)` ≤ 0.7"（元素触及左右两边）
+- **Vertical**: `max(y + h)` ≥ 4.0" (elements extend below ~70% of the slide's height)
+- **Horizontal**: `max(x + w)` ≥ 8.5" and `min(x)` ≤ 0.7" (elements reach both the left and right edges)
 
-#### 0.4.b 子区域均衡（**最容易翻车**的检查，用户视觉感受主要看这里）
+#### 0.4.b Sub-region balance (the **most error-prone** check; this is mainly where the user's visual impression comes from)
 
-整页 bbox 满了不代表视觉饱满 —— `two_column` / `image_half_bleed` 这种**双栏 layout** 必须额外检查左右两栏**各自**的垂直占位：
+A filled full-page bbox doesn't mean it's visually full — **two-column layouts** like `two_column` / `image_half_bleed` must additionally check the vertical footprint of each of the left and right columns **separately**:
 
-- **左右栏 max(y + h) 差 ≤ 0.6"**：例如左栏 4 条 bullets 只到 y=4.0，右栏图占到 y=5.0 → 差 1.0" 太大，左下方留半 inch+ 空白，视觉就"挤上半"
-- **判断方法**：把 elements 按 x_center 分成左半（< 5"）和右半（≥ 5"），两组各自的 max(y+h) 应接近
+- **The left and right columns' max(y + h) differ by ≤ 0.6"**: e.g. the left column's 4 bullets only reach y=4.0 while the right column's image occupies down to y=5.0 → a difference of 1.0" is too large, leaving half-an-inch+ of blank at the lower left, and visually it "crowds the top half"
+- **Method of judgment**: split elements by x_center into a left half (< 5") and a right half (≥ 5"); the max(y+h) of each group should be close
 
-**两栏不齐时的修复**：按末节"QA 修问题原则"的 **3 杠杆模型**（调文字量 > 调
-bullet 间隔 > 调图片大小，可叠加）。不齐多因两栏内容量不平衡 → 优先给短栏加
-实质内容（杠杆 1）并把其 bullet element 的 `y` 重新铺满该栏高度（杠杆 2），
-仍不够再等比调图（杠杆 3）。
+**Fixing when the two columns are uneven**: follow the **three-lever model** of the final section "Principles for Fixing QA Issues" (adjust text amount > adjust
+bullet spacing > adjust image size, stackable). Unevenness is mostly because the content amounts of the two columns are unbalanced → first add
+substantive content to the short column (lever 1) and re-distribute its bullet element's `y` to fill that column's height (lever 2);
+if still not enough, then scale the image proportionally (lever 3).
 
-#### 0.4.c 单栏 / icon_rows / stat_callout 也要检查内部分布
+#### 0.4.c Single-column / icon_rows / stat_callout also need internal-distribution checks
 
-- **bullet list**：bullets 默认已是独立 element；若它们只占 box 上半（典型 4 条只占 3.5" box 的 2"），按 3 杠杆模型调（加文字量 / 拉大 bullet 间隔铺满该区）
-- **icon_rows**：3-4 个 icon + 文本块的 y 应**等距分布**到 box 全高，不要堆在中间或上方
+- **bullet list**: bullets are independent elements by default; if they only occupy the top half of the box (typically 4 of them only occupying 2" of a 3.5" box), adjust by the three-lever model (add text amount / widen bullet spacing to fill the region)
+- **icon_rows**: the y of the 3-4 icon + text blocks should be **equidistantly distributed** over the box's full height, not piled in the middle or top
 
-#### 0.4.d 禁止
+#### 0.4.d Forbidden
 
-- 把 body bullet 字号改小到 < 16pt 强行铺满
-- 把 element 拉宽到 > 10" 让 PptxGenJS 自动溢出（内容会被裁掉）
-- bullet 内容只占 box 1/3——bullets 本应默认分开，按 3 杠杆模型调（加文字量 / 拉间隔），不靠缩 box 假装贴合
+- Shrinking body bullet font size to < 16pt to force-fill
+- Widening an element to > 10" to let PptxGenJS overflow automatically (content gets clipped)
+- bullet content occupying only 1/3 of the box — bullets should be separated by default, adjusted by the three-lever model (add text amount / widen spacing), not faking a fit by shrinking the box
 
-## 视觉丰富度建议
+## Visual-Richness Recommendations
 
-下面两条是**美观提示，不是硬规则**——不进 0 节硬检查、QA 不因此判 fail；但能把"正确但平淡"的页面抬到有专业感。
+The two items below are **aesthetic tips, not hard rules** — they don't enter the section-0 hard checks, and QA won't fail because of them; but they can lift a "correct but plain" page to having a professional feel.
 
-### A. Bullet 前给引导符（**强烈建议**）
+### A. Give bullets a leader marker (**strongly recommended**)
 
-body 列表项别留成无标记的纯文本行（像一堵文字墙）。每条 bullet 前应有
-list-item 引导符——**用一个独立 `kind:"icon"` 元素**当引导符（语义化图标最佳；
-只想要中性 marker 时用 `FaCircle` / `FaSquare` / `FaAngleRight` 这类几何小图标，
-见 [pptxgenjs.md](pptxgenjs.md) "Icons"）。
+Don't leave body list items as unmarked plain-text lines (like a wall of text). Each bullet should have a
+list-item leader marker in front — **use a standalone `kind:"icon"` element** as the leader marker (a semantic icon is best;
+when you only want a neutral marker, use small geometric icons like `FaCircle` / `FaSquare` / `FaAngleRight`,
+see [pptxgenjs.md](pptxgenjs.md) "Icons").
 
-- **禁用 PptxGenJS 默认 `bullet: true`**——它出的默认圆点太丑；自定义
-  `bullet:{code}` 顶层布尔也不透传，这条路整体别走
-- **禁**在 text 里手打 `"• "` / `"- "`（pptxgenjs.md 坑：会变双 bullet）
+- **Disable PptxGenJS's default `bullet: true`** — the default dots it produces are too ugly; a custom
+  `bullet:{code}` top-level boolean isn't passed through either, so don't take this route at all
+- **Don't** hand-type `"• "` / `"- "` in the text (pptxgenjs.md pitfall: it becomes a double bullet)
 
-与 0.4.b / "QA 修问题原则"的**拆成多个独立 text element**兼容：拆开后**每个**
-单行 element 各自配一个 marker icon，别拆完把引导符弄丢。
+Compatible with the **splitting into multiple standalone text elements** of 0.4.b / "Principles for Fixing QA Issues": after splitting, give **each**
+single-line element its own marker icon; don't lose the leader markers after splitting.
 
-**引导符与文字必须垂直居中对齐（铁律）**：marker icon 的 box 矮（如 `h≈0.2`），
-配对文字框高且常 `valign:"middle"`（`h≈0.5–0.66`）——两者视觉中心都是 `y+h/2`，
-随手同 `y` 会让引导符整排偏上，"符号没对齐"肉眼可见（视觉 QA 子代理易漏报，
-靠下面的量化自检兜住）。
+**The leader marker and the text must be vertically center-aligned (iron rule)**: the marker icon's box is short (e.g. `h≈0.2`),
+while the paired text box is tall and often `valign:"middle"` (`h≈0.5–0.66`) — both have a visual center of `y+h/2`,
+and casually using the same `y` makes the whole row of leader markers sit too high, where "the markers aren't aligned" is visible to the naked eye (the visual QA subagent easily misses reporting this,
+so rely on the quantitative self-check below to catch it).
 
-- **公式**：`icon_y = text_y + (text_h − icon_h) / 2`（icon 垂直中心 == 文字框
-  中心；多行 bullet 同理，icon 落在文字块中点）
-- 水平：icon 右缘与文字左缘留 ~0.1" gap
-- **收尾用脚本对每个 leader+text 配对批量自检** `icon.y+icon.h/2 ≈ text.y+text.h/2`
-  （差 > 0.02" 即肉眼可见偏移），别靠目测
+- **Formula**: `icon_y = text_y + (text_h − icon_h) / 2` (the icon's vertical center == the text box's
+  center; the same goes for multi-line bullets, the icon lands at the midpoint of the text block)
+- Horizontal: leave a ~0.1" gap between the icon's right edge and the text's left edge
+- **At the wrap-up, use a script to batch-self-check each leader+text pair** `icon.y+icon.h/2 ≈ text.y+text.h/2`
+  (a difference > 0.02" is a naked-eye-visible offset), don't rely on eyeballing
 
-### B. 结构性组合下垫圆角矩形（建议）
+### B. Underlay a rounded rectangle beneath structural groupings (recommended)
 
-非标题的"大字 + 小字"（如 KPI 数字 + 说明）或"icon + 短语"这类成组结构，
-可在其下垫一个低调的圆角矩形（`ROUNDED_RECTANGLE` + `rectRadius`，浅色填充，`z` 置于内容之下）增加层次与卡片感。
+For grouped structures like a non-title "large text + small text" (e.g. a KPI number + caption) or "icon + phrase",
+you can underlay a low-key rounded rectangle beneath it (`ROUNDED_RECTANGLE` + `rectRadius`, light fill, `z` placed below the content) to add layering and a card feel.
 
-- API 见 [pptxgenjs.md](pptxgenjs.md)；**注意其坑 #8**：圆角矩形别再叠矩形
-  accent 边条（盖不住圆角），要描边用 ROUNDED_RECTANGLE 自身的 `line`
+- For the API see [pptxgenjs.md](pptxgenjs.md); **note its pitfall #8**: don't stack a rectangular
+  accent bar on top of a rounded rectangle (it can't cover the rounded corners); to stroke it, use the ROUNDED_RECTANGLE's own `line`
 
-## 论文场景独有的设计取舍
+## Design trade-offs unique to the paper scenario
 
-### 1. 公式
+### 1. Formulas
 
-PptxGenJS 不擅长渲染数学。**优先看 `paper_meta.json/equations[]`**（mineru 后端会自动填）：
+PptxGenJS is not good at rendering math. **First look at `paper_meta.json/equations[]`** (the mineru backend fills it automatically):
 
 ```json
 {"id": "eq_5", "page": 6,
@@ -204,173 +204,173 @@ PptxGenJS 不擅长渲染数学。**优先看 `paper_meta.json/equations[]`**（
  "latex": "PE _ {(pos, 2 i)} = \\sin (pos / 1 0 0 0 0 ^ {2 i / d _ {\\mathrm {model}}})"}
 ```
 
-#### 处理优先级（必须按顺序判断，**不要直接默认裁图**）
+#### Processing priority (must judge in order, **don't default straight to cropping the image**)
 
-**第一步：判断 latex 是否"简单"**：清洗后的 latex 字符串里**没有任何**下面的关键字 → 简单：
+**Step one: judge whether the latex is "simple"**: the cleaned latex string contains **none of** the keywords below → simple:
 
 ```
 \sum   \int   \prod   \begin{matrix}   \begin{cases}   \begin{align}   \\\\
 ```
 
-**第二步：按下面两选一**（不允许"两个都做"）：
+**Step two: choose one of the two below** (doing "both" is not allowed):
 
-| 公式类型 | 处理 | 写到 spec 的形式 |
+| Formula type | Handling | Form written into the spec |
 |---|---|---|
-| **简单**（默认） | **Unicode rewrite** 写 text element | 一行字符串，fontFace 用 Cambria，例：`Attention(Q,K,V) = softmax(QK^T / √d_k) V` 或 `PE(pos, 2i) = sin(pos / 10000^(2i/d))` |
-| **复杂** | `equations[i].bbox` + `page_screenshot.py` 裁原 PDF 行，作 image element | image element 指向裁出的 PNG |
+| **Simple** (default) | **Unicode rewrite**, write a text element | a single-line string, fontFace uses Cambria, e.g.: `Attention(Q,K,V) = softmax(QK^T / √d_k) V` or `PE(pos, 2i) = sin(pos / 10000^(2i/d))` |
+| **Complex** | `equations[i].bbox` + `page_screenshot.py` to crop the original PDF line, as an image element | the image element points to the cropped PNG |
 
-**第三步**（独立于上面）：**永远**把原始 `latex` 字串写进 `speaker_notes` 兜底——后续修订或换渲染器时还能找回原内容。
+**Step three** (independent of the above): **always** write the original `latex` string into `speaker_notes` as a fallback — so a later revision or a renderer swap can still recover the original content.
 
-#### 禁止双重展示（**最常见错误**）
+#### No double display (**most common error**)
 
-**deck 上同一公式只表达一次（二选一）**：bullet 已写 Unicode → 不再加该公式的 image 元素，省下的空间用来放可视化；裁图 → bullet **不重复**写公式。
+**The same formula is expressed on the deck only once (one of the two)**: a bullet already wrote Unicode → don't add that formula's image element, and use the saved space for a visualization; cropped image → the bullet does **not** repeat writing the formula.
 
-### 2. 论文 figure 的尺寸
+### 2. The size of paper figures
 
-论文里的图通常 4:3 或更接近正方形。`LAYOUT_16x9` 的 slide 是 10×5.625"，把图
-塞进 `image_half_bleed` 时：
+Figures in papers are usually 4:3 or closer to square. A `LAYOUT_16x9` slide is 10×5.625"; when stuffing a figure
+into `image_half_bleed`:
 
-- 单图：宽 4.5–5"，高自适应（保持比例，不要拉伸）
-- 多面板组合图（如论文 Figure 1 是 6 个子图组成）：考虑只截论文图的**一部分**
-  作为 slide 元素（用 `page_screenshot.py` 给 bbox），slide 上塞 6 个会糊
-- 裁剪 bbox 的来源与 QA 重裁规则**同下方 §3 表格**：以 mineru 原始框为基准定向微调，不凭空目测
+- Single figure: width 4.5–5", height auto-fit (keep the ratio, don't stretch)
+- Multi-panel composite figure (e.g. the paper's Figure 1 is composed of 6 subfigures): consider cropping only **a part** of the paper figure
+  as a slide element (give a bbox with `page_screenshot.py`); stuffing 6 onto a slide will be a blur
+- The source of the crop bbox and the QA re-crop rule are **the same as the §3 table below**: do directional fine-tuning based on mineru's original box, don't eyeball out of thin air
 
-### 3. 表格
+### 3. Tables
 
-论文 result table 通常列多 + 文字密。**不要用 PptxGenJS table 重建**（手写
-50 行 cell，调对齐调到崩溃）。直接：
+A paper's result table usually has many columns + dense text. **Don't rebuild it with a PptxGenJS table** (hand-writing
+50 rows of cells, tuning alignment until you break down). Just:
 
-- 整页 PNG 裁剪 result table 区域 → 当 image 元素
-- 旁边用一两句 bullet 高亮"我们的方法 +X.Y 优于 baseline"
+- Crop the result table region from the full-page PNG → use it as an image element
+- Next to it, use a sentence or two of bullets to highlight "our method is +X.Y better than the baseline"
 
-**裁切 bbox（figure 与 table 同规则）：第一刀必须是 mineru 原框本身，QA 重裁也只在原框上动那一条边——全程不凭空目测整页**
+**Crop bbox (figures and tables follow the same rule): the first cut must be mineru's original box itself, and QA re-cropping also only moves that one edge on the original box — throughout, don't eyeball the full page out of thin air**
 
-> ⚠️ **本 skill 实测最常见的执行翻车**：Agent"自作主张"跳过下面第 1 步、在裁出
-> 第一版前就去看 `pages/page-NN.png` 估框 → figure 切标题、table 卷 caption / 缺
-> 关键行，重裁两三次还裁不准。规则早已写死，翻车几乎都因没按第 1 步抢跑。
-> **铁律：`page_screenshot.py` 第一次调用的 bbox 必须逐值等于 `captions[i].bbox`，
-> 不许先目测。** 觉得"原框肯定不准、先看页面再估更快"——这个念头本身就是翻车点，
-> 原框第一刀 + 单边微调几乎总比重估快且准。
+> ⚠️ **This skill's most common execution derailment in testing**: the Agent "takes it upon itself" to skip step 1 below and, before cropping
+> the first version, goes to look at `pages/page-NN.png` to estimate the box → the figure cuts off the title, the table sweeps in the caption /
+> misses key rows, and re-cropping two or three times still doesn't crop accurately. The rule was laid down long ago; derailment is almost always due to jumping the gun without following step 1.
+> **Iron rule: the bbox of the first `page_screenshot.py` call must equal `captions[i].bbox` value by value,
+> eyeballing first is not allowed.** Thinking "the original box is surely inaccurate, looking at the page first and then estimating is faster" — that very thought is the derailment point;
+> the original box's first cut + single-edge fine-tuning is almost always faster and more accurate than re-estimating.
 
-1. **第一刀＝原框原值（不准先目测）**：把 `figures_index.json/captions[i].bbox`（`mineru:vlm` 检出）的四元组**原封不动**传 `page_screenshot.py` 裁第一版，**裁出这一版之前不许看 `pages/page-NN.png`**。**`bbox_confidence == high` 不等于边缘干净**——实测 mineru 常把 `y` 起点压在子图标题 / 图注行上，导致切标题或卷入 caption；这是预期内的，靠第 2 步对那一条边的微调解决，**不是丢开原框重估的理由**。
-2. **QA 发现裁不干净时——不要丢开原始框重新目测**。看 QA 渲染图判断**哪条边多了 / 少了**，只在原始 bbox 上对那条边做定向增量微调：
-   - 顶部切了内容（子图标题、首行被切）→ `y` 调小、`h` 同步调大（向上扩）
-   - 底部 / 某侧卷入 caption 或正文 → 对应 `h` / `w` 调小（向内收）
-   - 一次只动一条边一个小量（≈0.01–0.03），重裁 → 再看，通常一两轮收敛。**原始框 x/w 与大致位置通常已对，错的只是某一条边**——改那条边，别整体重估
-   - **表格须保留自身上下框线**（booktabs `\toprule` / `\bottomrule`）。向下收顶边去掉 caption 时**停在 `\toprule` 上沿**、别收过头把顶线裁没；少了上/下框线的表看着是"开口/破的"
-3. 仅当 `bbox` 字段完全缺失（脚本与 mineru 都没定位，少见）才退到看 `pages/page-NN.png` 估框，仍**宁紧勿松**、`--pad 0.005` 兜底
+1. **First cut = original box's original values (not allowed to eyeball first)**: pass the four-tuple of `figures_index.json/captions[i].bbox` (detected by `mineru:vlm`) **unchanged** to `page_screenshot.py` to crop the first version, **and before cropping this version you are not allowed to look at `pages/page-NN.png`**. **`bbox_confidence == high` does not equal clean edges** — in testing, mineru often presses the `y` start point onto the subfigure title / caption line, causing the title to be cut or the caption to be swept in; this is expected, solved by step 2's fine-tuning of that one edge, **not a reason to abandon the original box and re-estimate**.
+2. **When QA finds the crop isn't clean — don't abandon the original box and re-eyeball**. Look at the QA-rendered image to judge **which edge has too much / too little**, and only do directional incremental fine-tuning of that edge on the original bbox:
+   - Top cuts off content (subfigure title, first line is cut) → decrease `y`, increase `h` in sync (expand upward)
+   - Bottom / a side sweeps in the caption or body text → decrease the corresponding `h` / `w` (pull inward)
+   - Move only one edge by a small amount at a time (≈0.01–0.03), re-crop → look again, usually converging in one or two rounds. **The original box's x/w and rough position are usually already correct; the wrong thing is just one edge** — change that edge, don't re-estimate the whole thing
+   - **Tables must keep their own top and bottom rule lines** (booktabs `\toprule` / `\bottomrule`). When pulling the top edge down to remove the caption, **stop at the upper edge of `\toprule`**, don't pull too far and crop the top line away; a table missing the top/bottom rule lines looks "open / broken"
+3. Only when the `bbox` field is entirely missing (neither the script nor mineru located it, rare) do you fall back to looking at `pages/page-NN.png` to estimate the box, still **err tight rather than loose**, with `--pad 0.005` as a fallback
 
-**figure 与 table 同理**：本规则对论文 figure 的 `page_screenshot.py` 裁剪一并适用。
+**Figures and tables are the same**: this rule applies equally to the `page_screenshot.py` cropping of paper figures.
 
-### 4. 文字量由空间决定（不设词数上限）
+### 4. Text amount is decided by space (no word-count cap)
 
-不设"每页 ≤ N 词 / 每 bullet ≤ N 词"这类硬限。文字量服务于一个目标：
-**这页被内容填满、既不留白也不超框**。
+Don't set hard limits like "≤ N words per page / ≤ N words per bullet". Text amount serves one goal:
+**this page is filled by content, with neither whitespace nor overflow of the box**.
 
-- **下限（防留白）**：内容（视觉元素 + 文字）须撑满画布，满足 0.4 节的
-  `max(y+h) ≥ 4.0"`、栏均衡、box≈内容高 等检查。文字太少导致留白时，**首选
-  补充实质内容**（多一条要点 / 加一句 takeaway / 配 caption），不靠拉大字号
-  或撑高 box 假装填满
-- **上限（防溢出）**：文字不能超出 box / 画布。**字号下限是物理可读性红线**：
-  title ≥ 36pt、body ≥ 16pt（≤ 14pt 后排看不见）。溢出按末节"QA 修问题原则"
-  的 3 杠杆修（先精简文字量）；到红线还放不下 = 内容真太多 → 拆成两页，不靠缩字号硬塞
-- **bullets 默认拆成独立 text element**：每条一个 element，`y` 在可用高度内
-  分布（**近期实测分开排版稳定优于单 textbox 多行**，是默认做法，不是补救
-  手段）。仅 ≤2 条的极短列表才用单 element 多行。默认分开后，留白 / 溢出可
-  直接用 3 杠杆调（尤其杠杆 2 调 bullet 间隔），无需临时重排
-- **每页必须有视觉元素**：图 / 表 / icon / chart / 有意义 shape 至少其一，
-  无纯文字页（官方 pptx skill "Don't create text-only slides"）。先定视觉占
-  多少，剩余空间用文字补到充实
-- 仍守死的一条：**bullet 是提炼后的要点，不是论文摘要的搬运**——"短"由"是不是
-  一个清晰单点"判断，不由数词判断
+- **Lower bound (prevent whitespace)**: content (visual elements + text) must fill the canvas, satisfying section 0.4's
+  checks like `max(y+h) ≥ 4.0"`, column balance, box≈content height. When too little text causes whitespace, **prefer
+  adding substantive content** (one more point / add a takeaway sentence / pair a caption), not faking a fill by enlarging the font size
+  or stretching the box height
+- **Upper bound (prevent overflow)**: text must not exceed the box / canvas. **The font-size lower bound is the physical-readability red line**:
+  title ≥ 36pt, body ≥ 16pt (≤ 14pt is invisible to the back rows). Fix overflow with the 3 levers of the final section "Principles for Fixing QA Issues"
+  (first trim the text amount); if it still doesn't fit at the red line = the content really is too much → split into two pages, don't force-cram by shrinking the font size
+- **Bullets are split into standalone text elements by default**: one element per bullet, with `y` distributed within the available height
+  (**recent testing shows separated layout is reliably better than a single multi-line textbox**, this is the default practice, not a remedial
+  measure). Only a very short list of ≤2 items uses a single multi-line element. After the default separation, whitespace / overflow can
+  be adjusted directly with the 3 levers (especially lever 2, adjusting bullet spacing), with no need for ad-hoc rearranging
+- **Every page must have a visual element**: at least one of figure / table / icon / chart / meaningful shape,
+  no text-only pages (the official pptx skill's "Don't create text-only slides"). First decide how much the visual
+  occupies, then fill the remaining space with text until it's substantial
+- One thing still firmly held: **a bullet is a distilled point, not a transplant of the paper's abstract** — "short" is judged by "whether it is
+  one clear single point", not by counting words
 
-### 5. Sandwich 结构
+### 5. Sandwich structure
 
-dark 配色的 `title` 和 `conclusion`/`qna`，中间内容用 light 配色。这种"暗-亮-暗"
-结构让听众心理上有"开头—主体—收尾"的节奏感。在 `theme` 里仍然单一 palette，但
-title/conclusion slide 用 `shape` 全屏 fill 主色作为背景即可。
+A dark-palette `title` and `conclusion`/`qna`, with the middle content using a light palette. This "dark-light-dark"
+structure gives the audience a psychological sense of rhythm of "opening—body—closing". The `theme` is still a single palette, but
+the title/conclusion slide just uses a `shape` to full-screen fill the primary color as the background.
 
-### 6. 不要的东西（论文 deck 特别警惕）
+### 6. Things to avoid (be especially wary in a paper deck)
 
-- ❌ 标题下面加水平线条装饰（典型 AI 痕迹，官方 pptx skill 已警告 "NEVER use accent lines under titles"）
-- ❌ 每张 slide 都 footer 写论文标题（重复噪声；只在 title slide 写一次足够）
-- ❌ 整页公式直接抄（看不清）
-- ❌ "感谢聆听" 这种纯礼仪 slide（占空间，conclusion 已经收尾了）
-- ❌ 所有 slide 都用同一个 layout_kind
-- ❌ 默认 PowerPoint 模板配色（Office 蓝白）
+- ❌ Adding horizontal line decoration under a title (a typical AI fingerprint, the official pptx skill already warns "NEVER use accent lines under titles")
+- ❌ Writing the paper title in the footer of every slide (repetitive noise; writing it once on the title slide is enough)
+- ❌ Copying a whole page of formulas directly (can't be read clearly)
+- ❌ A purely ceremonial slide like "Thanks for listening" (takes up space, the conclusion already wrapped up)
+- ❌ All slides using the same layout_kind
+- ❌ Default PowerPoint template colors (Office blue-and-white)
 
-## QA 时的视觉子代理 prompt
+## Visual Subagent Prompt for QA
 
-走 [pptx skill 的 QA 一节](../SKILL.md#qa) 时，**直接用官方 prompt 模板**，
-不要自己改写。论文 deck 在官方模板之外**额外加两段**附加要求：
+When going through [the pptx skill's QA section](../SKILL.md#qa), **use the official prompt template directly**,
+don't rewrite it yourself. For a paper deck, beyond the official template, **add two extra paragraphs** of additional requirements:
 
-> prompt 里 "Read and analyze these images" 列**哪些 slide** 按下方
-> "QA 修问题原则" 第 5 步的复检收窄规则定（第 1 轮全部、复检轮只列
-> flagged ∪ 改动页、末轮全量），不是每轮都列全 deck。
+> Which **slides** the prompt's "Read and analyze these images" lists are decided by the re-check narrowing rule in step 5 of
+> "Principles for Fixing QA Issues" below (round 1 all, re-check rounds list only
+> flagged ∪ changed pages, last round all) — not listing the full deck every round.
 
-**加段 A：内容准确性**
+**Added paragraph A: content accuracy**
 
-> 此外特别检查：所有数字（百分比、提升量、模型规模）是否在 caption 或 paper
-> 原文里能找到对应？bullet 措辞是否与论文 abstract / contributions 一致（不要
-> 自己编造）？
+> Additionally, specially check: can all numbers (percentages, improvement amounts, model scale) find a correspondence in the caption or the paper's
+> original text? Is the bullet wording consistent with the paper's abstract / contributions (don't
+> fabricate on your own)?
 
-**加段 B：留白 / 栏均衡 / 引导符对齐（按本文件 0.4 节 + A 节对齐铁律，必须按 hard issue 报告）**
+**Added paragraph B: whitespace / column balance / leader-marker alignment (per this file's section 0.4 + section A's alignment iron rule, must be reported as a hard issue)**
 
-> 对每张 slide **逐项汇报以下五个数值或判断**，不要笼统说"看起来 OK"：
+> For each slide **report the following five numbers or judgments item by item**, don't vaguely say "looks OK":
 >
-> 1. 整页 `max(y + h)` 是多少？是否 ≥ 4.0"？低于即页面上重下空——**hard issue**
-> 2. 如果是 `two_column` / `image_half_bleed`：把所有 element 按 x_center 分成
->    左半（< 5"）与右半（≥ 5"），两组各自的 `max(y + h)` 差是多少？是否 ≤ 0.6"？
->    超过即一侧"挤上半"——**hard issue**
-> 3. 对每个含 N 条 bullets 的 textbox：N × 0.5"（实际内容高度估算）与 `box.h` 的
->    差是多少？是否 ≤ 0.6"？超过即"内容上塞、box 下空"——**hard issue**
-> 4. 对每个卡片（rect / rounded_rect 容器）：底部空白高度（卡片下边沿 −
->    最低 element 下边沿）是多少？是否 ≤ 1.0"？超过即"卡片下半空"——**hard issue**
-> 5. 引导符 icon 是否与配对 bullet text **肉眼明显错位**（图标明显偏在文字上方/
->    下方）？**只报肉眼明显的错位**——你看的是渲染图、读不到坐标，**不要臆造
->    `icon.y+icon.h/2` 之类数值，也别把"图标居中于多行文字块"误判成偏上**。精确的
->    `icon.y+icon.h/2 ≈ text.y+text.h/2`（≤0.02"）由主代理用坐标脚本自检（"视觉
->    丰富度建议 A"），不归你。
+> 1. What is the full-page `max(y + h)`? Is it ≥ 4.0"? Below that means the page is top-heavy and bottom-empty — **hard issue**
+> 2. If it is `two_column` / `image_half_bleed`: split all elements by x_center into
+>    a left half (< 5") and a right half (≥ 5"); what is the difference between each group's `max(y + h)`? Is it ≤ 0.6"?
+>    Exceeding it means one side "crowds the top half" — **hard issue**
+> 3. For each textbox containing N bullets: what is the difference between N × 0.5" (an estimate of the actual content height) and
+>    `box.h`? Is it ≤ 0.6"? Exceeding it means "content crammed up top, box empty below" — **hard issue**
+> 4. For each card (rect / rounded_rect container): what is the bottom blank height (the card's bottom edge −
+>    the lowest element's bottom edge)? Is it ≤ 1.0"? Exceeding it means "the bottom half of the card is empty" — **hard issue**
+> 5. Is the leader-marker icon **obviously misaligned to the naked eye** with the paired bullet text (the icon obviously skewed above/
+>    below the text)? **Report only naked-eye-obvious misalignment** — what you see is the rendered image, you can't read coordinates, **don't fabricate
+>    numbers like `icon.y+icon.h/2`, and don't misjudge "the icon centered on a multi-line text block" as skewed up**. The precise
+>    `icon.y+icon.h/2 ≈ text.y+text.h/2` (≤0.02") is self-checked by the lead agent with a coordinate script ("Visual-Richness
+>    Recommendation A"), not your job.
 >
-> 第 1–4 项与第 5 项的肉眼明显错位 **当 hard issue 上报**，**禁止**写 "soft / 略 / 看着可接受 / 大致 OK"
-> 等模糊措辞——这些用语会让你在复审时跳过修复。
+> Items 1–4 and item 5's naked-eye-obvious misalignment are **reported as hard issues**, **forbidden** to write vague wording like "soft / minor / looks acceptable / roughly OK"
+> — such wording makes you skip the fix during review.
 
-## QA 修问题原则（重读 0.4 节）
+## Principles for Fixing QA Issues (re-read section 0.4)
 
-子代理回报问题后：
+After the subagent reports issues back:
 
-1. **留白 / 不均衡 / 引导符错位问题禁止标 soft 跳过**——加段 B 列的 5 类都是
-   hard issue，必须修 `slide_spec.json`。常见错误判断："底部留白属软问题" /
-   "符号差一点点没关系"——**错**，按 0.4 节与 A 节对齐铁律它们就是要修的。
-   看到子代理把这些标 soft 也要 reclassify 成 hard 再修。
-2. 修 `slide_spec.json` 对应字段；不要去改 `slide_outline.json`（除非问题在更
-   上游，如 outline 选错了 figure_ref）。
-3. **修留白 / 溢出只用 3 个杠杆**（优先级递减，可叠加）。bullets 默认已是
-   独立 text element（见 §4），杠杆都在其上操作：
-   1. **调文字量（最优先，治本）**：太空 → 补实质内容（多一条要点 / 展开
-      过度提炼的点 / 加一句 takeaway / 配 caption）；溢出 → 精简到清晰单点。
-      呼应 §4 的下限 / 上限
-   2. **调 bullet 间隔**：把各 bullet element 的 `y` 在可用高度内重新均匀
-      分布（或调 `paraSpaceAfter`）——太空拉大间距铺满，溢出收紧
-   3. **调图片大小（最低）**：等比放大 / 缩小图片占位去吃掉 / 让出空间
-      （受 0.3 约束，图不会变形；别为填空把小图硬拉大到糊）
+1. **Whitespace / imbalance / leader-marker-misalignment issues are forbidden to be marked soft and skipped** — the 5 categories listed in added paragraph B are all
+   hard issues, you must fix `slide_spec.json`. Common mis-judgments: "bottom whitespace is a soft issue" /
+   "the marker being off by a little doesn't matter" — **wrong**, per section 0.4 and section A's alignment iron rule they are exactly what must be fixed.
+   If you see the subagent mark these as soft, you also must reclassify them as hard and then fix.
+2. Fix the corresponding field of `slide_spec.json`; don't go change `slide_outline.json` (unless the problem is further
+   upstream, e.g. the outline chose the wrong figure_ref).
+3. **Fix whitespace / overflow with only 3 levers** (decreasing priority, stackable). Bullets are already
+   standalone text elements by default (see §4), and the levers all operate on them:
+   1. **Adjust text amount (highest priority, addresses the root)**: too empty → add substantive content (one more point / expand
+      an over-distilled point / add a takeaway sentence / pair a caption); overflow → trim to a clear single point.
+      Echoes §4's lower / upper bound
+   2. **Adjust bullet spacing**: re-distribute each bullet element's `y` evenly within the available height
+      (or adjust `paraSpaceAfter`) — too empty widen the spacing to fill, overflow tighten it
+   3. **Adjust image size (lowest)**: proportionally enlarge / shrink the image's footprint to eat up / yield space
+      (constrained by 0.3, the image won't distort; don't hard-enlarge a small image to a blur just to fill space)
 
-   **可叠加**：太空 → 杠杆 1（加文字量）+ 杠杆 2（拉间距）同时用；溢出 →
-   杠杆 1（精简）+ 杠杆 2（收间距）。先动 1，不够再叠 2，最后才 3。
-4. **`valign:"top"` + 远超内容的高 box** 仍是反模式（内容挤上半、下方留白）；
-   bullets 既默认分开就不该再出现单个大 textbox，按上面 3 杠杆调，别靠 valign 救。
-5. 修完 `--from-stage render` **全量重渲**（render 便宜且确定，裁剪 / spec 改动
-   要传导到整副；收窄的是下面贵的子代理逐页视觉审，不是 render）→ **再 QA**，
-   要求子代理重新报告加段 B 五项，验证留白真没了、引导符真对齐了。**不允许"修完就交"**。
+   **Stackable**: too empty → lever 1 (add text amount) + lever 2 (widen spacing) used together; overflow →
+   lever 1 (trim) + lever 2 (tighten spacing). Move 1 first, if not enough then stack 2, and only 3 last.
+4. **`valign:"top"` + a tall box far exceeding the content** is still an anti-pattern (content crammed in the top half, blank below);
+   since bullets are separated by default, a single large textbox shouldn't appear anymore — adjust with the 3 levers above, don't rely on valign to save it.
+5. After fixing, `--from-stage render` to **re-render in full** (render is cheap and deterministic; crop / spec changes
+   must propagate to the whole deck; what gets narrowed is the expensive per-page visual review by the subagent below, not the render) → **QA again**,
+   requiring the subagent to re-report the five items of added paragraph B, verifying the whitespace is really gone and the leader markers are really aligned. **"Fix and hand off" is not allowed**.
 
-   **复检轮范围按官方 pptx skill 的 Verification Loop 收窄**（[QA 一节](../SKILL.md#qa)，
-   官方原话 "Re-verify affected slides … Repeat until a full pass reveals no
-   new issues"）——多轮视觉 QA 最大的 token 浪费就是每轮都把没碰过的页重新逐页
-   喂子代理：
+   **The scope of re-check rounds is narrowed per the official pptx skill's Verification Loop** ([the QA section](../SKILL.md#qa),
+   the official wording "Re-verify affected slides … Repeat until a full pass reveals no
+   new issues") — the biggest token waste of multi-round visual QA is re-feeding the untouched pages to the subagent page by page
+   every round:
 
-   - **第 1 轮**：全 deck 逐页（单个子代理，"Read and analyze these images" 列全部 slide jpg）
-   - **第 2 轮起（复检）**：子代理只看 = 上一轮 flagged 的页 ∪ 本轮 spec 实际
-     改动的页；images 列表只列这些，没碰过的页**不重新喂**
-   - **收敛前末轮**：必做一次全 deck full pass（单子代理过全部页）——"一处修复
-     常引入新问题"，官方要求 a full pass 无新问题才算过
-   - hard-issue 判定、加段 B 五项、禁标 soft——**全不变**，只收窄"每轮看哪些页"
+   - **Round 1**: full deck page by page (a single subagent, "Read and analyze these images" lists all slide jpgs)
+   - **From round 2 on (re-check)**: the subagent only looks at = the pages flagged in the previous round ∪ the pages whose spec actually
+     changed this round; the images list lists only these, the untouched pages are **not re-fed**
+   - **The last round before convergence**: a full deck full pass must be done once (a single subagent goes through all pages) — "one fix
+     often introduces a new problem", the official requirement is that it only passes when a full pass has no new issues
+   - The hard-issue determination, the five items of added paragraph B, the ban on marking soft — **all unchanged**, only "which pages to look at each round" is narrowed

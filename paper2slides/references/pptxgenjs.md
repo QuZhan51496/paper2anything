@@ -1,8 +1,8 @@
 # PptxGenJS Tutorial
 
-> paper2slides 精简副本：只保留 `render_pptx.py` 实际产出的元素（text / shape /
-> line / image / icon）相关内容与踩坑点。官方完整 API（Tables / Charts / Slide
-> Masters / Backgrounds 等）本 skill 不用——需要时查 PptxGenJS 官方文档。
+> paper2slides trimmed copy: keeps only the content and pitfalls related to the elements `render_pptx.py` actually
+> produces (text / shape / line / image / icon). The full official API (Tables / Charts / Slide
+> Masters / Backgrounds etc.) is unused by this skill — consult the official PptxGenJS docs when needed.
 
 ---
 
@@ -141,42 +141,42 @@ slide.addImage({
 Install: `npm install -g react-icons react react-dom sharp`
 
 Popular icon sets in react-icons:
-- `react-icons/fa` - Font Awesome **5**（`lib:"fa"`，**默认**；下方学术名表都属这里）
-- `react-icons/fa6` - Font Awesome **6**（`lib:"fa6"`）—— 不少现代名只在 fa6（如 `FaArrowTrendUp`、`FaArrowsRotate`、`FaSliders`、`FaTriangleExclamation`、`FaScaleBalanced`、`FaCircleQuestion`），且几个经典名在 5/6 间改了名（`FaCheckCircle`↔`FaCircleCheck`、`FaProjectDiagram`↔`FaDiagramProject`、`FaBalanceScale`↔`FaScaleBalanced`）。某名在默认 `fa` 解析不到时，多半是 fa6-only：给该 icon 元素加 `lib:"fa6"` 或换成对应改名重试。
+- `react-icons/fa` - Font Awesome **5** (`lib:"fa"`, **default**; the academic name tables below all belong here)
+- `react-icons/fa6` - Font Awesome **6** (`lib:"fa6"`) — quite a few modern names exist only in fa6 (e.g. `FaArrowTrendUp`, `FaArrowsRotate`, `FaSliders`, `FaTriangleExclamation`, `FaScaleBalanced`, `FaCircleQuestion`), and a few classic names were renamed between 5/6 (`FaCheckCircle`↔`FaCircleCheck`, `FaProjectDiagram`↔`FaDiagramProject`, `FaBalanceScale`↔`FaScaleBalanced`). When a name does not resolve under the default `fa`, it is most likely fa6-only: add `lib:"fa6"` to that icon element or switch to the corresponding renamed form and retry.
 - `react-icons/md` - Material Design
 - `react-icons/hi` - Heroicons
 - `react-icons/bi` - Bootstrap Icons
 
 ### Naming & academic picks (paper2slides)
 
-**命名规律**：导出名 = 库前缀（`Fa`/`Md`/`Hi`/`Bi`）+ PascalCase 英文语义词。
-不确定名字时按语义猜一个常见词即可——名错不会让渲染崩，`render_pptx.py`
-会 warn+skip 该 icon（Stage 5 视觉 QA 会发现"图标缺失"再改名重渲）。
+**Naming pattern**: export name = library prefix (`Fa`/`Md`/`Hi`/`Bi`) + a PascalCase English semantic word.
+When unsure of a name, just guess a common word by meaning — a wrong name will not crash the render; `render_pptx.py`
+will warn+skip that icon (Stage 5 visual QA will catch the "missing icon" and rename + re-render).
 
-学术 deck 高频可用名（均为 `lib:"fa"`，已验证存在）：
+High-frequency usable names for academic decks (all `lib:"fa"`, verified to exist):
 
-| 语义角色 | icon 名 |
+| Semantic role | icon name |
 |---|---|
-| 结果 / 趋势上升 | `FaChartLine` |
-| 柱状对比 / benchmark | `FaChartBar` |
-| 数据集 | `FaDatabase` |
-| 方法 / 实验 | `FaFlask` |
-| 模型 / AI | `FaBrain` |
-| 系统 / pipeline | `FaCogs` |
-| 贡献 / takeaway | `FaCheckCircle` |
+| result / upward trend | `FaChartLine` |
+| bar comparison / benchmark | `FaChartBar` |
+| dataset | `FaDatabase` |
+| method / experiment | `FaFlask` |
+| model / AI | `FaBrain` |
+| system / pipeline | `FaCogs` |
+| contribution / takeaway | `FaCheckCircle` |
 | motivation / idea | `FaLightbulb` |
-| baseline 对比 / ablation | `FaBalanceScale` |
-| 架构图 / 流程 | `FaProjectDiagram` |
-| 性能 / 加速 | `FaBolt` |
-| SOTA / 突破 | `FaRocket` |
+| baseline comparison / ablation | `FaBalanceScale` |
+| architecture diagram / flow | `FaProjectDiagram` |
+| performance / speedup | `FaBolt` |
+| SOTA / breakthrough | `FaRocket` |
 
 ---
 
 ## Common Pitfalls
 
 ⚠️ These issues cause file corruption, visual bugs, or broken output. Avoid them.
-（编号沿用 PptxGenJS 官方原编号，调用方按 "#N" 引用——本 skill 只用到 #1 / #3 / #8，
-其余官方编号此处不列。）
+(The numbering follows PptxGenJS's original official numbering, and callers reference it as "#N" — this skill uses only #1 / #3 / #8;
+the remaining official numbers are not listed here.)
 
 1. **NEVER use "#" with hex colors in PptxGenJS color fields** - causes file corruption
    ```javascript

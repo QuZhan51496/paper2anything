@@ -1,13 +1,14 @@
 """
-lib/sectionize.py — 章节关键词表（共享库）
+lib/sectionize.py — section keyword table (shared library)
 
-论文章节标题的识别关键词表与 kind 映射，供 `mineru_parser._classify_kind` 复用——
-用 `NUMBERING` / `NUMBERED_KEYWORDS` / `TOP_LEVEL_KEYWORDS` 把 MinerU 解析出的章节
-标题分类成统一的 kind。纯数据模块，无可执行入口。
+Keyword table and kind mapping for recognizing paper section titles, reused by
+`mineru_parser._classify_kind` — uses `NUMBERING` / `NUMBERED_KEYWORDS` /
+`TOP_LEVEL_KEYWORDS` to classify the section titles parsed out by MinerU into a unified
+kind. A pure data module, with no executable entry point.
 
-识别分两类：
-1) TOP_LEVEL_KEYWORDS — 不需 numbering 也能识别（这些标题不易在正文里独占一行）
-2) NUMBERED_KEYWORDS  — 必须配 numbering 前缀才匹配（"3 Method" / "3.1 Encoder ..."）
+Recognition falls into two categories:
+1) TOP_LEVEL_KEYWORDS — recognized without numbering (these titles are unlikely to occupy a line on their own in the body text)
+2) NUMBERED_KEYWORDS  — only match when paired with a numbering prefix ("3 Method" / "3.1 Encoder ...")
 """
 from __future__ import annotations
 
@@ -18,8 +19,8 @@ TOP_LEVEL_KEYWORDS: list[tuple[str, str]] = [
     (r"appendix(?:\s+\w+)?|supplement(?:ary)?(?:\s+material)?", "other"),
 ]
 
-# 关键词内的空白用 \s* 而不是 \s+：解析出的标题里词间空格可能丢失或多余
-# （如 "Model Architecture" → "ModelArchitecture"），\s* 两种都兼容。
+# Whitespace within keywords uses \s* rather than \s+: word spacing in parsed titles may be lost or extra
+# (e.g. "Model Architecture" → "ModelArchitecture"), and \s* tolerates both.
 NUMBERED_KEYWORDS: list[tuple[str, str]] = [
     (r"introduction",                                      "introduction"),
     (r"background(?:\s*and\s*motivation)?",                "background"),
@@ -37,5 +38,5 @@ NUMBERED_KEYWORDS: list[tuple[str, str]] = [
     (r"conclusion(?:s)?|summary|concluding\s*remarks",     "conclusion"),
 ]
 
-# numbering 前缀：1 / 1. / 1.2 / 1.2. / I. / A.（论文常见三种）
+# numbering prefix: 1 / 1. / 1.2 / 1.2. / I. / A. (the three forms common in papers)
 NUMBERING = r"(?:\d+(?:\.\d+)*\.?|[IVXLCDM]+\.|[A-Z]\.)"

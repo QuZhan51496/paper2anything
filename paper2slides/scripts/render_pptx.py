@@ -1,20 +1,20 @@
 """
-render_pptx.py — Stage 4: slide_spec.json → output.pptx 桥
+render_pptx.py — Stage 4: slide_spec.json → output.pptx bridge
 
-把结构化的 spec 翻译成 PptxGenJS 程序（`build.js`），用 node 跑出 .pptx。
-为什么不直接用 python-pptx？官方 pptx skill 的"从零生成"路径就是 PptxGenJS，
-所有视觉设计踩坑文档都基于它；本 skill 走 PptxGenJS 等于直接复用那些经验。
+Translate the structured spec into a PptxGenJS program (`build.js`) and run it with node to produce the .pptx.
+Why not use python-pptx directly? The official pptx skill's "from-scratch generation" path is exactly PptxGenJS,
+and all the visual-design pitfall docs are based on it; this skill going with PptxGenJS amounts to directly reusing that experience.
 
-依赖：
-  - node 在 PATH
-  - pptxgenjs 在 NODE_PATH 或全局：`npm install -g pptxgenjs`
-  - icon 元素另需 `npm install -g react-icons react react-dom sharp`
-    （缺失时仅 icon 元素 warn+skip，不影响整 deck 渲染）
+Dependencies:
+  - node on PATH
+  - pptxgenjs on NODE_PATH or global: `npm install -g pptxgenjs`
+  - icon elements additionally need `npm install -g react-icons react react-dom sharp`
+    (when missing, only icon elements warn+skip, without affecting the whole-deck render)
 
 CLI:
     python -m scripts.render_pptx <slide_spec.json> <out.pptx> [--dry-run]
 
-`--dry-run` 只生成 build.js 不调 node，方便调试。
+`--dry-run` only generates build.js without calling node, for easy debugging.
 """
 from __future__ import annotations
 import argparse
@@ -25,7 +25,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-# JS 模板：参数化的 PptxGenJS 程序，spec 通过 require() 注入
+# JS template: a parameterized PptxGenJS program; the spec is injected via require()
 JS_TEMPLATE = r"""
 const path = require("path");
 const pptxgen = require("pptxgenjs");
@@ -53,9 +53,9 @@ function clean(c) {
 }
 
 function normalizeText(text, useBullet) {
-  // 字符串 → 直接传
+  // string → pass through directly
   if (typeof text === "string") return text;
-  // 数组 → PptxGenJS rich-text，配合 breakLine 自动换行；可选每行 bullet
+  // array → PptxGenJS rich-text, using breakLine for automatic line-wrapping; optional per-line bullet
   if (Array.isArray(text)) {
     return text.map((item, idx) => {
       const isLast = idx === text.length - 1;
@@ -80,9 +80,9 @@ function normalizeText(text, useBullet) {
   return String(text || "");
 }
 
-// icon 元素：react-icons → react-dom/server SVG → sharp 光栅 PNG → base64 data URI。
-// 依赖 lazy require（react/react-dom/sharp/react-icons 缺失不影响无 icon 的 deck）。
-// 任一步失败都 warn + 返回 null，渲染时该 icon 跳过，不阻断整 deck。
+// icon element: react-icons → react-dom/server SVG → sharp raster PNG → base64 data URI.
+// Relies on lazy require (missing react/react-dom/sharp/react-icons does not affect a deck without icons).
+// Any failed step warns + returns null; at render time that icon is skipped, without blocking the whole deck.
 async function iconToDataUri(lib, name, color, size) {
   let React, ReactDOMServer, sharp, mod;
   try {
@@ -120,8 +120,8 @@ const iconCache = new Map();
 function iconKey(el) {
   return [el.lib || "fa", el.icon, el.color || "", el.iconSize || 256].join("|");
 }
-// 预扫描所有 icon 元素，去重后并发光栅，结果存进 iconCache；
-// 无 icon 时 jobs=[]，Promise.all([]) 立即 resolve。
+// Pre-scan all icon elements, dedup then rasterize concurrently, storing the results into iconCache;
+// when there are no icons jobs=[], and Promise.all([]) resolves immediately.
 function buildIconCache() {
   const jobs = [];
   for (const sd of (spec.slides || [])) {
@@ -161,7 +161,7 @@ for (const slideDef of (spec.slides || [])) {
         valign:   el.valign || "top",
         margin:   el.margin === undefined ? 0 : el.margin,
       };
-      // role='title' 自动 autoFit：长标题自动缩字号保持单行，避免孤词换行
+      // role='title' gets automatic autoFit: long titles auto-shrink the font size to keep a single line, avoiding orphan-word wrapping
       if (el.role === "title") {
         opts.autoFit = true;
         opts.wrap = true;
@@ -173,8 +173,8 @@ for (const slideDef of (spec.slides || [])) {
         ? el.path
         : path.join(workdir, el.path);
       const opts = { path: imgPath, x: el.x, y: el.y, w: el.w, h: el.h };
-      // 强制等比缩放（contain）—— spec 给的 (w, h) 视作"最大框"，图按原比例放入
-      // 框内剩余空间留白；不会变形拉伸。spec 显式给了 sizing 时尊重之
+      // Force proportional scaling (contain) — the (w, h) given by the spec is treated as the "max box"; the image is placed in by its original ratio
+      // and the remaining space inside the box is left blank; no distortion-stretching. When the spec explicitly gives sizing, respect it
       opts.sizing = el.sizing || { type: "contain", w: el.w, h: el.h };
       slide.addImage(opts);
     } else if (el.kind === "shape") {
@@ -204,7 +204,7 @@ for (const slideDef of (spec.slides || [])) {
       });
     } else if (el.kind === "icon") {
       const data = iconCache.get(iconKey(el));
-      if (!data) continue;  // 降级：取不到 data URI（依赖缺失/名错/光栅失败）跳过此 icon
+      if (!data) continue;  // degraded path: when the data URI can't be obtained (deps missing / wrong name / raster failure), skip this icon
       slide.addImage({ data: data, x: el.x, y: el.y, w: el.w, h: el.h });
     } else {
       console.error("[warn] unknown element kind: " + el.kind + ", skipped");
@@ -234,11 +234,11 @@ def _need_node() -> None:
         raise SystemExit(
             "node not found in PATH. Install Node.js 20+ and "
             "`sudo npm install -g pptxgenjs react-icons react react-dom sharp` "
-            "first (后四个仅 icon 元素需要)。")
+            "first (the latter four are only needed for icon elements).")
 
 
 def _resolve_node_path() -> str | None:
-    """让 node 能 require('pptxgenjs')。优先全局 npm root，然后 NODE_PATH 环境变量。"""
+    """Let node be able to require('pptxgenjs'). Prefer the global npm root, then the NODE_PATH environment variable."""
     try:
         out = subprocess.run(["npm", "root", "-g"],
                              capture_output=True, text=True, check=True)
@@ -248,12 +248,15 @@ def _resolve_node_path() -> str | None:
 
 
 def _normalize_image_boxes(spec: dict, workdir: Path) -> None:
-    """对每个 image element 用 PIL 读原图实际尺寸，把 (x, y, w, h) 调成"按原图比例
-    等比缩放后居中放进原 box"的最终值。
+    """For each image element, read the original image's actual dimensions with PIL, and
+    adjust (x, y, w, h) to the final values of "proportionally scaled by the original
+    image's ratio, then centered into the original box".
 
-    PptxGenJS 的 sizing.contain 在某些版本/比例上不可靠（实测在 attention 论文 s11
-    表格上图被纵向拉长——尽管 spec 已显式设了 contain）。改为 Python 端先算好实际
-    占位，PptxGenJS 直接拿到正确 (w, h) 渲染，与 sizing 字段无关，永远不变形。
+    PptxGenJS's sizing.contain is unreliable on some versions/ratios (measured: on the
+    attention paper s11 table the image got stretched vertically — even though the spec
+    already explicitly set contain). This function therefore computes the actual placement on the
+    Python side, so PptxGenJS directly gets the correct (w, h) to render,
+    independent of the sizing field, and never distorts.
     """
     try:
         from PIL import Image
@@ -280,14 +283,14 @@ def _normalize_image_boxes(spec: dict, workdir: Path) -> None:
             scale = min(box_w / iw, box_h / ih)
             new_w = iw * scale
             new_h = ih * scale
-            # 在原 box 内居中，调整 x/y 让等比缩放后的图在原 box 中央
+            # center within the original box; adjust x/y so the proportionally scaled image sits at the box's center
             offset_x = (box_w - new_w) / 2
             offset_y = (box_h - new_h) / 2
             el["x"] = round(float(el.get("x") or 0) + offset_x, 3)
             el["y"] = round(float(el.get("y") or 0) + offset_y, 3)
             el["w"] = round(new_w, 3)
             el["h"] = round(new_h, 3)
-            # 既然 (w, h) 已是按原比例的实际占位，PptxGenJS 无需 sizing
+            # since (w, h) is already the actual placement by the original ratio, PptxGenJS needs no sizing
             el.pop("sizing", None)
 
 
@@ -299,9 +302,10 @@ def render(spec_path: Path, out_path: Path,
 
     workdir = spec_path.parent
 
-    # render 前规范化所有 image 的 (x, y, w, h) 为按原图比例等比缩放居中（不依赖
-    # PptxGenJS 的 sizing.contain，那个实测不稳）。会回写一份 normalized spec 到
-    # render/build_spec.json，作为给 PptxGenJS 的最终输入
+    # before render, normalize every image's (x, y, w, h) to be proportionally scaled by
+    # the original image's ratio and centered (not relying on PptxGenJS's sizing.contain,
+    # which is measured to be unstable). Writes back a normalized spec to
+    # render/build_spec.json as the final input given to PptxGenJS
     _normalize_image_boxes(spec, workdir)
 
     render_dir = workdir / "render"
@@ -329,8 +333,9 @@ def render(spec_path: Path, out_path: Path,
         raise SystemExit(
             "node failed:\n--- stdout ---\n" + proc.stdout +
             "\n--- stderr ---\n" + proc.stderr)
-    # 成功时也透传 node 的 stderr：icon 降级 / unknown shape|kind 等 [warn] 是
-    # Stage 5 QA 与 smoke 断言要依赖的诊断信号，不能因 rc==0 被吞。
+    # on success, also pass through node's stderr: [warn]s like icon degraded path /
+    # unknown shape|kind are diagnostic signals that Stage 5 QA and smoke assertions
+    # depend on, and must not be swallowed just because rc==0.
     if proc.stderr:
         sys.stderr.write(proc.stderr)
     sys.stdout.write(proc.stdout)
@@ -339,10 +344,10 @@ def render(spec_path: Path, out_path: Path,
 
 def main() -> None:
     p = argparse.ArgumentParser(description="paper2slides Stage 4: render pptx")
-    p.add_argument("spec", type=Path, help="slide_spec.json 路径")
-    p.add_argument("output", type=Path, help="输出 .pptx 路径")
+    p.add_argument("spec", type=Path, help="slide_spec.json path")
+    p.add_argument("output", type=Path, help="output .pptx path")
     p.add_argument("--dry-run", action="store_true",
-                   help="只生成 build.js 不调 node，便于调试")
+                   help="only generate build.js without calling node, for easy debugging")
     args = p.parse_args()
     out = render(args.spec, args.output, dry_run=args.dry_run)
     print(out)

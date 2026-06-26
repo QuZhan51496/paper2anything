@@ -1,21 +1,21 @@
 """
-mineru_parser.py — MinerU 解压输出 → paper2slides schema
+mineru_parser.py — MinerU unzipped output → paper2slides schema
 
-输入：MinerU 解析任务下载并解压后的目录（含 content_list_v2.json + layout.json）
-输出：
-  - paper_meta.json           （title / authors / abstract / sections / figures / tables / equations / references_count）
-  - figures_index.json        （含 captions[].bbox 与 high_res_crop_path）
-  - figures/<id>.png          （从 pages/page-NN.png 高清裁出的 figure / table / equation）
+Input: the directory of a MinerU parse job after download and unzip (contains content_list_v2.json + layout.json)
+Output:
+  - paper_meta.json           (title / authors / abstract / sections / figures / tables / equations / references_count)
+  - figures_index.json        (contains captions[].bbox and high_res_crop_path)
+  - figures/<id>.png          (figure / table / equation cropped hi-res from pages/page-NN.png)
 
-设计要点：
-  - bbox 来源：figure / equation 直接从 content_list_v2[i].bbox；table 从 layout.json
-    的 para_blocks 配对（按 page + 同页顺序）
-  - 全部坐标用 layout.pdf_info[page].page_size = [W, H] 归一化到 0..1，top-origin
-  - LaTeX 清洗：MinerU 会把字母间错插空格（"A t t e n t i o n"），但要保留控制序列后的必要空格
-  - 子图归并：caption 不带 "Figure N" 的 image 暂存 staging，遇下一带编号 caption 合并为 subfigures
-  - kind 分类复用 sectionize.py 的关键词表
+Design notes:
+  - bbox source: figure / equation directly from content_list_v2[i].bbox; table paired
+    from layout.json's para_blocks (by page + same-page order)
+  - all coordinates normalized to 0..1 using layout.pdf_info[page].page_size = [W, H], top-origin
+  - LaTeX cleaning: MinerU inserts stray spaces between letters ("A t t e n t i o n"), but the necessary spaces after control sequences must be preserved
+  - subfigure merging: an image whose caption lacks "Figure N" is staged, then merged into subfigures when the next numbered caption appears
+  - kind classification reuses sectionize.py's keyword table
 
-CLI（无网络测试）：
+CLI (offline test):
     python -m scripts.lib.mineru_parser <unzipped_dir> <workdir>
 """
 from __future__ import annotations
@@ -26,7 +26,7 @@ import re
 import sys
 from pathlib import Path
 
-# 复用 sectionize 的关键词表给章节标题分 kind
+# reuse sectionize's keyword table to classify section titles into a kind
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from lib.sectionize import (  # noqa: E402
     NUMBERING, NUMBERED_KEYWORDS, TOP_LEVEL_KEYWORDS,
@@ -41,12 +41,12 @@ LICENSE_WATERMARK_HINT = "provided proper attribution"
 
 
 # --------------------------------------------------------------------------- #
-# 通用辅助
+# Generic helpers
 # --------------------------------------------------------------------------- #
 
 
 def _join_text(items: list) -> str:
-    """把 [{type:'text', content:'...'}, ...] 拼成一个字符串。"""
+    """Join [{type:'text', content:'...'}, ...] into a single string."""
     out = []
     for it in items or []:
         if isinstance(it, dict):
@@ -63,7 +63,7 @@ def _page_size(layout: dict, page_idx: int) -> tuple[float, float]:
 
 
 def _norm_bbox_pts(bbox_pts: list, layout: dict, page_idx: int) -> list:
-    """[x0, y0, x1, y1] (绝对像素，top-origin) → [x, y, w, h] (0..1)。"""
+    """[x0, y0, x1, y1] (absolute pixels, top-origin) → [x, y, w, h] (0..1)."""
     W, H = _page_size(layout, page_idx)
     x0, y0, x1, y1 = bbox_pts
     return [
@@ -75,7 +75,7 @@ def _norm_bbox_pts(bbox_pts: list, layout: dict, page_idx: int) -> list:
 
 
 def _union_bbox(bboxes: list[list]) -> list:
-    """多个 [x, y, w, h] 0..1 → 它们的并集 [x, y, w, h]。"""
+    """Multiple [x, y, w, h] in 0..1 → their union [x, y, w, h]."""
     x0 = min(b[0] for b in bboxes)
     y0 = min(b[1] for b in bboxes)
     x1 = max(b[0] + b[2] for b in bboxes)
@@ -86,12 +86,13 @@ def _union_bbox(bboxes: list[list]) -> list:
 
 def clean_latex(s: str) -> str:
     r"""
-    MinerU VLM 会把字母间错插空格（"A t t e n t i o n" → "Attention"）。
-    只做这一步即可——LaTeX 控制序列（如 \operatorname、\frac、\sqrt）后跟的
-    通常是 `{` 或空白，被 step 1 不会破坏。
+    MinerU VLM inserts stray spaces between letters ("A t t e n t i o n" → "Attention").
+    Only this single step is needed — what follows a LaTeX control sequence (e.g.
+    \operatorname, \frac, \sqrt) is usually `{` or whitespace, which step 1 won't break.
 
-    不要尝试给 `\word + 字母` 自动补空格：贪婪量词 + 回溯会把 `\operatorname`
-    拆成 `\operatornam e`（regex 缩短匹配以满足后置字母条件）。
+    Don't try to auto-insert a space for `\word + letter`: a greedy quantifier +
+    backtracking would split `\operatorname` into `\operatornam e` (the regex shortens
+    its match to satisfy the trailing-letter condition).
     """
     if not s:
         return ""
@@ -99,15 +100,15 @@ def clean_latex(s: str) -> str:
 
 
 def _classify_kind(title_text: str) -> str:
-    """复用 sectionize 的关键词表把章节标题映射成 kind。"""
+    """Reuse sectionize's keyword table to map a section title to a kind."""
     s = title_text.strip()
-    # 去 numbering 前缀
+    # strip the numbering prefix
     s = re.sub(rf"^{NUMBERING}\s*", "", s, flags=re.IGNORECASE).strip().lower()
-    # TOP_LEVEL（独立词）
+    # TOP_LEVEL (standalone word)
     for kw, kind in TOP_LEVEL_KEYWORDS:
         if re.fullmatch(rf"\s*(?:{kw})\s*", s, flags=re.IGNORECASE):
             return kind
-    # NUMBERED（关键词后允许 0-4 个补充词）
+    # NUMBERED (0-4 extra words allowed after the keyword)
     for kw, kind in NUMBERED_KEYWORDS:
         if re.fullmatch(
             rf"\s*(?:{kw})(?:\s+\S+){{0,4}}\s*", s, flags=re.IGNORECASE,
@@ -143,7 +144,7 @@ def load_mineru_outputs(unzipped_dir: Path) -> tuple[list, dict]:
 
 
 # --------------------------------------------------------------------------- #
-# 元信息提取
+# Metadata extraction
 # --------------------------------------------------------------------------- #
 
 
@@ -162,15 +163,15 @@ def extract_title(cl: list) -> str:
     return ""
 
 
-# 月份名：日期行（如 "June 19, 2026"）按逗号切分、剥掉数字后会剩月份单词，
-# 易被误当作者；显式排除。
+# Month names: a date line (e.g. "June 19, 2026"), split on commas and stripped of
+# digits, leaves a month word behind that is easily mistaken for an author; exclude explicitly.
 _MONTHS = {
     "january", "february", "march", "april", "may", "june", "july", "august",
     "september", "october", "november", "december",
     "jan", "feb", "mar", "apr", "jun", "jul", "aug", "sep", "sept", "oct", "nov", "dec",
 }
 
-# IEEE 会员等级等头衔，逗号切分后会落成独立 token、易被误当作者，显式排除。
+# Titles such as IEEE membership grades fall out as standalone tokens after comma-splitting and are easily mistaken for authors; exclude explicitly.
 _NON_AUTHOR = {
     "member", "senior member", "graduate student member", "student member",
     "associate member", "fellow", "senior fellow", "life fellow", "life member",
@@ -182,7 +183,7 @@ def extract_authors(cl: list) -> list[str]:
     if not cl or not cl[0]:
         return []
     page0 = cl[0]
-    # 论文标题之后的位置
+    # position right after the paper title
     start = None
     for i, elem in enumerate(page0):
         if elem.get("type") != "title":
@@ -196,7 +197,7 @@ def extract_authors(cl: list) -> list[str]:
         break
     if start is None:
         return []
-    # 截至 abstract（如果出现）
+    # up to the abstract (if present)
     end = len(page0)
     for j in range(start, len(page0)):
         elem = page0[j]
@@ -214,7 +215,7 @@ def extract_authors(cl: list) -> list[str]:
         r"openai|anthropic|deepmind|nvidia|apple|college|department|school)\b",
         re.IGNORECASE,
     )
-    # 上标符号（含 U+2217 ∗、U+2020 †、U+2021 ‡、U+00A7 §、U+00B6 ¶ 等）
+    # superscript symbols (including U+2217 ∗, U+2020 †, U+2021 ‡, U+00A7 §, U+00B6 ¶, etc.)
     superscripts = " .*†‡§¶∗⋆⁎\t\n0123456789"
     for elem in page0[start:end]:
         if elem.get("type") != "paragraph":
@@ -228,17 +229,17 @@ def extract_authors(cl: list) -> list[str]:
             cand = raw.strip(superscripts)
             if not (2 < len(cand) < 40):
                 continue
-            # 主要由字母与空格/连字符/句点组成
+            # mostly composed of letters plus spaces / hyphens / periods
             stripped = re.sub(r"[\s\-\.\']", "", cand)
             if not stripped.isalpha():
                 continue
             if cand.lower() in _MONTHS or cand.lower() in _NON_AUTHOR:
                 continue
-            # 作者名各词应以大写字母或姓名缩写（"J."）开头；含小写起首词的多为摘要句子碎片
+            # each word of an author name should start with a capital or an initial ("J."); those with a lowercase-leading word are mostly abstract sentence fragments
             if not all(w[0].isupper() or re.fullmatch(r"[A-Z]\.?", w)
                        for w in cand.split() if w):
                 continue
-            # 作者名至少含名 + 姓两段；单个大写词多为摘要句首词 / 缩写（"Recently"/"MAs"）
+            # an author name has at least two parts, given + family; a single capitalized word is mostly an abstract sentence-opening word / acronym ("Recently"/"MAs")
             if len(cand.split()) < 2:
                 continue
             if cand in seen:
@@ -272,13 +273,14 @@ def extract_abstract(cl: list) -> str:
 
 
 # --------------------------------------------------------------------------- #
-# 章节切分
+# Section splitting
 # --------------------------------------------------------------------------- #
 
 
 def _section_depth(title_text: str) -> int:
-    """章节层级："3"→1、"3.1"→2；罗马数字章节号（IEEE 风格 "II. System Model"）→1；
-    无编号→0。字母子节号（"A. ..."）不计为顶层、仍返回 0。"""
+    """Section depth: "3"→1, "3.1"→2; Roman-numeral section numbers (IEEE style
+    "II. System Model")→1; unnumbered→0. A letter subsection number ("A. ...") does
+    not count as top-level and still returns 0."""
     s = title_text.strip()
     m = re.match(r"^(\d+(?:\.\d+)*)", s)
     if m:
@@ -294,16 +296,17 @@ def iter_sections(cl: list) -> list[dict]:
         for elem in page_elems:
             flat.append((page_idx, elem))
 
-    # 选 title 作为切分点：
-    #   - depth >= 2 视为子节，跳过（短期不切 subsections）
-    #   - depth == 0 且 kind == "other" 视为论文 title 或 license/水印杂项，跳
-    #   - 其他保留作为顶层 section
+    # pick titles as split points:
+    #   - depth >= 2 treated as a subsection, skip (subsections not split for now)
+    #   - depth == 0 and kind == "other" treated as the paper title or license/watermark junk, skip
+    #   - everything else kept as a top-level section
     titles: list[tuple[int, str]] = []
     for i, (_, elem) in enumerate(flat):
         if elem.get("type") != "title":
             continue
-        # vlm 把论文标题标 level 1、各级小节标题标 level 2；旧输出可能把小节也标 1。
-        # 1/2 都收作切分候选，论文标题靠下面 depth==0&kind==other 过滤掉。
+        # vlm marks the paper title as level 1 and section headings of all levels as
+        # level 2; older output may mark subsections as 1 too. Accept both 1 and 2 as
+        # split candidates; the paper title is filtered out below by depth==0 & kind==other.
         if elem.get("content", {}).get("level") not in (1, 2):
             continue
         t = _join_text(elem["content"].get("title_content", []))
@@ -359,15 +362,18 @@ def iter_sections(cl: list) -> list[dict]:
 
 def iter_figures(cl: list, layout: dict) -> list[dict]:
     """
-    bbox 一律取自 layout.json/pdf_info[].para_blocks[type='image']，按页内顺序配对。
-    **不**用 content_list_v2 的 elem['bbox']——实测它的坐标系跟 layout.page_size 不一致
-    （前者疑似是渲染坐标 / 缩放坐标），用 page_size 归一化会把 figure 切到错的位置。
-    table 路径已是这样做的，这里同步对齐。
+    bbox is always taken from layout.json/pdf_info[].para_blocks[type='image'], paired
+    in same-page order. Do **not** use content_list_v2's elem['bbox'] — in practice its
+    coordinate system does not match layout.page_size (the former is likely render /
+    scaled coordinates), and normalizing with page_size would crop the figure at the
+    wrong place. The table path already does it this way; this aligns with it.
     """
-    # 预聚合 layout 各页的 image / chart 块 bbox：vlm 把折线图 / 热力图等绘图标成
-    # type=='chart'、照片 / 示意图标成 type=='image'，两者都是论文插图。**不**排序——
-    # para_blocks 已是 reading order（左→右、上→下），与 content_list_v2 的 element 顺序
-    # 一致；强行按 top 排会让同页多子图的左右关系反过来配对。按 kind 分池、配对时各取各的。
+    # pre-aggregate the image / chart block bbox of each layout page: vlm marks plots like
+    # line charts / heatmaps as type=='chart' and photos / schematics as type=='image';
+    # both are paper figures. Do **not** sort — para_blocks is already in reading order
+    # (left→right, top→bottom), consistent with content_list_v2's element order; forcing a
+    # sort by top would pair the left/right relationship of multiple same-page subfigures
+    # in reverse. Pool by kind, and each draws from its own pool when pairing.
     pools: dict[str, dict[int, list[list]]] = {"image": {}, "chart": {}}
     for page_idx, page_layout in enumerate(layout.get("pdf_info", [])):
         for blk in page_layout.get("para_blocks", []):
@@ -377,7 +383,7 @@ def iter_figures(cl: list, layout: dict) -> list[dict]:
 
     consumed: dict[tuple, int] = {}
     figures: list[dict] = []
-    staging: list[dict] = []  # 无编号 caption 的图，等下一个有编号的合并
+    staging: list[dict] = []  # images with an unnumbered caption, held until the next numbered one to merge
 
     def _bbox_for(kind: str, page_idx: int):
         avail = pools[kind].get(page_idx, [])
@@ -408,9 +414,10 @@ def iter_figures(cl: list, layout: dict) -> list[dict]:
                     "caption": cap_text,
                 }
                 if staging:
-                    # 多子图：当前 image 自己也是 figure 的一个子图（不是"主图"）。
-                    # bbox 取所有子图的并集，subfigures 完整列出每个子图的精确边界
-                    # 供 Stage 3 视情况单独裁。
+                    # multiple subfigures: the current image is itself one subfigure of the
+                    # figure (not the "main figure"). bbox is the union of all subfigures;
+                    # subfigures fully lists the precise bounds of each one so Stage 3 can
+                    # crop them individually as needed.
                     parts = list(staging) + [{
                         "page": page_no, "bbox": bbox, "caption": cap_text,
                     }]
@@ -424,7 +431,7 @@ def iter_figures(cl: list, layout: dict) -> list[dict]:
                         {"page": p["page"], "bbox": p["bbox"]} for p in valid
                     ]
                 else:
-                    # 单子图（无前序无编号 caption）：bbox 直接用当前
+                    # single subfigure (no preceding unnumbered caption): bbox uses the current one directly
                     if bbox:
                         fig["bbox"] = bbox
                         fig["bbox_source"] = "mineru:vlm"
@@ -433,8 +440,9 @@ def iter_figures(cl: list, layout: dict) -> list[dict]:
             else:
                 staging.append({"page": page_no, "bbox": bbox, "caption": cap_text})
 
-    # 末尾仍有 staging：单独成 figure。无图注且面积极小的丢弃——这类多为解析噪声
-    # （QED / 标记符号碎片、像素级残块），保留只会让 Stage 3 裁出空白。
+    # staging still has leftovers at the end: each becomes its own figure. Drop those with
+    # no caption and a tiny area — these are mostly parse noise (QED / marker-symbol
+    # fragments, pixel-level remnants); keeping them only makes Stage 3 crop blanks.
     idx = 0
     for s in staging:
         bb = s.get("bbox")
@@ -458,7 +466,7 @@ def iter_figures(cl: list, layout: dict) -> list[dict]:
 
 
 def iter_tables(cl: list, layout: dict) -> list[dict]:
-    # 预聚合 layout 中每页的 table bbox。para_blocks 已是 reading order，无需重排。
+    # pre-aggregate the table bbox of each layout page. para_blocks is already in reading order, no reordering needed.
     by_page: dict[int, list[list]] = {}
     for page_idx, page_layout in enumerate(layout.get("pdf_info", [])):
         for blk in page_layout.get("para_blocks", []):
@@ -529,12 +537,13 @@ def iter_equations(cl: list, layout: dict) -> list[dict]:
 
 
 def _appendix_threshold(sections: list[dict]) -> int | None:
-    """计算 "附录起始页" 阈值：任何 figure/table/equation 的 page > 此值视为附录。
+    """Compute the "appendix start page" threshold: any figure/table/equation whose page > this value is treated as appendix.
 
-    优先用 sections 里 `kind == "references"` 的 page_start —— 论文几乎总是把附录排在
-    References 之后。若没识别到 references 章节（罕见），fallback 用最后一个非
-    references 章节的 page_end。返回 None 表示无法判断（短文/无章节切分），
-    此时所有条目 is_appendix=False。
+    Prefer the page_start of the `kind == "references"` section in sections — a paper
+    almost always places the appendix after References. If no references section is
+    detected (rare), fall back to the page_end of the last non-references section.
+    Returns None when it cannot be determined (short paper / no section split), in which
+    case every item gets is_appendix=False.
     """
     refs = next((s for s in sections if s.get("kind") == "references"), None)
     if refs and refs.get("page_start") is not None:
@@ -546,7 +555,7 @@ def _appendix_threshold(sections: list[dict]) -> int | None:
 
 
 def _mark_appendix(items: list[dict], threshold: int | None) -> None:
-    """按 threshold 给每条加 is_appendix 字段（in-place）。"""
+    """Add an is_appendix field to each item according to threshold (in-place)."""
     for it in items:
         page = it.get("page")
         it["is_appendix"] = bool(
@@ -573,16 +582,17 @@ def count_references(cl: list) -> int:
 
 
 # --------------------------------------------------------------------------- #
-# 高清裁图
+# Hi-res cropping
 # --------------------------------------------------------------------------- #
 
 
 def crop_high_res(workdir: Path, captions_with_bbox: list[dict],
                   *, pad: float = 0.005) -> None:
-    """对每个含 bbox 的 caption 从 pages/page-NN.png 裁出高清版到 figures/<id>.png。
+    """For each caption that has a bbox, crop a hi-res version from pages/page-NN.png to figures/<id>.png.
 
-    直接 PIL，不走 page_screenshot 的 hash8 命名（mineru 后端 bbox 稳定，无需防孤儿）。
-    在 caption 上写入 high_res_crop_path 字段。
+    Use PIL directly, not page_screenshot's hash8 naming (the mineru backend bbox is
+    stable, no orphan prevention needed). Write the high_res_crop_path field onto the
+    caption.
     """
     from PIL import Image
     pages_dir = workdir / "pages"
@@ -615,7 +625,7 @@ def crop_high_res(workdir: Path, captions_with_bbox: list[dict],
 
 
 # --------------------------------------------------------------------------- #
-# 顶层组装
+# Top-level assembly
 # --------------------------------------------------------------------------- #
 
 
@@ -654,7 +664,7 @@ def build_figures_index(cl: list, layout: dict, *,
         _mark_appendix(items, threshold)
     captions: list[dict] = []
     for f in figures:
-        captions.append(dict(f))  # shallow copy 防互改
+        captions.append(dict(f))  # shallow copy to prevent mutual mutation
     for t in tables:
         captions.append(dict(t))
     return {
@@ -664,7 +674,7 @@ def build_figures_index(cl: list, layout: dict, *,
         "extract_backend": "mineru",
         "mineru_task_id": mineru_task_id,
         "captions": captions,
-        "embedded_images": [],   # mineru 后端无 pdfimages 嵌入图（用 page_renders / 裁图）
+        "embedded_images": [],   # the mineru backend has no pdfimages embedded images (use page_renders / crops)
         "page_renders": page_renders,
     }
 
@@ -676,7 +686,7 @@ def write_outputs(unzipped_dir: Path, workdir: Path, *,
     cl, layout = load_mineru_outputs(unzipped_dir)
     n_pages = len(layout.get("pdf_info", []))
 
-    # 若调用方未提供 page_renders（CLI 测试场景），按 workdir/pages 现状收集
+    # if the caller didn't provide page_renders (CLI test scenario), collect from the current state of workdir/pages
     if page_renders is None:
         page_renders = []
         pages_dir = workdir / "pages"
@@ -695,10 +705,10 @@ def write_outputs(unzipped_dir: Path, workdir: Path, *,
         page_renders=page_renders, mineru_task_id=mineru_task_id,
     )
 
-    # 高清裁图（同步 captions[].high_res_crop_path）
+    # hi-res cropping (syncs captions[].high_res_crop_path)
     if (workdir / "pages").exists():
         crop_high_res(workdir, figures_index["captions"])
-        # paper_meta 里的 figures/tables 也同步裁图路径
+        # the figures/tables in paper_meta also sync their crop paths
         crop_paths = {c["id"]: c.get("high_res_crop_path")
                       for c in figures_index["captions"]}
         for lst in (paper_meta["figures"], paper_meta["tables"]):
@@ -726,13 +736,13 @@ def write_outputs(unzipped_dir: Path, workdir: Path, *,
 def main() -> None:
     p = argparse.ArgumentParser(description="MinerU output → paper2slides schema")
     p.add_argument("unzipped_dir", type=Path,
-                   help="MinerU 任务下载并解压的目录（含 content_list_v2.json + layout.json）")
+                   help="directory of the MinerU job after download and unzip (contains content_list_v2.json + layout.json)")
     p.add_argument("workdir", type=Path,
-                   help="paper2slides 工作目录（写 paper_meta.json + figures_index.json + figures/）")
+                   help="paper2slides work directory (writes paper_meta.json + figures_index.json + figures/)")
     p.add_argument("--source-pdf", default="(unknown)",
-                   help="原始 PDF 路径（仅记录到产物，不读）")
+                   help="original PDF path (recorded into the output only, not read)")
     p.add_argument("--task-id", default=None,
-                   help="MinerU task_id（写入 figures_index.mineru_task_id）")
+                   help="MinerU task_id (written into figures_index.mineru_task_id)")
     args = p.parse_args()
 
     pm, fi = write_outputs(

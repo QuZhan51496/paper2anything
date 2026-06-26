@@ -1,12 +1,14 @@
-"""paper2slides scripts 包。
+"""paper2slides scripts package.
 
-脚本统一以 `python -m scripts.<name>` 运行，导入任一子模块都会先执行本文件，
-故在此统一加载 paper2anything 包根的 .env（5 个 skill 共用一份凭据；找不到则静默跳过）。
-凭据优先级：已 export 的环境变量 > .env（load_dotenv 默认不覆盖已存在的变量）。
+Scripts run uniformly via `python -m scripts.<name>`, and importing any submodule executes
+this file first, so here we uniformly load the .env at the paper2anything package root
+(5 skills share one set of credentials; silently skip if not found).
+Credential priority: already-exported environment variables > .env (load_dotenv by default
+does not override variables that already exist).
 """
 from pathlib import Path
 
 from dotenv import load_dotenv
 
-# 包根 = 本文件上溯两级：__init__.py → scripts → paper2slides → 包根（parents[2]）。
+# package root = this file going up two levels: __init__.py → scripts → paper2slides → package root (parents[2]).
 load_dotenv(Path(__file__).resolve().parents[2] / ".env", override=False)

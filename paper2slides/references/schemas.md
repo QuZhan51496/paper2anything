@@ -1,58 +1,57 @@
 # JSON Schemas
 
-paper2slides 各阶段产物的 schema 定义。所有 JSON 文件均带 `schema_version`
-字段；本文件描述 `0.1` 版本。
+The schema definitions for paper2slides' per-stage artifacts. Every JSON file carries a `schema_version`
+field; this file describes version `0.1`.
 
-## 通用约定
+## Common conventions
 
-- 编码：UTF-8，缩进 2 空格
-- 字段缺失策略：可选字段写成 `null` 或省略；必填字段缺失视为流水线错误
-- 路径字段：相对 workdir（除非字段名带 `_absolute`）。例如 `embedded_path`
-  形如 `figures/fig-001.png`，从 `<paper-dir>/.paper2anything/slides/<paper-stem>/`
-  起算
-- 阶段产物文件名固定（见 `scripts/workdir.py` 的 `STAGE_MARKERS`），不要改名
+- Encoding: UTF-8, 2-space indentation
+- Field-absence policy: optional fields are written as `null` or omitted; a missing required field is treated as a pipeline error
+- Path fields: relative to workdir (unless the field name carries `_absolute`). For example `embedded_path`
+  looks like `figures/fig-001.png`, counted from `<paper-dir>/.paper2anything/slides/<paper-stem>/`
+- Stage-artifact file names are fixed (see `STAGE_MARKERS` in `scripts/workdir.py`); do not rename them
 
 ---
 
-## config.json（Stage 0.5 产物，Stage 2 与 Stage 5 输入）
+## config.json (Stage 0.5 artifact; Stage 2 and Stage 5 input)
 
-Stage 0.5 用 AskUserQuestion 与用户确认三项后由你写出。落在 workdir 根
-（`config_path` 字段，见 `workdir.py` 的 `STAGE_MARKERS["configure"]`）。
+Stage 0.5 confirms three items with the user via AskUserQuestion, then you write it out. It lands at the workdir root
+(the `config_path` field, see `STAGE_MARKERS["configure"]` in `workdir.py`).
 
 ```json
 {
   "schema_version": "0.1",
-  "deck_length": "标准",
+  "deck_length": "standard",
   "deck_length_target": [13, 18],
   "visual_qa": true,
   "color_scheme": null
 }
 ```
 
-| 字段 | 类型 | 必填 | 说明 |
+| Field | Type | Required | Description |
 |---|---|:-:|---|
-| `schema_version` | string | 是 | 固定 `"0.1"` |
-| `deck_length` | string | 是 | `精简` / `标准` / `详尽` / `自动` 之一 |
-| `deck_length_target` | `[int,int]` \| null | 是 | 页数软目标区间。`精简`→`[8,12]`、`标准`→`[13,18]`、`详尽`→`[19,28]`、`自动`→`null`。下游只读这个；`null` = 不约束张数 |
-| `visual_qa` | bool | 是 | `true`（默认）跑 Stage 5 的视觉 QA（soffice→jpg→子代理）；`false` 只跑 content QA |
-| `color_scheme` | string \| null | 是 | `null`（默认，"自动"）= Stage 3 按论文气质自动选 palette；字符串 = 用户对配色的描述，Stage 3 据此映射/约束 palette 选择 |
+| `schema_version` | string | yes | fixed `"0.1"` |
+| `deck_length` | string | yes | one of `concise` / `standard` / `detailed` / `auto` |
+| `deck_length_target` | `[int,int]` \| null | yes | soft target range for page count. `concise`→`[8,12]`, `standard`→`[13,18]`, `detailed`→`[19,28]`, `auto`→`null`. Downstream reads only this; `null` = no constraint on slide count |
+| `visual_qa` | bool | yes | `true` (default) runs Stage 5's visual QA (soffice→jpg→subagent); `false` runs only content QA |
+| `color_scheme` | string \| null | yes | `null` (default, "auto") = Stage 3 auto-selects a palette to match the paper's character; a string = the user's description of the color scheme, against which Stage 3 maps/constrains the palette selection |
 
-**消费方**：
+**Consumers**:
 
-- **Stage 2** 读 `deck_length_target`：`null` 时张数纯由叙事+版面定；非 `null`
-  时作大纲粒度软目标（详见 [outline-heuristics.md](outline-heuristics.md) 页数档节）。
-  **不**作每页字数上限，**不**改每页"空间驱动"。
-- **Stage 3** 读 `color_scheme`：`null` 按论文气质自动选 palette；非 `null` 时把
-  用户描述当约束。选/自造 palette 细则见 [design-style.md](design-style.md)。
-- **Stage 5** 读 `visual_qa`：`false` 跳过视觉 QA，`qa_log.json` 记
-  `"visual_qa": false`。
+- **Stage 2** reads `deck_length_target`: when `null`, slide count is driven purely by narrative + layout; when non-`null`,
+  it acts as a soft target for outline granularity (see the page-count tier section of [outline-heuristics.md](outline-heuristics.md)).
+  It is **not** a per-slide word-count cap, and does **not** change each slide's "space-driven" nature.
+- **Stage 3** reads `color_scheme`: when `null`, auto-selects a palette to match the paper's character; when non-`null`, treats
+  the user's description as a constraint. For the rules of selecting/creating a palette, see [design-style.md](design-style.md).
+- **Stage 5** reads `visual_qa`: when `false`, skips visual QA and records
+  `"visual_qa": false` in `qa_log.json`.
 
-> `schema_version` 保持 `"0.1"`：config.json 是独立的配置产物，与各阶段产物 schema 平行，
-> workdir 无此文件时 Stage 0.5 会重新生成（等价于"未配置"，走默认）。
+> `schema_version` stays `"0.1"`: config.json is a standalone configuration artifact, parallel to the per-stage artifact schemas;
+> when the workdir lacks this file, Stage 0.5 regenerates it (equivalent to "unconfigured", using defaults).
 
 ---
 
-## paper_meta.json（Stage 1 产物，Stage 2-3 输入）
+## paper_meta.json (Stage 1 artifact; Stage 2-3 input)
 
 ```json
 {
@@ -84,47 +83,47 @@ Stage 0.5 用 AskUserQuestion 与用户确认三项后由你写出。落在 work
 }
 ```
 
-字段细节：
+Field details:
 
-| 字段 | 类型 | 必填 | 说明 |
+| Field | Type | Required | Description |
 |---|---|---|---|
-| `schema_version` | string | 是 | 当前固定 `"0.1"` |
-| `source_pdf` | string | 是 | 源 PDF 的绝对路径 |
-| `title` | string | 是 | 论文标题。脚本启发式抽取，**你在 Stage 2 必须校核**——首页常有 license/水印干扰 |
-| `authors` | string[] | 否 | 启发式抽取，可能不全；你看到必要时补 |
-| `venue` / `year` | string\|null / int\|null | 否 | 短期不抽取（脚本不可靠），由你从原文判断或留空 |
-| `abstract` | string | 否 | 启发式抽到的 abstract 段，可能含连字符与换行污染 |
-| `sections[]` | array | 是 | 启发式切分结果。**Stage 2 的你修订边界**：合并被误切的子节、剔除明显错误 |
-| `sections[].kind` | enum | 是 | 见下方 `kind` 枚举 |
-| `sections[].text` | string | 是 | 章节正文（已剔除 PAGE 分隔符）|
-| `sections[].subsections` | array | 是 | 短期始终为空数组；中期可填子节 |
-| `figures[]` / `tables[]` | array | 否 | 从 `figures_index.json` 的 `captions` 按 `kind` 过滤拷贝；当 caption 含 `bbox` / `bbox_source` / `bbox_confidence` 字段时一并继承 |
-| `references_count` | int | 否 | 估算值（`[1] [2] ...` 或 `1. 2. ...` 数法）|
+| `schema_version` | string | yes | currently fixed `"0.1"` |
+| `source_pdf` | string | yes | absolute path of the source PDF |
+| `title` | string | yes | paper title. Heuristically extracted by the script, **you must verify it in Stage 2** — the first page often has license/watermark noise |
+| `authors` | string[] | no | heuristically extracted, may be incomplete; fill in as needed when you spot gaps |
+| `venue` / `year` | string\|null / int\|null | no | not extracted for now (the script is unreliable); judge it from the original text or leave it empty |
+| `abstract` | string | no | the heuristically extracted abstract paragraph, may contain hyphenation and line-break contamination |
+| `sections[]` | array | yes | heuristic segmentation result. **In Stage 2 you revise the boundaries**: merge mis-split subsections, drop obvious errors |
+| `sections[].kind` | enum | yes | see the `kind` enum below |
+| `sections[].text` | string | yes | section body (PAGE separators already stripped) |
+| `sections[].subsections` | array | yes | always an empty array for now; subsections may be filled in later |
+| `figures[]` / `tables[]` | array | no | filtered-and-copied from `figures_index.json`'s `captions` by `kind`; when a caption carries `bbox` / `bbox_source` / `bbox_confidence` fields, they are inherited along with it |
+| `references_count` | int | no | estimated value (counted by `[1] [2] ...` or `1. 2. ...`) |
 
-`sections[].kind` 枚举：
+`sections[].kind` enum:
 
 ```
 abstract | introduction | background | related | method | experiment |
 result | discussion | conclusion | references | other
 ```
 
-### 你在 Stage 2 进入前应做的修订
+### Revisions you should make before entering Stage 2
 
-读完 `paper_meta.json` 后，**先**做以下校核（不要跳）：
+After reading `paper_meta.json`, **first** do the following checks (do not skip):
 
-1. `title` 是否合理？常见错误：抓到了 license 水印（"Provided proper attribution..."）
-   或杂乱字符。如果不合理，从 `sections[0].text` 或 PDF 第一页文本里找真正的标题
-2. `authors` 是否为空或明显错位？必要时从首页文本人工识别
-3. 同 `kind` 多个章节（如两个 `method`）是表示真有多个独立方法节，还是一个被切碎了？
-   合并被切碎的即可（保留 `id`/`title`，把 `text` 拼接、`page_end` 取后者）
-4. 缺关键 kind？（多数论文至少要有 `method` + `experiment` + `conclusion`，不齐时
-   去 `sections[].text` 找看是否被脚本漏掉了）
+1. Is `title` reasonable? Common error: it grabbed a license watermark ("Provided proper attribution...")
+   or junk characters. If unreasonable, find the real title in `sections[0].text` or the PDF's first-page text
+2. Is `authors` empty or clearly misplaced? Identify them manually from the first-page text when necessary
+3. Multiple sections with the same `kind` (e.g. two `method`s) — do they represent genuinely multiple independent method sections, or one that got chopped up?
+   Just merge the chopped-up ones (keep `id`/`title`, concatenate the `text`, take the latter's `page_end`)
+4. Missing a key kind? (Most papers should at least have `method` + `experiment` + `conclusion`; when incomplete,
+   go to `sections[].text` and check whether the script missed it)
 
-校核之后**不需要**写回 `paper_meta.json`，直接基于校核后的理解生成 `slide_outline.json`。
+After checking, you do **not** need to write back to `paper_meta.json`; generate `slide_outline.json` directly based on your post-check understanding.
 
 ---
 
-## slide_outline.json（Stage 2 产物，Stage 3 输入）
+## slide_outline.json (Stage 2 artifact; Stage 3 input)
 
 ```json
 {
@@ -146,37 +145,37 @@ result | discussion | conclusion | references | other
 }
 ```
 
-字段细节：
+Field details:
 
-| 字段 | 类型 | 必填 | 说明 |
+| Field | Type | Required | Description |
 |---|---|---|---|
-| `deck_title` | string | 是 | 通常等于 paper title；可换更短的演讲版 |
-| `audience` | enum | 是 | `researchers` / `general` / `mixed`，影响 bullet 详略与术语 |
-| `slides[].id` | string | 是 | `s01`、`s02`、...（两位序号方便排序）|
-| `slides[].role` | enum | 是 | 见下方 |
-| `slides[].title` | string | 是 | 短句；不重复 deck_title |
-| `slides[].bullets` | string[] | 是 | 提炼后的要点（非整段搬运）；条数与长度由版面填充决定，见 [outline-heuristics.md](outline-heuristics.md)；title slide 等可空 |
-| `slides[].needs_figure` | bool | 是 | 是否需要论文 figure（method/result 通常 true）。**=false 不代表无视觉**——每页都须有视觉元素，Stage 3 用 icon/shape/chart 等承载 |
-| `slides[].figure_ref` | string\|null | 是 | 引用 `paper_meta.json/figures[].id`（如 `"figure2"`），或 `null` |
-| `slides[].equation_ref` | string\|null | 否 | 引用 `paper_meta.json/equations[].id`（如 `"eq_5"`），或省略/`null`；与 `figure_ref` 平行 |
-| `slides[].source_section_ids` | string[] | 是 | 哪些 paper section 提供了内容（便于追溯）|
-| `slides[].speaker_notes` | string | 是 | 1–3 句话，给讲者用 |
+| `deck_title` | string | yes | usually equals the paper title; you may swap in a shorter presentation version |
+| `audience` | enum | yes | `researchers` / `general` / `mixed`, affects bullet granularity and terminology |
+| `slides[].id` | string | yes | `s01`, `s02`, ... (two-digit index for easy sorting) |
+| `slides[].role` | enum | yes | see below |
+| `slides[].title` | string | yes | short phrase; does not repeat deck_title |
+| `slides[].bullets` | string[] | yes | distilled key points (not whole paragraphs moved over); count and length are determined by layout filling, see [outline-heuristics.md](outline-heuristics.md); title slide etc. may be empty |
+| `slides[].needs_figure` | bool | yes | whether a paper figure is needed (method/result are usually true). **=false does not mean no visual** — every slide must have a visual element, which Stage 3 carries via icon/shape/chart etc. |
+| `slides[].figure_ref` | string\|null | yes | references `paper_meta.json/figures[].id` (e.g. `"figure2"`), or `null` |
+| `slides[].equation_ref` | string\|null | no | references `paper_meta.json/equations[].id` (e.g. `"eq_5"`), or omitted/`null`; parallel to `figure_ref` |
+| `slides[].source_section_ids` | string[] | yes | which paper sections provided the content (for traceability) |
+| `slides[].speaker_notes` | string | yes | 1–3 sentences, for the presenter |
 
-`slides[].role` 枚举（本文件只定义**合法值**）：
+`slides[].role` enum (this file defines only the **legal values**):
 
 ```
 title | tldr | motivation | background | method | experiment |
 result | discussion | conclusion | qna
 ```
 
-> **角色的必含性、典型顺序、paper section→role 映射、每个角色的内容指南**都是
-> Stage 2 启发式，**单一权威在 [outline-heuristics.md](outline-heuristics.md)**
-> （"角色 → 必含性与顺序" / "论文 section → slide 角色映射" / "每个角色的内容
-> 指南" 三节）。本文件不复述，避免与之漂移。
+> **Each role's required-ness, typical order, paper section→role mapping, and per-role content guide** are all
+> Stage 2 heuristics, with the **single authority in [outline-heuristics.md](outline-heuristics.md)**
+> (the three sections "role → required-ness and order" / "paper section → slide role mapping" / "per-role content
+> guide"). This file does not restate them, to avoid drift.
 
 ---
 
-## slide_spec.json（Stage 3 产物，Stage 4 输入）
+## slide_spec.json (Stage 3 artifact; Stage 4 input)
 
 ```json
 {
@@ -213,28 +212,28 @@ result | discussion | conclusion | qna
 }
 ```
 
-字段细节：
+Field details:
 
-| 字段 | 类型 | 必填 | 说明 |
+| Field | Type | Required | Description |
 |---|---|---|---|
-| `engine` | enum | 是 | 短期固定 `"pptxgenjs"`；中期会出现 `"template"` |
-| `template_path` | string\|null | 是 | `engine == "template"` 时才有意义；当前固定 `null` |
-| `layout` | enum | 是 | `LAYOUT_16x9` / `LAYOUT_16x10` / `LAYOUT_4x3` / `LAYOUT_WIDE`，默认 `LAYOUT_16x9` |
-| `theme.palette_name` | string | 是 | 引用官方 pptx skill 的命名调色板（如 `Midnight Executive`），见 [design-style.md](design-style.md) |
-| `theme.primary/secondary/accent/background` | hex | 是 | 6 位 hex 色，配合 palette_name |
-| `theme.font_header/font_body` | string | 是 | 见 [design-style.md](design-style.md) 的字体配对建议 |
-| `slides[].layout_kind` | enum | 是 | 见下方 |
-| `slides[].elements` | array | 是 | 每个元素一个对象；`text` / `image` / `shape` / `line` / `icon` 五类 |
+| `engine` | enum | yes | fixed `"pptxgenjs"` for now; `"template"` will appear later |
+| `template_path` | string\|null | yes | only meaningful when `engine == "template"`; currently fixed `null` |
+| `layout` | enum | yes | `LAYOUT_16x9` / `LAYOUT_16x10` / `LAYOUT_4x3` / `LAYOUT_WIDE`, default `LAYOUT_16x9` |
+| `theme.palette_name` | string | yes | references a named palette from the official pptx skill (e.g. `Midnight Executive`), see [design-style.md](design-style.md) |
+| `theme.primary/secondary/accent/background` | hex | yes | 6-digit hex colors, paired with palette_name |
+| `theme.font_header/font_body` | string | yes | see the font-pairing suggestions in [design-style.md](design-style.md) |
+| `slides[].layout_kind` | enum | yes | see below |
+| `slides[].elements` | array | yes | one object per element; five kinds: `text` / `image` / `shape` / `line` / `icon` |
 
-`layout_kind` 枚举（对应官方 pptx skill 的版式 + 论文场景补充的 `title`）：
+`layout_kind` enum (corresponds to the official pptx skill's layouts + `title` added for the paper scenario):
 
 ```
 title | two_column | icon_rows | image_half_bleed | stat_callout | grid_2x2 | comparison_columns
 ```
 
-### 元素子结构
+### Element substructure
 
-**text**：
+**text**:
 
 ```json
 {"kind": "text", "role": "title|body|caption|footer",
@@ -246,23 +245,23 @@ title | two_column | icon_rows | image_half_bleed | stat_callout | grid_2x2 | co
  "bullet": false, "margin": 0}
 ```
 
-`text` 可以是字符串，也可以是 PptxGenJS rich-text 数组（多段不同样式）。
-`bullet: true` 配 `breakLine` 在 PptxGenJS 调用时由渲染器自动处理，但
-**论文 deck 不要用它**——PptxGenJS 默认圆点太丑，引导符改用独立 `kind:"icon"`
-元素，见 [design-style.md](design-style.md) "视觉丰富度建议 A"。
+`text` can be a string, or a PptxGenJS rich-text array (multiple segments with different styles).
+`bullet: true` together with `breakLine` is handled automatically by the renderer during the PptxGenJS call, but
+**do not use it for paper decks** — PptxGenJS's default round bullets are too ugly; use a standalone `kind:"icon"`
+element as the leading marker instead, see "Visual richness suggestion A" in [design-style.md](design-style.md).
 
-**image**：
+**image**:
 
 ```json
 {"kind": "image",
- "path": "figures/fig-04.png",   // 相对 workdir
+ "path": "figures/fig-04.png",   // relative to workdir
  "x": 5, "y": 1.5, "w": 4.5, "h": 3.5,
  "sizing": {"type": "contain", "w": 4.5, "h": 3.5}}
 ```
 
-`sizing` 可省略——render 端用 PIL 按原比例缩放居中（见 [design-style.md](design-style.md) §0.3），写不写都不会变形。
+`sizing` may be omitted — the render side uses PIL to scale by the original aspect ratio and center (see [design-style.md](design-style.md) §0.3); it will not distort whether or not you write it.
 
-**shape**：
+**shape**:
 
 ```json
 {"kind": "shape", "shape": "rect|oval|line|rounded_rect",
@@ -273,9 +272,9 @@ title | two_column | icon_rows | image_half_bleed | stat_callout | grid_2x2 | co
  "z": 0}
 ```
 
-`z` 用来控制层叠（负值放底，正值放顶）。`render_pptx.py` 按 `z` 升序绘制。
+`z` controls stacking (negative goes to the bottom, positive to the top). `render_pptx.py` draws in ascending `z` order.
 
-**line**：
+**line**:
 
 ```json
 {"kind": "line",
@@ -283,41 +282,41 @@ title | two_column | icon_rows | image_half_bleed | stat_callout | grid_2x2 | co
  "color": "#FF0000", "width": 3, "dashType": "solid|dash|dot"}
 ```
 
-**icon**：
+**icon**:
 
 ```json
 {"kind": "icon",
- "icon": "FaChartLine",   // react-icons 导出名，PascalCase，含库前缀（Fa/Md/Hi/Bi）
- "lib": "fa",             // fa|md|hi|bi（缺省 fa）
- "color": "#1E2761",      // ⚠️ 必须带 #：CSS 色值直接进 react-icons；写 "1E2761" 会静默渲染成黑色
- "iconSize": 256,         // 可省；光栅分辨率，非显示尺寸（显示由 w/h 决定，建议 ≥256）
+ "icon": "FaChartLine",   // react-icons export name, PascalCase, with library prefix (Fa/Md/Hi/Bi)
+ "lib": "fa",             // fa|md|hi|bi (defaults to fa)
+ "color": "#1E2761",      // ⚠️ must include #: the CSS color value goes straight into react-icons; writing "1E2761" silently renders black
+ "iconSize": 256,         // optional; raster resolution, not display size (display is set by w/h; ≥256 recommended)
  "x": 1, "y": 1, "w": 0.5, "h": 0.5, "z": 0}
 ```
 
-icon 在 Stage 4 由 react-icons → SVG → sharp 实时光栅成 PNG 嵌入，**不写磁盘**。
-与 `image` 的区别：`image` 走磁盘 `path` 并被 `render_pptx.py` 等比缩放居中；
-`icon` 本就是方形矢量光栅，不进 `_normalize_image_boxes`，`w/h` 直接生效（用等值如 `0.5×0.5`）。
-依赖缺失 / `icon` 名拼错 / 光栅失败时该 icon 自动 warn+skip，不阻断整 deck。
-合法 icon 名与命名规律见 [pptxgenjs.md](pptxgenjs.md) 的 "Icons" 节。
+The icon is rasterized live to PNG in Stage 4 via react-icons → SVG → sharp and embedded, **without writing to disk**.
+Difference from `image`: `image` goes through the on-disk `path` and is scaled-to-fit and centered by `render_pptx.py`;
+`icon` is already a square vector raster, does not enter `_normalize_image_boxes`, and its `w/h` take effect directly (use equal values such as `0.5×0.5`).
+When a dependency is missing / the `icon` name is misspelled / rasterization fails, that icon auto warn+skips without blocking the whole deck.
+For legal icon names and the naming pattern, see the "Icons" section of [pptxgenjs.md](pptxgenjs.md).
 
-> **颜色格式（关键，最易踩）**：`icon.color` 与 shape/text/line 的 color 规则**相反**。
-> shape/text/line 的色值经 `render_pptx.py` 的 `clean()` 去 `#`，带不带 `#` 都行；
-> 但 `icon.color` **原样传给 react-icons 当 CSS 值**，**必须带 `#`**（如 `#1E2761`）。
-> 漏 `#` 不报错——react-icons 回退**黑色**（深色背景上 = 不可见）。**口诀：shape/text/line 不带 `#`，icon 带 `#`。**
-> 详见 [pptxgenjs.md](pptxgenjs.md) Common Pitfalls #1。
+> **Color format (critical, easiest to trip on)**: `icon.color` follows the **opposite** rule from shape/text/line color.
+> shape/text/line color values go through `render_pptx.py`'s `clean()` which strips `#`, so with or without `#` both work;
+> but `icon.color` is **passed to react-icons as a CSS value as-is**, and **must include `#`** (e.g. `#1E2761`).
+> A missing `#` raises no error — react-icons falls back to **black** (on a dark background = invisible). **Mnemonic: shape/text/line without `#`, icon with `#`.**
+> See [pptxgenjs.md](pptxgenjs.md) Common Pitfalls #1 for details.
 
-### 坐标与单位
+### Coordinates and units
 
-- 单位：英寸（PptxGenJS 约定）
-- `LAYOUT_16x9` 工作区：10" × 5.625"
-- 安全边距：≥ 0.5"，避免内容贴边
-- 元素间距：0.3–0.5"，统一间隔避免随机视觉
+- Unit: inches (PptxGenJS convention)
+- `LAYOUT_16x9` work area: 10" × 5.625"
+- Safe margin: ≥ 0.5", to avoid content touching the edge
+- Element spacing: 0.3–0.5", uniform gaps to avoid a random look
 
-设计美学规范（避免 AI 痕迹的"标题下划线"等）见 [design-style.md](design-style.md)。
+For the design-aesthetics spec (avoiding AI-tell "title underlines" etc.), see [design-style.md](design-style.md).
 
 ---
 
-## figures_index.json（Stage 1 产物，本身不是阶段标志，但 Stage 2 与 Stage 3 都要读）
+## figures_index.json (Stage 1 artifact; not itself a stage marker, but read by both Stage 2 and Stage 3)
 
 ```json
 {
@@ -339,47 +338,47 @@ icon 在 Stage 4 由 react-icons → SVG → sharp 实时光栅成 PNG 嵌入，
 }
 ```
 
-> 图实体由 MinerU 写入 `figures/`。某 figure 在原文是矢量图、`figures/` 里没有清晰实体时，
-> 回退用 `page_renders` 同页 PNG 裁剪（`scripts/page_screenshot.py` 提供）。
+> Figure entities are written by MinerU into `figures/`. When a figure is a vector graphic in the original and has no clear entity in `figures/`,
+> fall back to cropping the same-page PNG from `page_renders` (provided by `scripts/page_screenshot.py`).
 
-### `captions[].bbox`（figure 与 table 均可有）
+### `captions[].bbox` (both figure and table may have it)
 
-MinerU 解析时给检测到的 figure / table 区域附 bbox，匹配到 caption 的就把 bbox 写到该 caption 上
-（Stage 4 裁图硬门禁的"第一刀"坐标即逐值取自此；字段缺省=未定位）：
+When parsing, MinerU attaches a bbox to each detected figure / table region; for those matched to a caption, the bbox is written onto that caption
+(the "first cut" coordinates of Stage 4's crop hard-gate are taken value-by-value from this; field absent = not located):
 
-| 字段 | 含义 |
+| Field | Meaning |
 |---|---|
-| `bbox` | 4 元素数组 `[x, y, w, h]`，**相对页面 0..1，top-origin** —— 与 `page_screenshot.py` 接口一致 |
-| `bbox_source` | `"mineru:vlm"` —— 来源标识 |
-| `bbox_confidence` | `"high"` / `"medium"` 等 |
+| `bbox` | 4-element array `[x, y, w, h]`, **relative to the page 0..1, top-origin** — consistent with the `page_screenshot.py` interface |
+| `bbox_source` | `"mineru:vlm"` — source identifier |
+| `bbox_confidence` | `"high"` / `"medium"` etc. |
 
-**字段缺失语义**：当某 table caption 没有 `bbox` 字段（即 `bbox not in caption`），表示
-MinerU 未能定位该表。Stage 3 在这种情况下走视觉估算 fallback。**约定使用"字段省略"而非
-`null`**，方便 `if "bbox" in c: ...` 形式的判断。
+**Field-absence semantics**: when a table caption has no `bbox` field (i.e. `bbox not in caption`), it means
+MinerU could not locate that table. Stage 3 in this case goes through a visual-estimation fallback. **The convention uses "field omission" rather than
+`null`**, to make `if "bbox" in c: ...` style checks easy.
 
-`schema_version` 保持 `"0.1"`。
+`schema_version` stays `"0.1"`.
 
-### 顶层字段：`extract_backend` / `mineru_task_id`
+### Top-level fields: `extract_backend` / `mineru_task_id`
 
-`figures_index.json` 顶层还含以下两个字段，下游用 `.get(default)` 防御式读取：
+The top level of `figures_index.json` also contains the following two fields, read defensively downstream via `.get(default)`:
 
-**`figures_index.json` 顶层**：
+**`figures_index.json` top level**:
 
-| 字段 | 类型 | 说明 |
+| Field | Type | Description |
 |---|---|---|
-| `extract_backend` | `"mineru"` | Stage 1 解析后端（固定为 `"mineru"`）|
-| `mineru_task_id` | string \| null | MinerU 任务 ID（便于复跑诊断）|
+| `extract_backend` | `"mineru"` | Stage 1 parse backend (fixed as `"mineru"`) |
+| `mineru_task_id` | string \| null | MinerU task ID (handy for re-run diagnostics) |
 
-**`figures_index.json/captions[i]`**（mineru 后端时所有 caption 都带）：
+**`figures_index.json/captions[i]`** (with the mineru backend every caption carries these):
 
-| 字段 | 含义 |
+| Field | Meaning |
 |---|---|
-| `bbox_source` | 枚举值如 `"mineru:vlm"`（VLM 模型识别，`bbox_confidence == "high"`）|
-| `html` | 仅 `kind == "table"` 有；MinerU 把表识别成 HTML，可供 Stage 3 选择直接渲染或裁图 |
-| `high_res_crop_path` | `"figures/<id>.png"`，`parse_pdf` 已用 PIL 从 300 dpi 整页 PNG 裁出高清版 |
-| `subfigures` | `[{page, bbox}]` 子图列表（如论文 Figure 2 是两个并排子图，无编号 caption 的 image 会被归并到下一个有编号 figure）|
+| `bbox_source` | an enum value such as `"mineru:vlm"` (VLM-model recognition, `bbox_confidence == "high"`) |
+| `html` | only present for `kind == "table"`; MinerU recognizes the table as HTML, which Stage 3 may choose to render directly or crop |
+| `high_res_crop_path` | `"figures/<id>.png"`, `parse_pdf` has already used PIL to crop a high-resolution version from the 300 dpi full-page PNG |
+| `subfigures` | `[{page, bbox}]` list of subfigures (e.g. paper Figure 2 being two side-by-side subfigures; an image with no numbered caption is merged into the next numbered figure) |
 
-**`paper_meta.json` 顶层**还含：
+**The top level of `paper_meta.json`** also contains:
 
 ```json
 "equations": [
@@ -391,14 +390,14 @@ MinerU 未能定位该表。Stage 3 在这种情况下走视觉估算 fallback�
 ]
 ```
 
-`latex` 是 `clean_latex` 清洗后的字串（VLM 在字母间错插的空格已合并）；`latex_raw` 保留原始供调试。Stage 3 可三选一处理，详见 [design-style.md](design-style.md) 的 "Equations" 一节。
+`latex` is the string after `clean_latex` cleanup (the spaces VLM mis-inserted between letters have been merged); `latex_raw` keeps the original for debugging. Stage 3 can handle it in one of three ways, see the "Equations" section of [design-style.md](design-style.md) for details.
 
-`paper_meta.json/figures[]` 与 `tables[]` 自动继承 captions 的这些字段（`html` / `high_res_crop_path` / `bbox` / `bbox_source` / `bbox_confidence` / `subfigures`）。
+`paper_meta.json/figures[]` and `tables[]` automatically inherit these fields from captions (`html` / `high_res_crop_path` / `bbox` / `bbox_source` / `bbox_confidence` / `subfigures`).
 
-### `is_appendix` 标记（figures / tables / equations 通用）
+### The `is_appendix` marker (common to figures / tables / equations)
 
-每个 figure / table / equation 都附带 `is_appendix: bool`，由 Stage 1 解析计算：
+Every figure / table / equation carries `is_appendix: bool`, computed during Stage 1 parsing:
 
-- **判定规则**：找到 `sections[]` 中 `kind == "references"` 的章节，记其 `page_start` 为 `T`；该条目的 `page > T` 即视为附录。无 references 章节时 fallback 到"最后一个非 references section 的 page_end"。
-- **目的**：保留全部识别结果（**Stage 1 不丢弃任何 figure/table**，附录数据可能在长 talk / 补充材料场景仍有用），但让 Stage 2 在选 `figure_ref` / `equation_ref` 时**默认只挑 `is_appendix == false`**。详见 [outline-heuristics.md](outline-heuristics.md)。
-- **何时手工启用附录条目**：长篇 keynote、补充材料、reviewer presentation 等场景下，Stage 2 可显式挑选 `is_appendix == true` 的内容；这是个判断决定，不是规则。
+- **Decision rule**: find the section in `sections[]` with `kind == "references"` and note its `page_start` as `T`; an entry with `page > T` is treated as appendix. When there is no references section, fall back to "the `page_end` of the last non-references section".
+- **Purpose**: keep all recognition results (**Stage 1 discards no figure/table** — appendix data may still be useful in long-talk / supplementary-material scenarios), but have Stage 2, when choosing `figure_ref` / `equation_ref`, **pick only `is_appendix == false` by default**. See [outline-heuristics.md](outline-heuristics.md) for details.
+- **When to manually enable appendix entries**: in scenarios like a long keynote, supplementary material, or a reviewer presentation, Stage 2 may explicitly pick content with `is_appendix == true`; this is a judgment decision, not a rule.

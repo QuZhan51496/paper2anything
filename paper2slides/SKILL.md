@@ -1,115 +1,116 @@
 ---
 name: paper2slides
-description: "Turn an academic paper PDF into a presentation deck (.pptx) end-to-end. Use this skill whenever the user wants to \"make slides from a paper\", \"generate a deck from this PDF\", \"把这篇论文做成 PPT\", \"生成幻灯片\", \"做一个 PPT\", or supplies a research paper PDF and asks for a .pptx out. Trigger even when the user only says \"deck this paper\" or \"summarize as slides\". This skill is the orchestrator for academic paper to deck flows; invoke it instead of going to `pptx` or `pdf` skills directly when the upstream is a research paper."
+description: "Turn an academic paper PDF into a presentation deck (.pptx) end-to-end. Use this skill whenever the user wants to \"make slides from a paper\", \"generate a deck from this PDF\", \"make a PPT from this paper\", \"generate slides from a PDF document\", \"make a deck from a research paper\", or supplies a research paper PDF and asks for a .pptx out. Trigger even when the user only says \"deck this paper\" or \"summarize as slides\". This skill is the orchestrator for academic paper to deck flows; invoke it instead of going to `pptx` or `pdf` skills directly when the upstream is a research paper."
 allowed-tools: Bash, Read, Write, Glob, Grep, Agent, AskUserQuestion
 ---
 
 # paper2slides
 
-把一篇学术论文 PDF 转成可演讲的 .pptx。这是协调器 skill：自己**不**重新实现 PDF
-解析或 PPT 渲染，而是按"论文 → 大纲 → 渲染"的流水线编排，**调用官方 `pdf` skill
-与 `pptx` skill** 的能力。
+Turn an academic paper PDF into a presentation-ready .pptx. This is a conductor skill: it does **not**
+re-implement PDF parsing or PPT rendering itself, but orchestrates a "paper → outline → render"
+pipeline, **calling the capabilities of the official `pdf` skill and `pptx` skill**.
 
 ## Quick Reference
 
-| 阶段 | 输入 | 产物 | 责任方 |
+| Stage | Input | Output | Owner |
 |---|---|---|---|
-| 0.5. configure | 用户对话 | `<workdir>/config.json` | **你**（AskUserQuestion 三项确认：页数档 + 是否做视觉 QA + 配色）|
-| 1. extract    | `paper.pdf` | `paper_meta.json` + `figures_index.json` + `figures/` + `pages/` + `equations` + 高清 figure/table 裁图（MinerU 云 API 一次性产出）| `scripts/parse_pdf.py` |
-| 2. outline    | `paper_meta.json` | `slide_outline.json` | **你**（按 `references/outline-heuristics.md`）|
-| 3. spec       | `slide_outline.json` + 图 | `slide_spec.json` | **你**（按 `references/design-style.md`） |
-| 4. render     | `slide_spec.json` | `output.pptx` | `scripts/render_pptx.py`（PptxGenJS 桥）|
-| 5. qa         | `output.pptx` | pass / fail + 修复列表 | content QA 始终跑；**视觉 QA 由 Stage 0.5 的 `config.json/visual_qa` 门控**|
+| 0.5. configure | user dialogue | `<workdir>/config.json` | **you** (AskUserQuestion to confirm three items: length tier + whether to run visual QA + color scheme) |
+| 1. extract    | `paper.pdf` | `paper_meta.json` + `figures_index.json` + `figures/` + `pages/` + `equations` + hi-res figure/table crops (produced in one shot by the MinerU cloud API) | `scripts/parse_pdf.py` |
+| 2. outline    | `paper_meta.json` | `slide_outline.json` | **you** (per `references/outline-heuristics.md`) |
+| 3. spec       | `slide_outline.json` + figures | `slide_spec.json` | **you** (per `references/design-style.md`) |
+| 4. render     | `slide_spec.json` | `output.pptx` | `scripts/render_pptx.py` (PptxGenJS bridge) |
+| 5. qa         | `output.pptx` | pass / fail + fix list | content QA always runs; **visual QA is gated by Stage 0.5's `config.json/visual_qa`** |
 
-阶段详细协议见 `references/pipeline.md`。
+See `references/pipeline.md` for the detailed per-stage protocol.
 
 ## Invocation Contract
 
-调用形式：
+Invocation form:
 
 ```
 /paper2slides <paper.pdf> [output.pptx] [--from-stage <name>] [--force]
 ```
 
-- `output.pptx` 缺省 → `<paper-dir>/<paper-stem>_slides/<paper-stem>.pptx`，重名目录自动 `_v2 _v3`
-- 中间产物落在 `<paper-dir>/.paper2anything/slides/<paper-stem>/`，论文目录只读时回退到 `~/.cache/paper2anything/slides/`
+- `output.pptx` omitted → `<paper-dir>/<paper-stem>_slides/<paper-stem>.pptx`; on a name collision the directory auto-appends `_v2 _v3`
+- Intermediate artifacts land in `<paper-dir>/.paper2anything/slides/<paper-stem>/`; when the paper directory is read-only, fall back to `~/.cache/paper2anything/slides/`
 
-**Python 环境**：所有脚本跑在 `paper2anything` conda 环境。命令前缀
+**Python environment**: all scripts run in the `paper2anything` conda environment. Command prefix
 `conda run -n paper2anything --no-capture-output python -m scripts.<name> ...`
-（已 `conda activate paper2anything` 时可省前缀）。**所有 `-m scripts.<name>` 须在本
-skill 目录（`scripts/` 的父目录）下执行，否则报 `No module named 'scripts'`**；前缀省略约定见
-[references/pipeline.md](references/pipeline.md) §通用约定。
+(the prefix can be omitted once `conda activate paper2anything` is in effect). **Every `-m scripts.<name>` must be run from this
+skill's directory (the parent of `scripts/`), otherwise you get `No module named 'scripts'`**; the prefix-omission convention is in
+[references/pipeline.md](references/pipeline.md) §General Conventions.
 
-**第一步永远是解析 workspace**：
+**The first step is always to resolve the workspace**:
 
 ```bash
 conda run -n paper2anything --no-capture-output python -m scripts.workdir resolve \
     <paper.pdf> [--output <out.pptx>] --ensure
 ```
 
-返回的 JSON 包含所有命名路径（`paper_meta_path`, `slide_outline_path`,
-`slide_spec_path`, `figures_dir`, ...）和各阶段的完成状态。后续所有阶段都引用
-这个 JSON 里的路径，**不要自己拼路径**——规则统一在 `scripts/workdir.py` 里。
+The returned JSON contains all the named paths (`paper_meta_path`, `slide_outline_path`,
+`slide_spec_path`, `figures_dir`, ...) and each stage's completion status. Every later stage references
+the paths in this JSON — **do not assemble paths yourself**; the rules are centralized in `scripts/workdir.py`.
 
-**重跑语义**：
+**Re-run semantics**:
 
-| 标志 | 含义 |
+| Flag | Meaning |
 |---|---|
-| 默认 | 已完成的阶段跳过（按产物文件存在判定）|
-| `--force` | 忽略所有 marker，全跑 |
-| `--from-stage <name>` | 从指定阶段开始重跑（长期"交互模式"的入口）|
+| default | already-completed stages are skipped (judged by whether the output files exist) |
+| `--force` | ignore all markers and run everything |
+| `--from-stage <name>` | re-run starting from the named stage (the entry point for the long-lived "interactive mode") |
 
-`<name>` ∈ `{configure, extract, outline, spec, render, qa}`。
-**重新走一遍开工前三项询问**用 `--from-stage configure`（覆盖旧 `config.json`）。
+`<name>` ∈ `{configure, extract, outline, spec, render, qa}`.
+**To go through the three pre-flight questions again**, use `--from-stage configure` (overwrites the old `config.json`).
 
 ## Pipeline
 
-按下面的顺序执行。每阶段都有"完成判定"——产物文件出现即算完成，重跑时自动跳过。
-**本节每阶段只写三件事：(a) 该 do 的最小动作（含要敲的命令）、(b) 一条最易翻车
-的关键陷阱、(c) 指向 [references/pipeline.md](references/pipeline.md) 对应 Stage 的
-指针**。完整协议、前置依赖、常见错误、边界情况一律在 pipeline.md，本节不复述。
+Execute in the order below. Each stage has a "completion test" — once its output file appears the stage counts as done, and is auto-skipped on re-run.
+**Each stage in this section writes only three things: (a) the minimal action to do (including the command to
+type), (b) the single most error-prone pitfall, and (c) a pointer to the corresponding Stage in
+[references/pipeline.md](references/pipeline.md)**. The full protocol, prerequisites, common errors, and edge cases all
+live in pipeline.md; this section does not restate them.
 
-### Stage 0.5 — Configure（你，AskUserQuestion 三项确认）
+### Stage 0.5 — Configure (you, AskUserQuestion to confirm three items)
 
-Stage 0 解析完 workspace 后、Stage 1 之前，用 [AskUserQuestion] 与用户确认三项，
-答案 Write 到 Stage 0 JSON 的 `config_path`（`<workdir>/config.json`）：
+After Stage 0 resolves the workspace and before Stage 1, use [AskUserQuestion] to confirm three items with the user,
+and Write the answers to the Stage 0 JSON's `config_path` (`<workdir>/config.json`):
 
-1. **`deck_length`**：精简 / 标准 / 详尽 / 自动（不设页数目标，推荐）
-2. **`visual_qa`**：`true`（默认，加 soffice→jpg→子代理 视觉闭环）/ `false`（只跑便宜 content QA）
-3. **`color_scheme`**：`自动`（默认，Stage 3 按论文气质匹配 palette）/ `自定义`（用户一句话描述偏好，存进 config 由 Stage 3 解析）
+1. **`deck_length`**: concise / standard / detailed / auto (no page-count target, recommended)
+2. **`visual_qa`**: `true` (default, adds the soffice→jpg→subagent visual loop) / `false` (run only the cheap content QA)
+3. **`color_scheme`**: `auto` (default, Stage 3 matches a palette to the paper's character) / `custom` (the user describes a preference in one line, stored in config and parsed by Stage 3)
 
-- **复用即跳过**：`config.json` 已存在且未带 `--from-stage configure` / `--force` 时不再问，沿用上次配置。
-- 用户初始请求已表达偏好时把对应项设为 AskUserQuestion 首选项（仍展示确认）。
-- 完整选项表、`deck_length` 页数带映射、预填与下游消费细则见 [references/pipeline.md](references/pipeline.md) §Stage 0.5；config.json schema 见 [references/schemas.md](references/schemas.md)。
+- **Reuse = skip**: when `config.json` already exists and neither `--from-stage configure` nor `--force` is given, don't ask again — reuse the last configuration.
+- When the user's initial request already states a preference, set the corresponding item as the AskUserQuestion default (still show it for confirmation).
+- The full option table, the `deck_length` page-count band mapping, and the prefill / downstream-consumption details are in [references/pipeline.md](references/pipeline.md) §Stage 0.5; the config.json schema is in [references/schemas.md](references/schemas.md).
 
-### Stage 1 — Extract（脚本）
+### Stage 1 — Extract (script)
 
-**走 MinerU 云 API**（必填 `MINERU_API_TOKEN`，统一在 paper2anything 包根 `.env` 配置；无 token 直接报错）：
+**Use the MinerU cloud API** (requires `MINERU_API_TOKEN`, configured uniformly in the paper2anything package-root `.env`; with no token it errors out immediately):
 
 ```bash
-set -a; source <paper2anything 包根>/.env; set +a   # 导出统一 .env（含 MINERU_API_TOKEN）
+set -a; source <paper2anything package root>/.env; set +a   # export the unified .env (includes MINERU_API_TOKEN)
 conda run -n paper2anything --no-capture-output python -m scripts.parse_pdf <paper.pdf>
 ```
 
-一次性产出 `paper_meta.json` + `figures_index.json` + `pages/` + 高清裁图（结构化元数据由 MinerU 直接给出）。
+Produces `paper_meta.json` + `figures_index.json` + `pages/` + hi-res crops in one shot (the structured metadata comes directly from MinerU).
 
-`--dpi` 调节（默认 300）、MinerU 解析的已知不完美（如 bbox 偶把 `y` 起点压在子图标题上），见
-[references/pipeline.md](references/pipeline.md) §Stage 1。
+For `--dpi` tuning (default 300) and the known imperfections of MinerU parsing (e.g. the bbox sometimes pins the `y` start onto a subfigure caption), see
+[references/pipeline.md](references/pipeline.md) §Stage 1.
 
-> **陷阱**：进 Stage 2 前你 **必跑** [references/schemas.md](references/schemas.md) 末尾的
-> **4 项校核**（title/authors/同 kind 合并/缺关键 kind）核对 `paper_meta.json`，**校核结果不写回
-> `paper_meta.json`**，直接体现在 Stage 2 的 outline 里。
+> **Pitfall**: before entering Stage 2 you **must run** the
+> **4 checks** at the end of [references/schemas.md](references/schemas.md) (title/authors/same-kind merge/missing key kind) to verify `paper_meta.json`; **the check results are not written back to
+> `paper_meta.json`**, but are reflected directly in the Stage 2 outline.
 
-### Stage 2 — Outline（你）
+### Stage 2 — Outline (you)
 
-输入 `paper_meta.json` + `figures_index.json` + `config.json` → 产物
-`slide_outline.json`（schema 见 [references/schemas.md](references/schemas.md)）。
-按 [references/outline-heuristics.md](references/outline-heuristics.md) 定角色与
-顺序、写每张 `title`/`bullets`/`figure_ref`/`speaker_notes`。**陷阱**：先读
-`config.json/deck_length`——`自动` 不约束张数；非自动是**大纲粒度软目标**，
-**不得**为凑数砍核心叙事角色（细则见 outline-heuristics.md）。
+Input `paper_meta.json` + `figures_index.json` + `config.json` → output
+`slide_outline.json` (schema in [references/schemas.md](references/schemas.md)).
+Per [references/outline-heuristics.md](references/outline-heuristics.md), set roles and
+order, and write each slide's `title`/`bullets`/`figure_ref`/`speaker_notes`. **Pitfall**: read
+`config.json/deck_length` first — `auto` does not constrain the slide count; a non-auto value is a **soft target for outline granularity**,
+and you **must not** cut core narrative roles just to hit a number (details in outline-heuristics.md).
 
-写完用 Python 验证 JSON 合法：
+After writing, validate that the JSON is well-formed with Python:
 
 ```bash
 conda run -n paper2anything --no-capture-output python -c \
@@ -117,113 +118,112 @@ conda run -n paper2anything --no-capture-output python -c \
     <workdir>/slide_outline.json
 ```
 
-完整协议与常见错误见 [references/pipeline.md](references/pipeline.md) §Stage 2。
+For the full protocol and common errors, see [references/pipeline.md](references/pipeline.md) §Stage 2.
 
-### Stage 3 — Spec（你）
+### Stage 3 — Spec (you)
 
-输入 `slide_outline.json` + `figures_index.json` + figures/ + pages/ → 产物
-`slide_spec.json`。按 [references/design-style.md](references/design-style.md) 选
-palette/字体/`layout_kind`（避免连续重复），把内容译成 `elements`。**陷阱**：
-所有数字与术语必须在 paper_meta / figures_index 里有出处，不要捏造。
+Input `slide_outline.json` + `figures_index.json` + figures/ + pages/ → output
+`slide_spec.json`. Per [references/design-style.md](references/design-style.md), choose
+palette/fonts/`layout_kind` (avoiding consecutive repeats), and translate the content into `elements`. **Pitfall**:
+every number and term must have a source in paper_meta / figures_index — do not fabricate.
 
-需要图标用 `kind:"icon"`，命名见 [references/pptxgenjs.md](references/pptxgenjs.md)
-"Icons" 节，schema 见 [references/schemas.md](references/schemas.md) icon 元素。
+When you need an icon use `kind:"icon"`; for naming see the "Icons" section of [references/pptxgenjs.md](references/pptxgenjs.md),
+and for the schema see the icon element in [references/schemas.md](references/schemas.md).
 
-需从论文整页裁图区时：
+When you need to crop a region from a full paper page:
 
 ```bash
 conda run -n paper2anything --no-capture-output python -m scripts.page_screenshot \
     <workdir> <page> <x> <y> <w> <h>
 ```
 
-bbox 用相对比例 0..1，输出相对路径填到对应 image 元素 `path`。**裁图硬门禁**：
-第一次调用 bbox 必须**逐值等于** `figures_index.json/captions[i].bbox`，**裁出
-第一版前不许目测整页**——完整基准与 QA 重裁循环见
-[references/design-style.md](references/design-style.md) §3（**跳过第一刀直接目测
-＝违反 §3**）。Stage 3 关键约束（坐标≤画布 / `margin:0` 等）见
-[references/pipeline.md](references/pipeline.md) §Stage 3。
+bbox uses relative ratios 0..1; fill the output relative path into the corresponding image element's `path`. **Hard gate for cropping**:
+the first call's bbox must be **value-for-value equal** to `figures_index.json/captions[i].bbox`, and **you may not eyeball
+the full page before cropping the first version** — for the full baseline and the QA re-crop loop see
+[references/design-style.md](references/design-style.md) §3 (**skipping the first cut and going straight to eyeballing
+= violating §3**). The Stage 3 key constraints (coordinates ≤ canvas / `margin:0` etc.) are in
+[references/pipeline.md](references/pipeline.md) §Stage 3.
 
-### Stage 4 — Render（脚本）
+### Stage 4 — Render (script)
 
 ```bash
 conda run -n paper2anything --no-capture-output python -m scripts.render_pptx \
     <workdir>/slide_spec.json <workdir>/output.pptx
 ```
 
-产物 `<workdir>/output.pptx`，渲染成功后复制到 Stage 0 给出的最终 `output_path`（先 `mkdir -p` 其父目录 `<paper-stem>_slides/`）。
-**陷阱**：依赖 `node`+`pptxgenjs`（全局装），node 不在 PATH 脚本会报错；失败先
-`--dry-run` 只生成 `render/build.js` 定位 spec 问题。前置依赖与常见错误见
-[references/pipeline.md](references/pipeline.md) §Stage 4。
+The output is `<workdir>/output.pptx`; after a successful render, copy it to the final `output_path` given by Stage 0 (first `mkdir -p` its parent directory `<paper-stem>_slides/`).
+**Pitfall**: it depends on `node`+`pptxgenjs` (installed globally); if node is not on PATH the script errors. On failure, first
+`--dry-run` to generate only `render/build.js` and locate the spec problem. For prerequisites and common errors see
+[references/pipeline.md](references/pipeline.md) §Stage 4.
 
 ### Stage 5 — QA
 
-按下方 [QA](#qa) 一节执行：content QA 始终跑，视觉 QA 由 `config.json/visual_qa`
-门控。
+Execute per the [QA](#qa) section below: content QA always runs, and visual QA is gated by `config.json/visual_qa`.
 
 ## Defaults & Errors
 
-### 默认行为
+### Default behavior
 
-| 输入 | 默认 |
+| Input | Default |
 |---|---|
-| `output.pptx` 缺省 | `<paper-dir>/<paper-stem>_slides/`（内含 `<paper-stem>.pptx`）；重名目录追加 `_v2`、`_v3` |
-| 工作目录写不进论文目录 | 回退到 `~/.cache/paper2anything/slides/<paper-stem>-<hash12>/` |
-| 同一论文重跑 | 已完成阶段（产物文件已存在）自动跳过 |
-| `config.json` 已存在 | Stage 0.5 跳过提问，沿用上次配置；要改配置走 `--from-stage configure` |
-| Stage 0.5 未问 / `visual_qa` 缺省 | `deck_length=自动`、`visual_qa=true`（跑视觉 QA）|
-| `--from-stage <N>` | 从指定阶段起强制重跑，不检查产物 |
-| `--force` | 全部阶段强制重跑（罕用，仅在 schema 升级时） |
+| `output.pptx` omitted | `<paper-dir>/<paper-stem>_slides/` (containing `<paper-stem>.pptx`); on a name collision the directory appends `_v2`, `_v3` |
+| work directory not writable in the paper directory | fall back to `~/.cache/paper2anything/slides/<paper-stem>-<hash12>/` |
+| re-run on the same paper | already-completed stages (output files already exist) are auto-skipped |
+| `config.json` already exists | Stage 0.5 skips the questions and reuses the last configuration; to change config use `--from-stage configure` |
+| Stage 0.5 not asked / `visual_qa` defaulted | `deck_length=auto`, `visual_qa=true` (run visual QA) |
+| `--from-stage <N>` | force a re-run from the named stage, without checking outputs |
+| `--force` | force a re-run of all stages (rare, only on a schema upgrade) |
 
-### 错误恢复速查
+### Error-Recovery Quick Reference
 
-只列需要 **你判断/路由**的几类（技术类恢复全在 pipeline.md）：
+Only the few classes that need **your judgment / routing** are listed (all technical recovery is in pipeline.md):
 
-| 症状 | 处理 |
+| Symptom | Handling |
 |---|---|
-| Stage 1 章节数 < 5 或 > 15 | 你在 Stage 2 校核时手动补 / 合并 |
-| Stage 5 报"卡片下半空 / 栏不均衡 / 底部留白" | **不是 soft**——按 `references/design-style.md` "QA 修问题原则" **3 杠杆模型**（调文字量 > 调 bullet 间隔 > 调图片大小，可叠加）修，`--from-stage render` 重跑 |
-| 用户/QA 报"引导符与文字没对齐" | 按 `references/design-style.md` "视觉丰富度建议 A" 对齐公式批量重置 icon_y + 收尾自检，`--from-stage render` 重跑 |
-| 触发了 skill 但用户只要"读 PDF" | 误触发——让用户走官方 `pdf` skill，不要继续走 paper2slides |
+| Stage 1 section count < 5 or > 15 | you manually add / merge during the Stage 2 check |
+| Stage 5 reports "card bottom half empty / unbalanced columns / bottom whitespace" | **not soft** — fix per the **three-lever model** in `references/design-style.md` "Principles for Fixing QA Issues" (adjust text amount > adjust bullet spacing > adjust image size, stackable), then `--from-stage render` to re-run |
+| user/QA reports "leader markers not aligned with text" | per `references/design-style.md` "Visual-Richness Recommendation A", batch-reset icon_y to the alignment formula + a final self-check, then `--from-stage render` to re-run |
+| skill triggered but the user only wants to "read the PDF" | mis-trigger — send the user to the official `pdf` skill, do not continue with paper2slides |
 
-完整错误恢复（Stage 1/4 技术类、annotation 绿框、dpi、figure_ref 等）见
-[references/pipeline.md](references/pipeline.md) "错误恢复速查" 一节。
+For the full error recovery (Stage 1/4 technical, annotation green box, dpi, figure_ref, etc.) see the
+"Error-Recovery Quick Reference" section of [references/pipeline.md](references/pipeline.md).
 
 ## QA
 
-直接套用官方 pptx skill 的 QA Loop（官方 `SKILL.md` "QA (Required)" 一节；绝对
-路径与 `find` 兜底见 [§Where to Look When Stuck](#where-to-look-when-stuck)）——
-本 skill 不复述协议。**先读 `config.json/visual_qa`**，要点：
+Apply the official pptx skill's QA Loop directly (the official `SKILL.md` "QA (Required)" section; for absolute
+paths and the `find` fallback see [§Where to Look When Stuck](#where-to-look-when-stuck)) —
+this skill does not restate the protocol. **Read `config.json/visual_qa` first**; the key points:
 
-- **content QA 始终跑**：`markitdown` 查占位 / 数字一致性 / bullet 非 abstract 搬运 / title 无残留占位。
-- **视觉 QA 仅 `config.json/visual_qa == true` 时跑**：soffice→pdf→jpg→**派单个子代理批量审**。
-- 修问题改 `slide_spec.json` 后 `--from-stage render` **全量重渲**再 QA；**复检轮按官方 Verification Loop 收窄**——第 1 轮全 deck，第 2 轮起只看 上轮 flagged ∪ 本轮改动页，收敛前末轮全量 full pass。
-- **终态报告必须说明视觉 QA 是否执行**；跳过时提示"视觉 QA 已按 config 跳过，如需 `--from-stage configure` 改配置后 `--from-stage qa`"。
-- **留白 / 栏不均衡 / 引导符未对齐不是 soft，是 hard issue，必须修**——本 skill 最常误判处，复审子代理报告时不要拿 "soft" 打发。
+- **content QA always runs**: `markitdown` checks placeholders / number consistency / bullets not lifted from the abstract / no leftover placeholder in the title.
+- **visual QA runs only when `config.json/visual_qa == true`**: soffice→pdf→jpg→**dispatch a single subagent to batch-review**.
+- After fixing issues, edit `slide_spec.json` then `--from-stage render` to **fully re-render** before QA; **the recheck rounds narrow per the official Verification Loop** — round 1 covers the full deck, from round 2 on look only at the pages flagged last round ∪ the pages changed this round, with a final full pass over the whole deck before convergence.
+- **The final report must state whether visual QA was run**; when skipped, note "visual QA was skipped per config; to change config use `--from-stage configure` then `--from-stage qa`".
+- **Whitespace / unbalanced columns / misaligned leader markers are not soft, they are hard issues that must be fixed** — this is where this skill most often misjudges; don't wave them off as "soft" when reviewing the subagent's report.
 
-完整 A/B 协议、`qa_log.json` 结构、产物统一放 `<workdir>/qa/` 等存放约定见
-[references/pipeline.md](references/pipeline.md) §Stage 5；视觉子代理 prompt（加段
-A/B）、3 杠杆修复模型、复检收窄细则见 [references/design-style.md](references/design-style.md)
-"QA 时的视觉子代理 prompt" + "QA 修问题原则" 两节。
+For the full A/B protocol, the `qa_log.json` structure, the convention of putting all artifacts under
+`<workdir>/qa/`, etc., see [references/pipeline.md](references/pipeline.md) §Stage 5; for the visual subagent prompt (added paragraphs
+A/B), the three-lever fix model, and the recheck-narrowing details, see the "Visual Subagent Prompt for QA" + "Principles for Fixing QA Issues" sections of
+[references/design-style.md](references/design-style.md).
 
 ## Where to Look When Stuck
 
-| 困惑 | 去这里 |
+| Confusion | Go here |
 |---|---|
-| PDF 文本/图表/表格提取异常 | 官方 **pdf skill** `SKILL.md`（路径见下） |
-| PPT 视觉设计、配色、版式选择 | 官方 **pptx skill** `SKILL.md` 的 "Design Ideas" 一节 |
-| PptxGenJS API 用法、踩坑点、icon 生成 | [references/pptxgenjs.md](references/pptxgenjs.md)（本仓库副本，含学术 icon 名表）|
-| QA 流程与子代理 prompt | 官方 pptx skill `SKILL.md` 的 "QA (Required)" 一节 |
-| 各阶段产物 JSON schema 详细字段（含 config.json）| `references/schemas.md` |
-| 章节如何映射到 slide 角色 | `references/outline-heuristics.md` |
-| 配色/版式与论文场景的适配 | `references/design-style.md` |
+| PDF text/figure/table extraction anomalies | the official **pdf skill** `SKILL.md` (path below) |
+| PPT visual design, color, layout choices | the "Design Ideas" section of the official **pptx skill** `SKILL.md` |
+| PptxGenJS API usage, gotchas, icon generation | [references/pptxgenjs.md](references/pptxgenjs.md) (this repo's copy, includes the academic icon-name table) |
+| QA flow and subagent prompt | the "QA (Required)" section of the official pptx skill `SKILL.md` |
+| Detailed JSON schema fields for each stage's output (including config.json) | `references/schemas.md` |
+| How sections map to slide roles | `references/outline-heuristics.md` |
+| Matching color/layout to the paper's scenario | `references/design-style.md` |
 
-官方 skill 的绝对路径（**`~` 即用户 home，跨机器通用**；如下面路径不存在，用
-`find ~/.claude -path '*marketplaces*pptx*'` 或 `find ~/.claude -path '*marketplaces*pdf*'` 定位）：
+Absolute paths of the official skills (**`~` is the user's home, portable across machines**; if a path below doesn't exist, use
+`find ~/.claude -path '*marketplaces*pptx*'` or `find ~/.claude -path '*marketplaces*pdf*'` to locate it):
 
 ```
 ~/.claude/plugins/marketplaces/anthropic-agent-skills/skills/pptx/
 ~/.claude/plugins/marketplaces/anthropic-agent-skills/skills/pdf/
 ```
 
-阅读这两个 skill 是本 skill 的"基础课"——遇到底层细节优先查它们，本 skill 只提
-供论文领域的**编排**与**判断指南**。
+Reading these two skills is this skill's "foundation course" — when you hit low-level details check them first; this skill only
+provides the **orchestration** and **judgment guidance** for the paper domain.

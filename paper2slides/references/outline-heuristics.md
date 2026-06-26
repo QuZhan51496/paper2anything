@@ -1,176 +1,182 @@
 # Outline Heuristics
 
-Stage 2 的你把 `paper_meta.json` 转成 `slide_outline.json` 时使用的映射规则
-与判断准则。本文件不是机械替换表——是给"理解论文 + 决策"用的脚手架。
+The mapping rules and decision criteria you (in Stage 2) use when turning `paper_meta.json` into
+`slide_outline.json`. This file is not a mechanical substitution table — it is scaffolding for
+"understanding the paper + making decisions".
 
-## 总目标
+## Overall goal
 
-覆盖论文的**核心叙事**（不是"按章节复述"）：**问题→方法→证据→结论**。
-张数**默认**由叙事完整性决定：每个叙事节点该占几张就占几张，宁可多一张让单页
-充实有呼吸感，也不要把内容硬塞进固定页数。学术 talk 典型 12-20 分钟、每张
-1-2 分钟可作节奏参考，但**不是要去凑的指标**。
+Cover the paper's **core narrative** (not a "section-by-section retelling"): **problem → method → evidence → conclusion**.
+The slide count is **by default** decided by narrative completeness: each narrative node takes as many slides as it
+needs; better one slide more so a single slide stays substantial and has room to breathe than to cram content into a
+fixed page count. An academic talk is typically 12-20 minutes, and 1-2 minutes per slide can serve as a pacing
+reference, but it is **not a metric to hit**.
 
-### 页数档（`config.json/deck_length_target`）
+### Deck-length tier (`config.json/deck_length_target`)
 
-Stage 0.5 让用户选了页数档，Stage 2 进来前先读 `config.json/deck_length_target`：
+Stage 0.5 had the user choose a deck-length tier; before Stage 2 starts, first read `config.json/deck_length_target`:
 
-- **`null`（`自动` 档）**：上一段所述——张数纯由叙事+版面定，不设上下限。
-  保持现状，本节其余约束不生效。
-- **非 `null`（`精简` `[8,12]` / `标准` `[13,18]` / `详尽` `[19,28]`）**：把这个
-  区间当作**大纲粒度的软目标**，靠两个杠杆向目标带靠拢——
-  1. **可选角色含不含**：`background` / `discussion` / 第二张 `result`（ablation）/
-     `qna` 这些"否/可选"角色，详尽档多留、精简档多砍。
-  2. **`method` / `result` 拆几张**：详尽档把复杂 method 拆 3–4 张、每个关键
-     创新单独一张；精简档合并到 1–2 张总览。
+- **`null` (the `auto` tier)**: as described in the previous paragraph — the slide count is decided purely by
+  narrative + layout, with no upper/lower bound. Keep things as they are; the rest of this section's constraints do not apply.
+- **Not `null` (`concise` `[8,12]` / `standard` `[13,18]` / `detailed` `[19,28]`)**: treat this
+  range as a **soft target for outline granularity**, and pull toward the target band with two levers —
+  1. **Whether to include optional roles**: the "no/optional" roles such as `background` / `discussion` / a second
+     `result` slide (ablation) / `qna` — the detailed tier keeps more of them, the concise tier cuts more.
+  2. **How many slides `method` / `result` split into**: the detailed tier splits a complex method into 3–4 slides,
+     with each key innovation on its own slide; the concise tier merges into a 1–2 slide overview.
 
-  这是**软**目标：叙事完整性优先于落进区间。落不进就贴边，并在心里有数下一步
-  Stage 3 每页仍要被内容填满。**绝不**为压进精简档而砍**必含**核心角色
-  （`title`/`introduction/motivation`/`method`/`experiment`/`result`/`conclusion`），
-  也**绝不**为撑进详尽档把一个点稀释成半页留白——页数档只调"内容切多细"，
-  **不**改每页"空间驱动、无留白无溢出"（见下方"内容塑形规则"与
-  [design-style.md](design-style.md) 0.4 节）。
+  This is a **soft** target: narrative completeness takes priority over landing inside the range. If you cannot land
+  in it, hug the edge, and bear in mind that in the next step Stage 3 every slide still has to be filled with content.
+  **Never** cut a **mandatory** core role
+  (`title`/`introduction/motivation`/`method`/`experiment`/`result`/`conclusion`) to squeeze into the concise tier,
+  and **never** dilute a single point into a half-empty slide to pad into the detailed tier — the deck-length tier
+  only tunes "how finely the content is sliced", it does **not** change each slide's "space-driven, no whitespace
+  no overflow" (see "Content-shaping rules" below and §0.4 of [design-style.md](design-style.md)).
 
-## 角色 → 必含性与顺序
+## Roles → mandatory status and order
 
-每个角色按内容该占几张就占几张（复杂 method 可拆多张，简单论文可合并）；选了
-非 `自动` 档时，"否/可选"角色含不含与 method/result 拆分细度按上方
-[页数档](#页数档configjsondeck_length_target)向目标带调节。下表只规定哪些角色
-**必含**（任何档位都不能砍）与典型顺序：
+Each role takes as many slides as its content needs (a complex method can split into multiple slides, a simple paper
+can merge); when a non-`auto` tier is chosen, whether the "no/optional" roles are included and the method/result
+split granularity are adjusted toward the target band per the
+[Deck-length tier](#deck-length-tier-configjsondeck_length_target) above. The table below only specifies which roles
+are **mandatory** (no tier may cut them) and the typical order:
 
-| 角色 | 必含？ | 说明 |
+| Role | Mandatory? | Notes |
 |---|:-:|---|
-| `title` | 是 | 第一张。论文标题、作者、（venue/year 可选） |
-| `tldr` | 否 | 紧跟 title。论文的"一句话总结 + 核心贡献"，让听众 30 秒抓重点 |
-| `introduction` / `motivation` | 是 | 当前问题是什么、为什么难、之前方法的不足（内容多可拆多张）|
-| `background` | 否 | 论文有 Related Work / Preliminaries 且对理解 method 必需时才加。无脑加 == 浪费时间 |
-| `method` | 是 | 核心。high-level 总览 + 关键创新；方法复杂就拆多张，别硬塞一张 |
-| `experiment` | 是 | 实验设置：数据集、baseline、metric |
-| `result` | 是 | 主结果（必含）+ ablation/分析（可选，按需多张）|
-| `discussion` | 否 | 当论文 Discussion / Limitations 章节有重要 take-away 时加 |
-| `conclusion` | 是 | 总结贡献 + 未来工作 |
-| `qna` | 否 | 仅大型 talk 加；通常省略 |
+| `title` | Yes | First slide. Paper title, authors, (venue/year optional) |
+| `tldr` | No | Right after title. The paper's "one-sentence summary + core contributions", so the audience grasps the key points in 30 seconds |
+| `introduction` / `motivation` | Yes | What the current problem is, why it is hard, the shortcomings of prior methods (can split into multiple slides if there is a lot) |
+| `background` | No | Add only when the paper has Related Work / Preliminaries and it is necessary for understanding the method. Adding it mindlessly == wasting time |
+| `method` | Yes | The core. high-level overview + key innovations; split into multiple slides if the method is complex, do not cram it into one |
+| `experiment` | Yes | Experimental setup: datasets, baseline, metric |
+| `result` | Yes | Main results (mandatory) + ablation/analysis (optional, multiple slides as needed) |
+| `discussion` | No | Add when the paper's Discussion / Limitations section has an important take-away |
+| `conclusion` | Yes | Summarize contributions + future work |
+| `qna` | No | Add only for large talks; usually omitted |
 
-**典型顺序**：`title → (tldr) → introduction/motivation → (background) → method… → experiment → result… → (discussion) → conclusion → (qna)`。
+**Typical order**: `title → (tldr) → introduction/motivation → (background) → method… → experiment → result… → (discussion) → conclusion → (qna)`.
 
-## 论文 section → slide 角色映射
+## Paper section → slide role mapping
 
-不是 1:1，是 N:M 的内容重组：
+Not 1:1, but an N:M content reorganization:
 
-| paper_meta.json 的 section.kind | 主要喂给的 slide role |
+| paper_meta.json's section.kind | primarily fed to slide role |
 |---|---|
-| `abstract` | `tldr`（取核心贡献）+ `title` 的副标题候选 |
-| `introduction` | `motivation`（前 2/3）+ `tldr`（后 1/3 的 contributions）|
-| `background` / `related` | `background`（最多 1 张；多数情况省略，只在 method 解释时穿插一两句）|
-| `method` | `method` 全部 slide，按子节聚合主体（如 architecture / loss / training）|
+| `abstract` | `tldr` (take the core contributions) + subtitle candidate for `title` |
+| `introduction` | `motivation` (first 2/3) + `tldr` (the contributions in the last 1/3) |
+| `background` / `related` | `background` (at most 1 slide; omitted in most cases, just weave in a sentence or two when explaining the method) |
+| `method` | all `method` slides, with the body aggregated by subsection (e.g., architecture / loss / training) |
 | `experiment` | `experiment` slide |
-| `result` | `result` slide（main results + ablation 各一张） |
-| `discussion` | `discussion`（仅当 Discussion/Limitations 有强结论时）|
+| `result` | `result` slides (main results + ablation, one slide each) |
+| `discussion` | `discussion` (only when Discussion/Limitations has a strong conclusion) |
 | `conclusion` | `conclusion` |
-| `references` | **跳过**（不要做成 reference dump 的 slide） |
+| `references` | **skip** (do not make a reference-dump slide) |
 
-## 每个角色的内容指南
+## Content guide for each role
 
 ### `title`
-- `title`：用 `paper_meta.json/title` 校核后的标题
-- `bullets`：留空 `[]`（标题页只有标题、副标题、作者）
-- 在 `slide_spec.json` 里通常以 dark 配色 + 大标题 + 作者居中或左对齐
-- `speaker_notes`：欢迎语 + 1 句论文亮点
+- `title`: use the title from `paper_meta.json/title` after verification
+- `bullets`: leave empty `[]` (the title slide has only the title, subtitle, authors)
+- In `slide_spec.json`, usually a dark color scheme + large title + authors centered or left-aligned
+- `speaker_notes`: a welcome + 1 sentence on the paper's highlight
 
 ### `tldr`
-- `title`：诸如 "TL;DR" / "Key Contributions" / "What We Did"
-- `bullets`：论文的核心贡献，**动词开头**（"Propose ...", "Show that ...", "Achieve ..."）。
-  来源：abstract 末尾 + introduction 的 contributions 列表
-- `needs_figure`：通常 false（除非有一张极简的"main result"图）
+- `title`: something like "TL;DR" / "Key Contributions" / "What We Did"
+- `bullets`: the paper's core contributions, **starting with a verb** ("Propose ...", "Show that ...", "Achieve ...").
+  Source: the end of the abstract + the contributions list in the introduction
+- `needs_figure`: usually false (unless there is one extremely minimal "main result" figure)
 
 ### `introduction` / `motivation`
-- `title`：诸如 "The Problem" / "Why This Matters" / "Limitations of Prior Work"
-- `bullets`：先说现状（"现有 X 方法依赖 Y"），再说不足（"Y 的代价是 Z"），引向"我们需要 ..."
-- `needs_figure`：可选；论文有"问题图"（before/after、典型失败 case）时强烈推荐
-- 来源：`introduction` 的前半部分
+- `title`: something like "The Problem" / "Why This Matters" / "Limitations of Prior Work"
+- `bullets`: first state the status quo ("existing X methods rely on Y"), then the shortcomings ("the cost of Y is Z"), leading to "we need ..."
+- `needs_figure`: optional; strongly recommended when the paper has a "problem figure" (before/after, typical failure case)
+- Source: the first half of `introduction`
 
-### `background`（可选）
-- 仅当论文 method 强依赖某个先验概念（如 Diffusion Model 的 forward/reverse process）时才加
-- 优先用图说明（如公式/流程图），少用文字定义
-- 不要把 Related Work 做成 background——Related Work 该融入 motivation 或省略
+### `background` (optional)
+- Add only when the paper's method strongly depends on some prior concept (e.g., the forward/reverse process of a Diffusion Model)
+- Prefer explaining with a figure (e.g., an equation/flowchart), use textual definitions sparingly
+- Do not turn Related Work into background — Related Work should be folded into motivation or omitted
 
-### `method`（2-3 张）
-- 第一张：**架构总览**。`needs_figure: true`，`figure_ref` 指向 paper 的"主图"（通常是 Figure 1 或 Figure 2 的整体架构）
-- 第二张：**关键创新**。论文的 novelty 集中在哪个组件？把那个组件单独讲清楚（如 Transformer 论文的"Scaled Dot-Product Attention"）
-- 可选第三张：**训练/优化策略**（如有非平凡的 loss / data augmentation / curriculum）
-- bullets 简短，公式用图替代而非 inline LaTeX
+### `method` (2-3 slides)
+- First slide: **architecture overview**. `needs_figure: true`, `figure_ref` points to the paper's "main figure" (usually the overall architecture in Figure 1 or Figure 2)
+- Second slide: **key innovation**. Which component is the paper's novelty concentrated in? Explain that component clearly on its own (e.g., the "Scaled Dot-Product Attention" of the Transformer paper)
+- Optional third slide: **training/optimization strategy** (if there is a non-trivial loss / data augmentation / curriculum)
+- Keep bullets short, replace equations with figures rather than inline LaTeX
 
 ### `experiment`
-- `title`：诸如 "Experimental Setup"
-- `bullets`：**数据集**、**baseline**、**metric**、**硬件/规模**
-- `needs_figure`：通常 false；如果论文 datasets 表格简洁可用 image
-- 来源：`experiment` 章节
+- `title`: something like "Experimental Setup"
+- `bullets`: **datasets**, **baseline**, **metric**, **hardware/scale**
+- `needs_figure`: usually false; if the paper's datasets table is concise, an image can be used
+- Source: the `experiment` section
 
-### `result`（1-2 张）
-- 第一张 main results：`needs_figure: true`，配论文的主 result table（用 `page_renders` 整页裁剪即可——表格做成 PptxGenJS table 太繁琐）
-- 第二张（可选）ablation / analysis：用最有说服力的 1-2 个 ablation 图
-- bullets：**用数字**说话，"+3.5 BLEU on EN-DE"，避免泛泛的"显著提升"
+### `result` (1-2 slides)
+- First slide, main results: `needs_figure: true`, pair it with the paper's main result table (just crop the full page from `page_renders` — making the table as a PptxGenJS table is too tedious)
+- Second slide (optional), ablation / analysis: use the 1-2 most convincing ablation figures
+- bullets: **let numbers** do the talking, "+3.5 BLEU on EN-DE", avoid a vague "significant improvement"
 
-### `discussion`（可选）
-- `bullets`：包含一条 **limitation**（这非常加分，听众一眼看出做研究的诚实度）
-- 来源：`discussion` 章节
+### `discussion` (optional)
+- `bullets`: include one **limitation** (this is a big plus; the audience immediately sees the honesty of the research)
+- Source: the `discussion` section
 
 ### `conclusion`
-- `title`：诸如 "Conclusions" / "Takeaways"
-- `bullets`：通常涵盖——我们做了什么（一句）、关键结果（带数字）、未来工作（一句）
-- 来源：`conclusion` 章节 + `tldr` 的反向呼应
+- `title`: something like "Conclusions" / "Takeaways"
+- `bullets`: usually cover — what we did (one sentence), key results (with numbers), future work (one sentence)
+- Source: the `conclusion` section + a callback to `tldr`
 
-### `qna`（可选）
-- 纯文本"Questions?" + 联系方式
-- 大多数 conference talk 不需要单独 Q&A slide
+### `qna` (optional)
+- Plain text "Questions?" + contact info
+- Most conference talks do not need a standalone Q&A slide
 
-## 内容塑形规则
+## Content-shaping rules
 
-- **文字量由版面决定，不设词数上限**。Stage 2 写 bullets 时心里有数：每页最终
-  要被"视觉元素 + 文字"填满——不留白也不溢出；**先想这页配什么视觉，剩下空间
-  用文字补到刚好充实，不要预先把内容砍到撑不起一页**。下限/上限、字号红线、
-  **每页必须有视觉元素（无纯文字页）** 等空间驱动细则的单一权威在
-  [design-style.md](design-style.md) §4（+ 0.4 节空间检查闭环），Stage 3 据此
-  最终填充，本节不复述
-- **bullet 是提炼后的要点，不是搬运**（Stage 2 写 bullets 的直接准则）：禁整段
-  抄摘要、禁完整句号 + 长定语堆叠；"够不够短"由"是不是一个清晰单点"判断，不由
-  数词。完整原则见 [design-style.md](design-style.md) §4
-- **不重复 slide title 出现在 bullet 里**（title 是 "Method"，bullet 别再写 "Our method..."）
-- 数字必带单位/对照（"+3.5 BLEU vs. baseline"），不说空泛的"显著提升"
-- speaker_notes：讲者的**口播草稿**（不是冗长背景），让讲者照念也流畅
+- **Text volume is decided by layout, with no word-count cap**. When writing bullets in Stage 2, keep in mind: each
+  slide must ultimately be filled by "visual elements + text" — no whitespace and no overflow; **first think about
+  what visual goes on the slide, then fill the remaining space with text to just-substantial, do not cut content
+  down in advance to the point that it cannot hold up a slide**. The single authority for space-driven details such
+  as lower/upper bound, the font-size red line, and **every slide must have a visual element (no text-only slides)**
+  is §4 of [design-style.md](design-style.md) (+ the §0.4 space-check loop); Stage 3 does the final fill based on it,
+  and this section does not repeat it
+- **A bullet is a distilled key point, not a transcription** (the direct criterion for writing bullets in Stage 2):
+  no copying a whole paragraph of the abstract, no full sentence-ending periods + stacked long modifiers; "short
+  enough or not" is judged by "is it a single clear point", not by a word count. For the full principle see §4 of
+  [design-style.md](design-style.md)
+- **Do not repeat the slide title inside a bullet** (the title is "Method", so a bullet should not write "Our method..." again)
+- Numbers must carry a unit/comparison ("+3.5 BLEU vs. baseline"), do not say a vague "significant improvement"
+- speaker_notes: the speaker's **spoken-delivery script** (not lengthy background), so the speaker can read it aloud and still flow smoothly
 
-## 图与 slide 的配对（`figure_ref` 怎么填）
+## Pairing figures with slides (how to fill `figure_ref`)
 
-`paper_meta.json/figures[]` 里每个 figure 都有 `id`、`page`、`caption`。配对策略：
+Every figure in `paper_meta.json/figures[]` has an `id`, `page`, and `caption`. Pairing strategy:
 
-1. **method 第一张 → 论文 Figure 1 或 Figure 2**（绝大多数论文的"主架构图"）
-2. **result 主图 → 论文 result 章节的最大 figure 或 main table**（看 `figures` / `tables` 的 caption 里有没有 "main results" 等）
-3. **motivation → 选有 before/after、failure cases 的图**（caption 里有 "examples"、"comparison"、"motivating"）
-4. **ablation slide → 选 caption 含 "ablation"、"effect of"、"varying" 的 figure**
-5. 不放心时优先用 `pages/page-NN.png`（整页渲染）或 `figures/<id>.png`（MinerU 高清裁图）
+1. **method first slide → the paper's Figure 1 or Figure 2** (the "main architecture figure" of the vast majority of papers)
+2. **result main figure → the largest figure or main table in the paper's result section** (check whether the `figures` / `tables` captions contain "main results" etc.)
+3. **motivation → pick a figure with before/after, failure cases** (the caption has "examples", "comparison", "motivating")
+4. **ablation slide → pick a figure whose caption contains "ablation", "effect of", "varying"**
+5. When unsure, prefer `pages/page-NN.png` (full-page render) or `figures/<id>.png` (the MinerU high-resolution crop)
 
-`figure_ref` 写论文里的 figure id（如 `"figure2"`），让 Stage 3 的你决定具体怎么用（嵌入 vs. 整页裁）。
+`figure_ref` takes the figure id from the paper (e.g., `"figure2"`), letting you in Stage 3 decide exactly how to use it (embed vs. full-page crop).
 
-> **bbox 是 Stage 3 的事**：当 `figures_index.json/captions[i]` 已带 `bbox` 字段（脚本检出的精确表格边界），Stage 3 会直接用；缺失才走视觉估算。Stage 2 不需要操心 bbox，只填 `figure_ref` 即可。
+> **bbox is a Stage 3 matter**: when `figures_index.json/captions[i]` already carries a `bbox` field (the precise table boundary detected by the script), Stage 3 uses it directly; only when missing does it fall back to visual estimation. Stage 2 does not need to worry about bbox, just fill `figure_ref`.
 
-> **公式同理**：mineru 后端会填 `paper_meta.equations[]`，每张 slide 也可填 `equation_ref: "eq_5"`（与 `figure_ref` 平行），Stage 3 据此决定 Unicode rewrite / 裁原图 / 仅入 speaker_notes。详见 `references/design-style.md` 的公式段。
+> **Equations work the same way**: the mineru backend fills `paper_meta.equations[]`, and each slide can also fill `equation_ref: "eq_5"` (parallel to `figure_ref`), from which Stage 3 decides Unicode rewrite / crop the original image / put it only in speaker_notes. For details see the equations part of `references/design-style.md`.
 
-> **附录 vs 正文（重要）**：每个 `figures[i]` / `tables[i]` / `equations[i]` 带 `is_appendix: bool` 字段。**Stage 2 默认只挑 `is_appendix == false` 的条目**——附录里的 figure（如 attention 论文 Figure 3-5 在 References 之后的 attention 可视化）通常是补充材料，标准 deck 通常不展示。例外：长篇 keynote、补充材料 talk、或你判断附录某 figure 对叙事关键时，可以显式挑 `is_appendix == true` 的条目，并在 speaker_notes 注明 "from appendix"。判定规则简单：page 在 References 章节之后即标 appendix；详见 `references/schemas.md` 的 `is_appendix` 说明。
+> **Appendix vs body (important)**: each `figures[i]` / `tables[i]` / `equations[i]` carries an `is_appendix: bool` field. **By default Stage 2 only picks entries with `is_appendix == false`** — a figure in the appendix (e.g., the attention visualizations in Figures 3-5 after References in the attention paper) is usually supplementary material and is usually not shown in a standard deck. Exceptions: for a long keynote, a supplementary-material talk, or when you judge that some appendix figure is critical to the narrative, you may explicitly pick entries with `is_appendix == true`, and note "from appendix" in speaker_notes. The decision rule is simple: a page after the References section is marked as appendix; for details see the `is_appendix` description in `references/schemas.md`.
 
-## 受众适配（`audience` 字段）
+## Audience adaptation (the `audience` field)
 
-- `researchers`：术语保留，bullets 可以技术性强；speaker_notes 简洁
-- `general`：术语先解释；用比喻；ablation slide 通常省略
-- `mixed`：method 部分 high-level；ablation 留 1 张但讲得通俗
+- `researchers`: keep the terminology, bullets can be highly technical; speaker_notes concise
+- `general`: explain terminology first; use analogies; the ablation slide is usually omitted
+- `mixed`: keep the method part high-level; keep 1 ablation slide but explain it in plain terms
 
-## 当 paper_meta 不够用时
+## When paper_meta is not enough
 
-短期阶段，paper_meta 由启发式生成，会有：
-- 标题抓错（首页 license 干扰）
-- 章节边界错位（method 被切碎）
-- abstract 含连字符污染
+paper_meta is auto-extracted and can be imperfect, so you may see:
+- the title grabbed wrong (interference from the first-page license)
+- section boundaries misaligned (the method gets chopped up)
+- the abstract contaminated with hyphenation
 
-进入 Stage 2 之前先做 [schemas.md](schemas.md) 末尾"你在 Stage 2 进入前应做的修订"列表里的 4 项校核。**校核结果不写回 paper_meta.json**，但用校核后的理解生成 outline。
+Before entering Stage 2, first do the 4 checks in the "Revisions you should make before entering Stage 2" list at the end of [schemas.md](schemas.md). **The check results are not written back to paper_meta.json**, but generate the outline using the verified understanding.
 
 ---
 
-> **Stage 3 视觉一致性硬规则**（字号 deck 内一致 / 孤词避免 / 图等比缩放 / 元素均衡分布）见 [design-style.md](design-style.md) 的 "0. 视觉一致性硬规则" 节，**先于所有其他设计建议遵守**。
+> **Stage 3 visual-consistency hard rules** (consistent font size within the deck / avoid orphan words / proportional figure scaling / balanced element distribution) — see the "0. Visual-consistency hard rules" section of [design-style.md](design-style.md), **to be followed before all other design suggestions**.
