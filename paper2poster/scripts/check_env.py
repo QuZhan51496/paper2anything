@@ -3,7 +3,7 @@ import importlib
 import os
 import sys
 
-import _env  # noqa: F401  # 统一加载包根 .env（凭据）
+import _env  # noqa: F401  # load the package-root .env (credentials)
 
 REQUIRED = {
     "PIL": "Pillow",

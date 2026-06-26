@@ -1,7 +1,7 @@
 """Screenshot a self-contained HTML file to a PNG at exact pixel size.
 
 This is a pure instrument for the hand-authored poster path: you write
-`poster.html` with the Write tool, then calls this to get a `poster.png` it can
+`poster.html` with the Write tool, then call this to get a `poster.png` you can
 Read and judge by eye. It renders whatever HTML you give it — it does NOT pick
 a template, parse an outline, or make any design decision. Use the poster's
 intended pixel size (e.g. 20x15 in at 96 dpi -> --width 1920 --height 1440).
@@ -26,7 +26,7 @@ def screenshot_html(html_path: Path, png_path: Path, width: int, height: int) ->
             device_scale_factor=1,
         )
         page.goto(html_path.resolve().as_uri(), wait_until="networkidle")
-        page.wait_for_timeout(300)  # 让相对路径图 / 字体加载完再截，避免截到半成帧
+        page.wait_for_timeout(300)  # let relative-path images / fonts finish loading before the shot, to avoid capturing a half-rendered frame
         page.screenshot(path=str(png_path), full_page=False)
         browser.close()
 

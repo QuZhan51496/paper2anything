@@ -58,7 +58,7 @@ This skill only works if you execute it as a sequence of small Bash + Read + Ask
 
 ## Step 0: Environment Check
 
-> **统一环境**：本 skill 所有 `python` 命令都运行在 paper2anything 包的统一 conda 环境里（由顶层 `environment.yml` 创建），命令均以 `conda run -n paper2anything --no-capture-output` 为前缀。下面的 `pip install` 仅在统一环境缺依赖时兜底；`playwright install chromium` 仍需单独执行一次。
+> **Unified environment**: every `python` command in this skill runs in the paper2anything package's unified conda environment (created from the top-level `environment.yml`), each prefixed with `conda run -n paper2anything --no-capture-output`. The `pip install` below is only a fallback when the unified environment is missing a dependency; `playwright install chromium` still needs to be run once on its own.
 
 ```bash
 conda run -n paper2anything --no-capture-output python ${SKILL_DIR}/scripts/check_env.py
@@ -71,7 +71,7 @@ pip install Pillow requests playwright
 playwright install chromium
 ```
 
-**Credentials (unified):** all keys live in the package-root `.env` (copy from `.env.example`, gitignored). Export once per shell before running any command below: `set -a; source <paper2anything 包根>/.env; set +a`. This skill needs **only `MINERU_API_TOKEN`** (PDF parsing). Everything else — figure choice, design, the visual read (Step 6), and the content check (Step 7) — is done by you and a blind subagent, with **no external VLM / LLM API**.
+**Credentials (unified):** all keys live in the package-root `.env` (copy from `.env.example`, gitignored). Export once per shell before running any command below: `set -a; source <paper2anything package root>/.env; set +a`. This skill needs **only `MINERU_API_TOKEN`** (PDF parsing). Everything else — figure choice, design, the visual read (Step 6), and the content check (Step 7) — is done by you and a blind subagent, with **no external VLM / LLM API**.
 
 | Variable | Purpose | Default |
 |---|---|---|
@@ -81,7 +81,7 @@ playwright install chromium
 
 ## Step 1: Parse the PDF
 
-产出统一落在**论文旁** `<pdf目录>/.paper2anything/poster/<stem>/`（同目录多篇论文按 `<stem>` 分篇、互不覆盖）。下面每个步骤是**独立的 Bash 调用、互不共享 shell 变量**，所以每个用到运行目录的命令块都在开头就地从 `$pdf_path` 算出 `RUN_DIR`（和始终可用的 `${SKILL_DIR}` 一样、每次都在；切勿只在某一步 `export` 一次就指望后续步骤还在）。脚本仍在 `${SKILL_DIR}/scripts`。
+All artifacts land **next to the paper** in `<pdf dir>/.paper2anything/poster/<stem>/` (multiple papers in the same directory are split by `<stem>` and never overwrite each other). Each step below is an **independent Bash call that shares no shell variables with the others**, so every command block that needs the run directory recomputes `RUN_DIR` from `$pdf_path` right at its top (just like the always-available `${SKILL_DIR}` — re-set it every time; never `export` it once in one step and expect it to survive into later steps). The scripts still live in `${SKILL_DIR}/scripts`.
 
 ```bash
 RUN_DIR="$(dirname "$pdf_path")/.paper2anything/poster/$(basename "${pdf_path%.*}")"
@@ -437,20 +437,20 @@ When approved, report the final `poster.png` from the run directory (`outline.po
 
 ## Step 9: Collect the deliverable next to the PDF
 
-成品默认埋在 `.paper2anything/poster/<stem>/` 里不好找。定稿后把它复制一份到**与 PDF 同级**的
-`<stem>_poster/` 目录（`.paper2anything` 内副本保留不动），让用户在论文旁直接打开：
+By default the deliverable is buried in `.paper2anything/poster/<stem>/` and hard to find. Once finalized, copy it to a
+`<stem>_poster/` directory **alongside the PDF** (the copy inside `.paper2anything` stays untouched) so the user can open it right next to the paper:
 
 ```bash
 pdf_path="/path/to/paper.pdf"
-RUN_DIR="$(dirname "$pdf_path")/.paper2anything/poster/$(basename "${pdf_path%.*}")"   # 若 Step 2 改了 output_dir，则取你实际运行目录
-DEST="${pdf_path%.*}_poster"          # 与 PDF 同目录、同名 + _poster 后缀
-i=2; while [ -e "$DEST" ]; do DEST="${pdf_path%.*}_poster_v$i"; i=$((i+1)); done   # 重名则追加 _v2、_v3
+RUN_DIR="$(dirname "$pdf_path")/.paper2anything/poster/$(basename "${pdf_path%.*}")"   # if Step 2 changed output_dir, use your actual run directory
+DEST="${pdf_path%.*}_poster"          # same directory as the PDF, same name + _poster suffix
+i=2; while [ -e "$DEST" ]; do DEST="${pdf_path%.*}_poster_v$i"; i=$((i+1)); done   # on name collision, append _v2, _v3
 mkdir -p "$DEST"
 cp "$RUN_DIR/poster.png" "$RUN_DIR/poster.html" "$DEST/"
-[ -d "$RUN_DIR/images" ] && cp -r "$RUN_DIR/images" "$DEST/"   # 图按 images/<名> 引用，一并带上
+[ -d "$RUN_DIR/images" ] && cp -r "$RUN_DIR/images" "$DEST/"   # figures are referenced as images/<name>, so bring them along
 ```
 
-`poster.png`、`poster.html` 与 `images/`（poster.html 按 `images/<名>` 引用图）放进 `<stem>_poster/` 子目录；`<stem>_poster/poster.png` 即最终海报。
+Put `poster.png`, `poster.html`, and `images/` (poster.html references figures as `images/<name>`) into the `<stem>_poster/` subdirectory; `<stem>_poster/poster.png` is the final poster.
 
 ---
 
@@ -467,7 +467,7 @@ cp "$RUN_DIR/poster.png" "$RUN_DIR/poster.html" "$DEST/"
     "venue": "AAAI poster session",
     "author_policy": "parsed",
     "output_target": "html_png",
-    "output_dir": "<pdf目录>/.paper2anything/poster/<stem>",
+    "output_dir": "<pdf dir>/.paper2anything/poster/<stem>",
     "visual_policy": "original_figures_or_text"
   },
   "color_scheme": {

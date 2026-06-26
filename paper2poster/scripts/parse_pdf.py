@@ -18,7 +18,7 @@ import time
 import zipfile
 import io
 
-import _env  # noqa: F401  # 统一加载包根 .env（凭据）
+import _env  # noqa: F401  # load the package-root .env (credentials)
 
 
 # ================================================================
@@ -39,9 +39,10 @@ def extract_with_mineru(pdf_path: str, output_dir: str, token: str = None):
     """
     import requests
 
-    # 强制无代理直连 mineru.net / 阿里云 OSS。env 里的 ALL_PROXY=socks5h 会让 requests 走
-    # SOCKS（无 pysocks 即报错）；而 proxies={"http":None} 会被 requests 的 merge_setting 当作
-    # None 键剥掉、压不住 all_proxy —— 必须用 trust_env=False 的 Session 才真正绕过。
+    # Force a proxy-free direct connection to mineru.net / Aliyun OSS. An ALL_PROXY=socks5h in the
+    # env would make requests go through SOCKS (which errors without pysocks); and
+    # proxies={"http":None} gets stripped as a None key by requests' merge_setting and fails to
+    # suppress all_proxy — only a Session with trust_env=False truly bypasses it.
     session = requests.Session()
     session.trust_env = False
     session.proxies = {"http": None, "https": None}
@@ -140,7 +141,7 @@ def extract_with_mineru(pdf_path: str, output_dir: str, token: str = None):
 
     print(f"  Downloading results...")
     backoff = 2.0
-    for attempt in range(1, 4):  # .cn CDN 偶发 SSL EOF，指数退避重试
+    for attempt in range(1, 4):  # the .cn CDN occasionally throws SSL EOF; exponential-backoff retry
         try:
             resp = session.get(zip_url, timeout=120)
             resp.raise_for_status()
@@ -176,23 +177,24 @@ def extract_with_mineru(pdf_path: str, output_dir: str, token: str = None):
                 with open(dest, "wb") as f:
                     f.write(zf.read(name))
             elif lower.endswith("content_list_v2.json"):
-                # MinerU v2 content list：list[页][typed block]，block.content 为含
-                # title_content/paragraph_content/level 的 dict，存成 mineru_raw.json 供
-                # auto_outline.build_digest 消费。
-                # 只认 v2——zip 内其它 .json（middle/model/v1 content_list）对 poster digest 无用。
+                # MinerU v2 content list: list[page][typed block], where block.content is a dict
+                # holding title_content/paragraph_content/level; saved as mineru_raw.json for
+                # auto_outline.build_digest to consume.
+                # Only v2 is used — the other .json files in the zip (middle/model/v1 content_list) are useless for the poster digest.
                 json_path = os.path.join(output_dir, "mineru_raw.json")
                 with open(json_path, "wb") as f:
                     f.write(zf.read(name))
             elif lower.endswith("layout.json"):
-                # layout.json：每图/表 bbox 的可靠来源，供 _recrop_inplace 从 300dpi 整页
-                # 重裁清晰图（content_list 的 bbox 坐标系不一致，不用）。
+                # layout.json: the reliable source of each figure/table bbox, used by _recrop_inplace to
+                # re-crop sharp images from the 300dpi full page (content_list's bbox coordinate system is inconsistent, so it is not used).
                 layout_path = os.path.join(output_dir, "layout.json")
                 with open(layout_path, "wb") as f:
                     f.write(zf.read(name))
 
-    # 图像清晰度修复：MinerU 抽出图为降采样（偏糊）。按 layout.json 的 bbox 从 pdftoppm
-    # 300dpi 整页渲染里原地重裁，覆盖同名抽出图（保持 figures/<basename> 路径不变，下游
-    # auto_outline/collect_figures 引用 schema 不动）。无 layout 或 pdftoppm 不可用则整体跳过。
+    # Image-sharpness fix: MinerU's extracted figures are downsampled (blurry). Using the bboxes in
+    # layout.json, re-crop in place from a pdftoppm 300dpi full-page render, overwriting the same-named
+    # extracted figure (keeping the figures/<basename> path unchanged, so the downstream
+    # auto_outline/collect_figures reference schema stays intact). Skipped entirely if there is no layout or pdftoppm is unavailable.
     _recrop_inplace(pdf_path, output_dir)
 
     return md_text
@@ -203,7 +205,7 @@ def extract_with_mineru(pdf_path: str, output_dir: str, token: str = None):
 # ================================================================
 
 def _load_layout(out_dir):
-    """读 out_dir/layout.json（每图/表 bbox 的可靠来源）。找不到则返回 None。"""
+    """Read out_dir/layout.json (the reliable source of each figure/table bbox). Returns None if not found."""
     from pathlib import Path
     p = Path(out_dir) / "layout.json"
     if not p.exists():
@@ -218,7 +220,7 @@ def _load_layout(out_dir):
 
 
 def _bbox_pools(layout):
-    """按 reading order 预聚合各页 image/chart/table 块 bbox（不排序，与 v2 元素序对齐）。"""
+    """Pre-aggregate each page's image/chart/table block bboxes in reading order (unsorted, aligned with the v2 element order)."""
     pools = {"image": {}, "chart": {}, "table": {}}
     for pi, page in enumerate(layout.get("pdf_info", [])):
         for blk in page.get("para_blocks", []):
@@ -229,14 +231,14 @@ def _bbox_pools(layout):
 
 
 def _norm_bbox(b, layout, pi):
-    """[x0,y0,x1,y1] 绝对像素(top-origin) → [x,y,w,h] (0..1)。"""
+    """[x0,y0,x1,y1] absolute pixels (top-origin) → [x,y,w,h] (0..1)."""
     W, H = layout["pdf_info"][pi]["page_size"]
     x0, y0, x1, y1 = b
     return [x0 / float(W), y0 / float(H), (x1 - x0) / float(W), (y1 - y0) / float(H)]
 
 
 def _render_pages(pdf_path, pages_dir, dpi=300):
-    """整页 300dpi 渲染到 pages/page-NN.png，-hide-annotations 去超链接框。失败返回 False。"""
+    """Render full pages at 300dpi to pages/page-NN.png; -hide-annotations removes hyperlink boxes. Returns False on failure."""
     from pathlib import Path
     Path(pages_dir).mkdir(parents=True, exist_ok=True)
     try:
@@ -248,7 +250,7 @@ def _render_pages(pdf_path, pages_dir, dpi=300):
 
 
 def _crop_from_page(pages_dir, page_no, bbox, out_path, pad=0.005):
-    """从 pages/page-NN.png 按归一化 bbox(+pad) 裁出高清图到 out_path。"""
+    """Crop a hi-res image from pages/page-NN.png by the normalized bbox (+pad) into out_path."""
     from pathlib import Path
     from PIL import Image
     cands = (list(Path(pages_dir).glob(f"page-{page_no}.png"))
@@ -271,15 +273,15 @@ def _crop_from_page(pages_dir, page_no, bbox, out_path, pad=0.005):
 
 
 def _recrop_inplace(pdf_path, out_dir):
-    """按 reading order 把 MinerU 抽出图替换为 300dpi 整页重裁的高清图（原地覆盖同名文件）。
+    """Replace MinerU's extracted figures, in reading order, with hi-res crops re-cut from the 300dpi full page (overwriting the same-named file in place).
 
-    读 mineru_raw.json(v2：list[页][block]) 与 layout.json，渲染整页到 out_dir/pages/，
-    遍历 v2 每页 block，遇 image/chart（表图 table）即从对应 pools[kind][page_idx] 顺序弹一个
-    bbox（consumed 计数器），图文件名取自该 block
-    content.image_source.path 的 basename，裁出的高清图**原地覆盖该 basename 实际所在文件**
-    （extract_with_mineru 按文件名是否含 "table" 分流到 figures/ 或 tables/，而 MinerU v2 图名
-    是内容 hash 无 "table" 字样 → 表图实际也落 figures/；故覆盖位置以 basename 实际所在为准，
-    不按块类型假设目录）。配不到 bbox / 裁剪失败则保留原图；无 layout 或 pdftoppm 不可用则跳过。
+    Reads mineru_raw.json (v2: list[page][block]) and layout.json, renders full pages to out_dir/pages/,
+    walks each v2 page's blocks, and on an image/chart (or table figure) pops one bbox in order from the
+    corresponding pools[kind][page_idx] (consumed counter). The figure's file name comes from that block's
+    content.image_source.path basename, and the hi-res crop **overwrites whatever file that basename actually lives in**
+    (extract_with_mineru routes by whether the file name contains "table" into figures/ or tables/, but MinerU v2 figure names
+    are content hashes with no "table" in them → table figures actually land in figures/ too; so the overwrite location follows
+    where the basename actually is, not an assumption from the block type). If no bbox matches / the crop fails, the original is kept; skipped if there is no layout or pdftoppm is unavailable.
     """
     from pathlib import Path
 
@@ -292,16 +294,16 @@ def _recrop_inplace(pdf_path, out_dir):
     except Exception:
         return
     if not isinstance(raw, list):
-        return  # 重裁只支持 v2 的 list[页][block] 形态
+        return  # re-crop only supports the v2 list[page][block] shape
 
     layout = _load_layout(out_dir)
     if layout is None:
-        print("  [recrop] 无 layout.json，跳过高清重裁（保留 MinerU 抽出图）")
+        print("  [recrop] no layout.json; skipping hi-res re-crop (keeping MinerU's extracted figures)")
         return
 
     pages_dir = out_dir / "pages"
     if not _render_pages(Path(pdf_path), pages_dir):
-        print("  [recrop] pdftoppm 不可用，跳过高清重裁（保留 MinerU 抽出图）")
+        print("  [recrop] pdftoppm unavailable; skipping hi-res re-crop (keeping MinerU's extracted figures)")
         return
 
     figures_dir = out_dir / "figures"
@@ -326,27 +328,27 @@ def _recrop_inplace(pdf_path, out_dir):
             if not path:
                 continue
             basename = os.path.basename(path)
-            # 覆盖位置以 basename 实际落点为准：extract_with_mineru 按文件名含 "table" 分流，
-            # 但 MinerU v2 图名是 hash → 表图通常也在 figures/。两处都查，按真实落点覆盖。
+            # The overwrite location follows where the basename actually lands: extract_with_mineru routes by
+            # whether the file name contains "table", but MinerU v2 figure names are hashes → table figures usually live in figures/ too. Check both and overwrite at the real location.
             dest = None
             for d in (figures_dir, tables_dir):
                 if (d / basename).exists():
                     dest = d / basename
                     break
             if dest is None:
-                continue  # 抽出图未落地（已被前面 <noise> 逻辑跳过等），不强裁
+                continue  # the extracted figure never landed (e.g. skipped earlier by the <noise> logic); don't force a crop
 
             n_try += 1
             avail = pools.get(kind, {}).get(page_idx, [])
             i = consumed.get((kind, page_idx), 0)
             if i >= len(avail):
-                continue  # 该页该类 bbox 已用尽 / layout 未给，保留原图
+                continue  # this page's bboxes of this kind are exhausted / not given by layout; keep the original
             consumed[(kind, page_idx)] = i + 1
             if _crop_from_page(pages_dir, page_idx + 1,
                                _norm_bbox(avail[i], layout, page_idx), dest):
                 n_ok += 1
 
-    print(f"  [recrop] 高清重裁覆盖 {n_ok}/{n_try} 张图（300dpi 整页 + layout bbox）")
+    print(f"  [recrop] hi-res re-crop overwrote {n_ok}/{n_try} figures (300dpi full page + layout bbox)")
 
 
 # ================================================================

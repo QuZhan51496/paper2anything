@@ -1,23 +1,23 @@
 #!/usr/bin/env python3
-"""poster 几何闸门自检 —— SKILL.md Step 5a 里**结构无关**的三项硬指标，量化好供你判断。
+"""Poster geometry-gate self-check — the three **structure-agnostic** hard metrics from SKILL.md Step 5a, quantified for your judgment.
 
-用法：
+Usage:
     python geom_check.py <poster.html> <width_px> <height_px>
 
-检查（全部结构无关、不依赖你的版式类名）：
-  1. 无溢出：内容右/下缘不超过画布（scrollWidth/Height 与真·内容前沿取大者）。
-  2. 填充率 ≥ 0.95：内容前沿按**实际带文字的元素与 <img>** 的最低底边算（绝对坐标），
-     不取某个容器盒——固定高度的 `.poster`/整页背景会把溢出或留白掩盖成"刚好填满"。
-     （纵轴方向；溢出时该值会 >1，此时以 overflow 字段为准——verdict 已据溢出判 FAIL。）
-  3. 无图变形：每张 <img> 的 rendered 宽高比与 natural 宽高比之差 ≤ 0.02。
-  4. 无裁剪：overflow 非 visible 的面板内容未被切掉（scrollHeight ≤ clientHeight）。
-     flex 等高列会把内容压短、再被 overflow:hidden 切掉，使溢出 / 填充率**假性通过**——
-     必须单独查每个面板的 scrollHeight，否则一个内容被裁的海报会被误判为 PASS。
+Checks (all structure-agnostic, independent of your layout class names):
+  1. No overflow: the content's right/bottom edge does not exceed the canvas (the larger of scrollWidth/Height and the true content frontier).
+  2. Fill ratio ≥ 0.95: the content frontier is computed from the lowest bottom edge of the **elements that actually carry text and the <img>s** (absolute coordinates),
+     not from some container box — a fixed-height `.poster` / full-page background would mask overflow or whitespace as "just filled".
+     (Vertical axis; on overflow this value goes >1, in which case the overflow field governs — verdict has already been judged FAIL from the overflow.)
+  3. No distorted figures: each <img>'s rendered aspect ratio differs from its natural aspect ratio by ≤ 0.02.
+  4. No clipping: a panel whose overflow is not visible has not had its content cut off (scrollHeight ≤ clientHeight).
+     flex equal-height columns can shrink content and then have it cut by overflow:hidden, making overflow / fill ratio **falsely pass** —
+     each panel's scrollHeight must be checked individually, otherwise a poster with clipped content would be misjudged as PASS.
 
-输出 JSON（verdict + 各项数值）；退出码 0=过、1=不过。
+Outputs JSON (verdict + each metric); exit code 0=pass, 1=fail.
 
-**per-panel 内部留白**（panel.bottom−lastChild、子元素间隙）依赖你自己的版式结构，
-不在本脚本内——那部分按 Step 5a 看 poster.png 自己判断、对自己的面板选择器量。
+**Per-panel internal whitespace** (panel.bottom−lastChild, gaps between children) depends on your own layout structure
+and is not in this script — judge that part yourself per Step 5a by looking at poster.png and measuring against your own panel selectors.
 """
 import json
 import sys
@@ -35,8 +35,8 @@ _JS = r"""
     }
     return false;
   };
-  // 内容前沿：只看真正承载内容的元素（带直接文字的元素 + <img>），
-  // 跳过纯布局容器 / 整页背景（它们没有直接文字、会一路撑到画布底误导填充率）。
+  // Content frontier: only look at elements that truly carry content (elements with direct text + <img>),
+  // skip pure layout containers / full-page backgrounds (they have no direct text and would stretch to the canvas bottom, misleading the fill ratio).
   let maxB = 0, maxR = 0;
   for (const el of document.querySelectorAll('*')) {
     const r = el.getBoundingClientRect();
@@ -47,10 +47,10 @@ _JS = r"""
     maxB = Math.max(maxB, r.bottom + window.scrollY);
     maxR = Math.max(maxR, r.right + window.scrollX);
   }
-  // 形变量的是图片**内容盒**（getBoundingClientRect 减 border/padding，取小数精度），不是
-  // border-box——非方形图加 CSS 边框时 border-box 宽高比会偏离真实图片比（边框在窄边占比更大），
-  // 让 height:auto 的好图被误判形变 FAIL。减边框 + 用小数（避免 clientHeight 整数取整对极扁图的
-  // 误差），等比图恒过、真形变（强行设死宽高）仍抓。
+  // Distortion is measured on the image's **content box** (getBoundingClientRect minus border/padding, at fractional precision), not the
+  // border-box — for a non-square image with a CSS border the border-box aspect ratio drifts from the real image ratio (the border takes a larger share on the narrow side),
+  // making a good height:auto image be misjudged as distorted FAIL. Subtracting the border + using fractions (to avoid clientHeight's integer rounding error on very flat images)
+  // keeps proportional images always passing while still catching real distortion (a hard-coded width+height).
   const px = (v) => parseFloat(v) || 0;
   const imgs = [...document.querySelectorAll('img')].map((im) => {
     const r = im.getBoundingClientRect();
@@ -67,8 +67,8 @@ _JS = r"""
       ratioErr: ok ? +Math.abs(ren - nat).toFixed(3) : null,
     };
   });
-  // 裁剪检测：overflow 非 visible 的面板若 scrollHeight>clientHeight，内容已被切掉。
-  // getBoundingClientRect 测的是被裁 / 压缩后的盒子，会让溢出与填充率假性通过——单独查。
+  // Clip detection: for a panel whose overflow is not visible, if scrollHeight>clientHeight the content has been cut off.
+  // getBoundingClientRect measures the clipped / compressed box, which would let overflow and fill ratio falsely pass — check it separately.
   const clipped = [];
   for (const el of document.querySelectorAll('*')) {
     if (el === document.body || el === document.documentElement) continue;
@@ -99,7 +99,7 @@ _JS = r"""
 
 def main() -> int:
     if len(sys.argv) != 4:
-        print("用法：geom_check.py <poster.html> <width_px> <height_px>", file=sys.stderr)
+        print("Usage: geom_check.py <poster.html> <width_px> <height_px>", file=sys.stderr)
         return 2
     html, W, H = sys.argv[1], int(sys.argv[2]), int(sys.argv[3])
     url = Path(html).resolve().as_uri()
