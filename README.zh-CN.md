@@ -13,7 +13,6 @@
 
 <div align="center">
 <img src="assets/marquee.webp" alt="paper2anything 真实产物走马灯——幻灯片、海报、项目主页、小红书与公众号封面" width="100%" />
-<sub>↑ 全部由 paper2anything 生成</sub>
 </div>
 
 把一篇学术论文 PDF 转成任意一种宣传产物的 skills 包，覆盖论文传播的主要形态：
