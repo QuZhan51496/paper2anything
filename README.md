@@ -5,7 +5,7 @@
 
 # paper2anything
 
-[![Claude Code Skill](https://img.shields.io/badge/Claude_Code-Skill-blue?logo=anthropic&logoColor=white)](https://docs.anthropic.com/en/docs/claude-code) [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Claude Code Skill](https://img.shields.io/badge/Claude_Code-Skill-blue?logo=anthropic&logoColor=white)](https://docs.anthropic.com/en/docs/claude-code) [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
 **English** | [简体中文](README.zh-CN.md)
 
@@ -153,7 +153,7 @@ paper2anything/
 ├── environment.yml          # python environment
 ├── .env.example             # credentials template (copy to .env and fill in)
 ├── .gitignore               # ignores .env / __pycache__ etc.
-├── LICENSE                  # MIT
+├── LICENSE                  # Apache-2.0
 ├── README.md                # this file (English, default)
 ├── README.zh-CN.md          # Chinese version
 ├── tools/                   # install scripts

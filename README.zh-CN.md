@@ -5,7 +5,7 @@
 
 # paper2anything
 
-[![Claude Code Skill](https://img.shields.io/badge/Claude_Code-Skill-blue?logo=anthropic&logoColor=white)](https://docs.anthropic.com/en/docs/claude-code) [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Claude Code Skill](https://img.shields.io/badge/Claude_Code-Skill-blue?logo=anthropic&logoColor=white)](https://docs.anthropic.com/en/docs/claude-code) [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
 [English](README.md) | **简体中文**
 
@@ -153,7 +153,7 @@ paper2anything/
 ├── environment.yml          # python 环境
 ├── .env.example             # 凭据模板（复制为 .env 填写）
 ├── .gitignore               # 忽略 .env / __pycache__ 等
-├── LICENSE                  # MIT
+├── LICENSE                  # Apache-2.0
 ├── README.md                # 英文版（默认）
 ├── README.zh-CN.md          # 中文版（本文件）
 ├── tools/                   # 安装脚本
