@@ -1,23 +1,51 @@
 # Design Style
 
-The visual decision guide for you in Stage 3 when expanding `slide_outline.json` into `slide_spec.json`. **Core rule: this file does not restate the official pptx skill's design guide; it only adds the special cases and trade-offs for the paper scenario**.
+The visual decision guide for you in Stage 3 when expanding `slide_outline.json` into `slide_spec.json`. This file
+is **self-contained**: the general deck-design fundamentals (palettes, fonts, layout, spacing, and the "Avoid"
+taboos) are all below, followed by the special cases and trade-offs **unique to the paper scenario**.
 
-## Must-read: the official pptx skill's design guide
+## Design fundamentals
 
-Open and read through the official pptx skill's `SKILL.md` (for the absolute path and the `find ~/.claude` fallback, see
-[SKILL.md](../SKILL.md#where-to-look-when-stuck)), focusing on the "Design Ideas" section, which contains:
+**Don't create boring slides.** Plain bullets on a white background won't impress anyone. Before choosing per-slide
+content, settle four things:
 
-- 10 palettes (named palettes, each with primary/secondary/accent)
-- font pairings (header + body)
-- 6 layout options (two-column, icon rows, image-half-bleed, stat callout, grid 2x2, timeline) — the official skill's layout inspiration; the legal values of this skill's `slide_spec.json/layout_kind` are governed by [schemas.md](schemas.md)
-- spacing, font size, and alignment rules
-- the "Avoid (Common Mistakes)" section — especially the **NEVER use accent lines under titles**
-  one, which is a typical fingerprint of AI-generated decks
+- **Pick a bold, content-informed color palette**: it should feel designed for THIS paper. If swapping your colors
+  into a completely different presentation would still "work", you haven't made specific enough choices. (The 10
+  palettes below are inspiration; matching one to the paper's topic is in "Matching the palette to the paper topic".)
+- **Dominance over equality**: one color dominates (60–70% visual weight), with 1–2 supporting tones and one sharp
+  accent. Never give all colors equal weight.
+- **Dark/light contrast**: dark backgrounds for title + conclusion slides, light for content (the "sandwich"
+  structure, §5). Or commit to dark throughout for a premium feel.
+- **Commit to a visual motif**: pick ONE distinctive element and repeat it across every slide — rounded image
+  frames, icons in colored circles, thick single-side borders.
+
+**Every slide needs a visual element** (image, chart, icon, or shape) — text-only slides are forgettable; this is a
+hard rule for a paper deck (§4). Layout options to draw from: two-column (text left, illustration right) · icon +
+text rows (icon in a colored circle, bold header, description below) · 2×2 / 2×3 grid · half-bleed image with
+content overlay · large stat callouts (big 60–72pt numbers with small labels) · comparison columns. These are
+design ideas to draw from; the legal values of `slide_spec.json/layout_kind` are governed by
+[schemas.md](schemas.md) (anything not in the enum is composed freely via element x/y/w/h).
+
+**Type sizes**: slide title ≥36pt bold · section header 20–24pt bold · body ≥16pt (≤14pt is unreadable from the back rows, see §4) · captions 10–12pt muted.
+**Spacing**: ≥0.5" margins · 0.3–0.5" between content blocks · leave breathing room, don't fill every inch.
+
+### Avoid (common mistakes — taboos)
+
+- **Don't repeat the same layout** — vary columns, cards, and callouts across slides
+- **Don't center body text** — left-align paragraphs and lists; center only titles
+- **Don't skimp on size contrast** — titles need 36pt+ to stand out from 16–18pt body
+- **Don't default to blue** — pick colors that reflect the specific paper topic
+- **Don't mix spacing randomly** — choose 0.3" or 0.5" gaps and use them consistently
+- **Don't style one slide and leave the rest plain** — commit fully, or keep it simple throughout
+- **Don't create text-only slides** — add images, icons, charts, or visual elements
+- **Don't forget text-box padding** — when aligning lines or shapes with text edges, set `margin: 0` on the text box or offset the shape to account for padding
+- **Don't use low-contrast elements** — icons AND text need strong contrast against the background
+- **NEVER use accent lines under titles** — a hallmark of AI-generated decks; use whitespace or background color instead
 
 For the PptxGenJS API, pitfalls, and **icon generation** (react-icons → SVG → sharp → base64), see this repo's
 copy [pptxgenjs.md](pptxgenjs.md) — when writing a spec and choosing icons, consult its "Icons" section (which includes a table of high-frequency academic icon names).
 
-Below only adds the rules **unique to the paper scenario**.
+Below adds the rules **unique to the paper scenario**.
 
 ---
 
@@ -85,7 +113,7 @@ The 4 items below are the **highest-priority** hard constraints to execute when 
 
 **All `role: "title"` text elements on non-title-slide / non-conclusion-class (including qna) slides must use the same style** — `fontSize`, `fontFace`, `color`, `x`, `y`, `w`, `h`, `bold` are all identical.
 
-**The concrete values are chosen by you in Stage 3 on your own according to the paper / theme / average title length** (fontSize anywhere in the 28-40pt range, y anywhere within 0.3-0.5), **but once chosen the entire deck is strictly consistent**: whatever s02 uses, s03 / s04 / s05 / ... / s11 all use the same set of values.
+**The concrete values are chosen by you in Stage 3 on your own according to the paper / theme / average title length** (fontSize anywhere in the 36-40pt range, y anywhere within 0.3-0.5), **but once chosen the entire deck is strictly consistent**: whatever s02 uses, s03 / s04 / s05 / ... / s11 all use the same set of values.
 
 **Implementation point**: when writing the subtitle of the first non-title slide, fix a style dict (e.g. `{"fontFace": "Georgia", "fontSize": 32, "color": "<theme.primary>", "x": 0.5, "y": 0.4, "w": 9.0, "h": 0.9, "bold": true}`), and for every subsequent non-title/conclusion slide directly **reuse the fields of the same dict**, don't estimate each one separately.
 
@@ -279,7 +307,7 @@ Don't set hard limits like "≤ N words per page / ≤ N words per bullet". Text
   measure). Only a very short list of ≤2 items uses a single multi-line element. After the default separation, whitespace / overflow can
   be adjusted directly with the 3 levers (especially lever 2, adjusting bullet spacing), with no need for ad-hoc rearranging
 - **Every page must have a visual element**: at least one of figure / table / icon / chart / meaningful shape,
-  no text-only pages (the official pptx skill's "Don't create text-only slides"). First decide how much the visual
+  no text-only pages (the "Don't create text-only slides" taboo above). First decide how much the visual
   occupies, then fill the remaining space with text until it's substantial
 - One thing still firmly held: **a bullet is a distilled point, not a transplant of the paper's abstract** — "short" is judged by "whether it is
   one clear single point", not by counting words
@@ -292,7 +320,7 @@ the title/conclusion slide just uses a `shape` to full-screen fill the primary c
 
 ### 6. Things to avoid (be especially wary in a paper deck)
 
-- ❌ Adding horizontal line decoration under a title (a typical AI fingerprint, the official pptx skill already warns "NEVER use accent lines under titles")
+- ❌ Adding horizontal line decoration under a title (a typical AI fingerprint — see the "Avoid" taboo "NEVER use accent lines under titles" above)
 - ❌ Writing the paper title in the footer of every slide (repetitive noise; writing it once on the title slide is enough)
 - ❌ Copying a whole page of formulas directly (can't be read clearly)
 - ❌ A purely ceremonial slide like "Thanks for listening" (takes up space, the conclusion already wrapped up)
@@ -301,8 +329,8 @@ the title/conclusion slide just uses a `shape` to full-screen fill the primary c
 
 ## Visual Subagent Prompt for QA
 
-When going through [the pptx skill's QA section](../SKILL.md#qa), **use the official prompt template directly**,
-don't rewrite it yourself. For a paper deck, beyond the official template, **add two extra paragraphs** of additional requirements:
+When going through the [QA loop](qa.md), **use the base visual-subagent prompt template in [qa.md](qa.md) §B.2 directly**,
+don't rewrite it yourself. For a paper deck, beyond the base template, **add two extra paragraphs** of additional requirements:
 
 > Which **slides** the prompt's "Read and analyze these images" lists are decided by the re-check narrowing rule in step 5 of
 > "Principles for Fixing QA Issues" below (round 1 all, re-check rounds list only
@@ -363,14 +391,13 @@ After the subagent reports issues back:
    must propagate to the whole deck; what gets narrowed is the expensive per-page visual review by the subagent below, not the render) → **QA again**,
    requiring the subagent to re-report the five items of added paragraph B, verifying the whitespace is really gone and the leader markers are really aligned. **"Fix and hand off" is not allowed**.
 
-   **The scope of re-check rounds is narrowed per the official pptx skill's Verification Loop** ([the QA section](../SKILL.md#qa),
-   the official wording "Re-verify affected slides … Repeat until a full pass reveals no
-   new issues") — the biggest token waste of multi-round visual QA is re-feeding the untouched pages to the subagent page by page
-   every round:
+   **The scope of re-check rounds is narrowed per the [Verification Loop](qa.md)** ("Re-verify affected slides …
+   Repeat until a full pass reveals no new issues") — the biggest token waste of multi-round visual QA is
+   re-feeding the untouched pages to the subagent page by page every round:
 
    - **Round 1**: full deck page by page (a single subagent, "Read and analyze these images" lists all slide jpgs)
    - **From round 2 on (re-check)**: the subagent only looks at = the pages flagged in the previous round ∪ the pages whose spec actually
      changed this round; the images list lists only these, the untouched pages are **not re-fed**
    - **The last round before convergence**: a full deck full pass must be done once (a single subagent goes through all pages) — "one fix
-     often introduces a new problem", the official requirement is that it only passes when a full pass has no new issues
+     often introduces a new problem", and it only passes when a full pass reveals no new issues
    - The hard-issue determination, the five items of added paragraph B, the ban on marking soft — **all unchanged**, only "which pages to look at each round" is narrowed

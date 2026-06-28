@@ -2,8 +2,8 @@
 render_pptx.py — Stage 4: slide_spec.json → output.pptx bridge
 
 Translate the structured spec into a PptxGenJS program (`build.js`) and run it with node to produce the .pptx.
-Why not use python-pptx directly? The official pptx skill's "from-scratch generation" path is exactly PptxGenJS,
-and all the visual-design pitfall docs are based on it; this skill going with PptxGenJS amounts to directly reusing that experience.
+Why PptxGenJS rather than python-pptx? PptxGenJS is the more capable from-scratch generation path for rich
+visual decks, and this skill's pitfall/design docs (references/pptxgenjs.md) are written against it.
 
 Dependencies:
   - node on PATH

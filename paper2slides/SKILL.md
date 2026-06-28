@@ -1,14 +1,16 @@
 ---
 name: paper2slides
-description: "Turn an academic paper PDF into a presentation deck (.pptx) end-to-end. Use this skill whenever the user wants to \"make slides from a paper\", \"generate a deck from this PDF\", \"make a PPT from this paper\", \"generate slides from a PDF document\", \"make a deck from a research paper\", or supplies a research paper PDF and asks for a .pptx out. Trigger even when the user only says \"deck this paper\" or \"summarize as slides\". This skill is the orchestrator for academic paper to deck flows; invoke it instead of going to `pptx` or `pdf` skills directly when the upstream is a research paper."
+description: "Turn an academic paper PDF into a presentation deck (.pptx) end-to-end. Use this skill whenever the user wants to \"make slides from a paper\", \"generate a deck from this PDF\", \"make a PPT from this paper\", \"generate slides from a PDF document\", \"make a deck from a research paper\", or supplies a research paper PDF and asks for a .pptx out. Trigger even when the user only says \"deck this paper\" or \"summarize as slides\". This is the dedicated, self-contained skill for academic-paper-to-deck flows."
 allowed-tools: Bash, Read, Write, Glob, Grep, Agent, AskUserQuestion
 ---
 
 # paper2slides
 
-Turn an academic paper PDF into a presentation-ready .pptx. This is a conductor skill: it does **not**
-re-implement PDF parsing or PPT rendering itself, but orchestrates a "paper → outline → render"
-pipeline, **calling the capabilities of the official `pdf` skill and `pptx` skill**.
+Turn an academic paper PDF into a presentation-ready .pptx. This is a conductor skill: **you** make the
+editorial and design judgments, while the mechanical steps are handled by this skill's own self-contained
+scripts — PDF parsing via the MinerU cloud API (`scripts/parse_pdf.py`) and .pptx rendering via a PptxGenJS
+bridge (`scripts/render_pptx.py`). It orchestrates a "paper → outline → spec → render → QA" pipeline and
+depends on no other skill.
 
 ## Quick Reference
 
@@ -182,48 +184,39 @@ Only the few classes that need **your judgment / routing** are listed (all techn
 |---|---|
 | Stage 1 section count < 5 or > 15 | you manually add / merge during the Stage 2 check |
 | Stage 5 reports "card bottom half empty / unbalanced columns / bottom whitespace" | **not soft** — fix per the **three-lever model** in `references/design-style.md` "Principles for Fixing QA Issues" (adjust text amount > adjust bullet spacing > adjust image size, stackable), then `--from-stage render` to re-run |
-| user/QA reports "leader markers not aligned with text" | per `references/design-style.md` "Visual-Richness Recommendation A", batch-reset icon_y to the alignment formula + a final self-check, then `--from-stage render` to re-run |
-| skill triggered but the user only wants to "read the PDF" | mis-trigger — send the user to the official `pdf` skill, do not continue with paper2slides |
+| user/QA reports "leader markers not aligned with text" | per `references/design-style.md` "Visual-Richness Recommendations" item A, batch-reset icon_y to the alignment formula + a final self-check, then `--from-stage render` to re-run |
+| skill triggered but the user only wants to "read the PDF" | mis-trigger — tell the user this skill builds a slide deck and ask whether to proceed; do not continue with paper2slides if they only want to read the PDF |
 
 For the full error recovery (Stage 1/4 technical, annotation green box, dpi, figure_ref, etc.) see the
 "Error-Recovery Quick Reference" section of [references/pipeline.md](references/pipeline.md).
 
 ## QA
 
-Apply the official pptx skill's QA Loop directly (the official `SKILL.md` "QA (Required)" section; for absolute
-paths and the `find` fallback see [§Where to Look When Stuck](#where-to-look-when-stuck)) —
-this skill does not restate the protocol. **Read `config.json/visual_qa` first**; the key points:
+Apply the QA loop in [references/qa.md](references/qa.md) (the self-contained "Verification Loop" — content QA
++ visual subagent review). **Read `config.json/visual_qa` first**; the key points:
 
 - **content QA always runs**: `markitdown` checks placeholders / number consistency / bullets not lifted from the abstract / no leftover placeholder in the title.
 - **visual QA runs only when `config.json/visual_qa == true`**: soffice→pdf→jpg→**dispatch a single subagent to batch-review**.
-- After fixing issues, edit `slide_spec.json` then `--from-stage render` to **fully re-render** before QA; **the recheck rounds narrow per the official Verification Loop** — round 1 covers the full deck, from round 2 on look only at the pages flagged last round ∪ the pages changed this round, with a final full pass over the whole deck before convergence.
+- After fixing issues, edit `slide_spec.json` then `--from-stage render` to **fully re-render** before QA; **the recheck rounds narrow per the Verification Loop** — round 1 covers the full deck, from round 2 on look only at the pages flagged last round ∪ the pages changed this round, with a final full pass over the whole deck before convergence.
 - **The final report must state whether visual QA was run**; when skipped, note "visual QA was skipped per config; to change config use `--from-stage configure` then `--from-stage qa`".
 - **Whitespace / unbalanced columns / misaligned leader markers are not soft, they are hard issues that must be fixed** — this is where this skill most often misjudges; don't wave them off as "soft" when reviewing the subagent's report.
 
-For the full A/B protocol, the `qa_log.json` structure, the convention of putting all artifacts under
-`<workdir>/qa/`, etc., see [references/pipeline.md](references/pipeline.md) §Stage 5; for the visual subagent prompt (added paragraphs
-A/B), the three-lever fix model, and the recheck-narrowing details, see the "Visual Subagent Prompt for QA" + "Principles for Fixing QA Issues" sections of
+For the verification loop and the base visual-subagent prompt template, see [references/qa.md](references/qa.md);
+for the full A/B protocol and the `qa_log.json` structure, see [references/pipeline.md](references/pipeline.md) §Stage 5;
+for the visual subagent prompt's two added paragraphs, the three-lever fix model, and the recheck-narrowing details,
+see the "Visual Subagent Prompt for QA" + "Principles for Fixing QA Issues" sections of
 [references/design-style.md](references/design-style.md).
 
 ## Where to Look When Stuck
 
+This skill is self-contained — everything you need is under `references/` in this directory:
+
 | Confusion | Go here |
 |---|---|
-| PDF text/figure/table extraction anomalies | the official **pdf skill** `SKILL.md` (path below) |
-| PPT visual design, color, layout choices | the "Design Ideas" section of the official **pptx skill** `SKILL.md` |
-| PptxGenJS API usage, gotchas, icon generation | [references/pptxgenjs.md](references/pptxgenjs.md) (this repo's copy, includes the academic icon-name table) |
-| QA flow and subagent prompt | the "QA (Required)" section of the official pptx skill `SKILL.md` |
-| Detailed JSON schema fields for each stage's output (including config.json) | `references/schemas.md` |
-| How sections map to slide roles | `references/outline-heuristics.md` |
-| Matching color/layout to the paper's scenario | `references/design-style.md` |
-
-Absolute paths of the official skills (**`~` is the user's home, portable across machines**; if a path below doesn't exist, use
-`find ~/.claude -path '*marketplaces*pptx*'` or `find ~/.claude -path '*marketplaces*pdf*'` to locate it):
-
-```
-~/.claude/plugins/marketplaces/anthropic-agent-skills/skills/pptx/
-~/.claude/plugins/marketplaces/anthropic-agent-skills/skills/pdf/
-```
-
-Reading these two skills is this skill's "foundation course" — when you hit low-level details check them first; this skill only
-provides the **orchestration** and **judgment guidance** for the paper domain.
+| MinerU parsing anomalies (missing figure / garbled text / misaligned table / lost formula) | [references/pipeline.md](references/pipeline.md) §Stage 1 + `scripts/lib/mineru_client.py` (token, `model_version`, zip-download retry) |
+| PPT visual design, color palettes, layout choices, taboos | the "Design fundamentals" + "Avoid" sections of [references/design-style.md](references/design-style.md) |
+| PptxGenJS API usage, gotchas, icon generation | [references/pptxgenjs.md](references/pptxgenjs.md) (includes the academic icon-name table) |
+| QA flow and the visual-subagent prompt | [references/qa.md](references/qa.md) |
+| Detailed JSON schema fields for each stage's output (including config.json) | [references/schemas.md](references/schemas.md) |
+| How sections map to slide roles | [references/outline-heuristics.md](references/outline-heuristics.md) |
+| Matching color/layout to the paper's scenario | [references/design-style.md](references/design-style.md) |

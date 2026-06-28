@@ -234,10 +234,9 @@ saves it to `workdir/render/build.js`, then `node` produces the `.pptx`.
 
 ## Stage 5: QA
 
-**Apply the official pptx skill's QA Loop directly** — not repeated in this file. Read the
-"QA (Required)" section of the official pptx skill `SKILL.md` (for the absolute path and the
-`find ~/.claude` fallback see [SKILL.md](../SKILL.md#where-to-look-when-stuck)). **First read
-`config.json/visual_qa`**, then follow its flow:
+**Apply the Verification Loop in [qa.md](qa.md)** — the deck-QA protocol and the visual-subagent prompt
+template live there in full; this section adds only the paper-pipeline specifics (the `<workdir>/qa/`
+artifact convention and the `qa_log.json` structure). **First read `config.json/visual_qa`**, then follow its flow:
 
 ### A. Content QA — always runs
 
@@ -251,9 +250,9 @@ saves it to `workdir/render/build.js`, then `node` produces the `.pptx`.
 
 3. `soffice --headless --convert-to pdf <workdir>/output.pptx --outdir <workdir>/qa/` →
    `pdftoppm -jpeg -r 150 <workdir>/qa/output.pdf <workdir>/qa/slide` → dispatch **a single** subagent
-   to review multiple pages in batch (aligned with the official template, not one per page), using the
-   official prompt to visually check `<workdir>/qa/slide-*.jpg` (for the subagent prompt + re-check
-   round scope see the end of [design-style.md](design-style.md))
+   to review multiple pages in batch (a single subagent, not one per page), using the visual-subagent
+   prompt template in [qa.md](qa.md) §B.2 to visually check `<workdir>/qa/slide-*.jpg` (for the prompt's two
+   added paragraphs + re-check round scope see the end of [design-style.md](design-style.md))
 
 > When `visual_qa == false`, **the entire section B is skipped** — no PDF/JPG is generated, no subagent
 > is dispatched. This is the user's explicit choice at Stage 0.5 based on "expensive and of limited
@@ -268,7 +267,7 @@ saves it to `workdir/render/build.js`, then `node` produces the `.pptx`.
 
 4. **Fix issues**: change the corresponding field in `slide_spec.json`, **do not edit the .pptx directly**
 5. Re-run Stage 4 (`--from-stage render` for a full re-render) → QA again, until there are no new findings.
-   **For re-check rounds, narrow the subagent scope per the official Verification Loop** (round 1 is full;
+   **For re-check rounds, narrow the subagent scope per the [Verification Loop](qa.md)** (round 1 is full;
    from round 2 on, only review last round's flagged ∪ this round's spec-changed pages; the final round is
    a full pass as a fallback), the criteria are unchanged; for details see the "QA issue-fixing principles"
    step 5 in [design-style.md](design-style.md)

@@ -219,13 +219,13 @@ Field details:
 | `engine` | enum | yes | fixed `"pptxgenjs"` for now; `"template"` will appear later |
 | `template_path` | string\|null | yes | only meaningful when `engine == "template"`; currently fixed `null` |
 | `layout` | enum | yes | `LAYOUT_16x9` / `LAYOUT_16x10` / `LAYOUT_4x3` / `LAYOUT_WIDE`, default `LAYOUT_16x9` |
-| `theme.palette_name` | string | yes | references a named palette from the official pptx skill (e.g. `Midnight Executive`), see [design-style.md](design-style.md) |
+| `theme.palette_name` | string | yes | references a named palette from the table in [design-style.md](design-style.md) (e.g. `Midnight Executive`) |
 | `theme.primary/secondary/accent/background` | hex | yes | 6-digit hex colors, paired with palette_name |
 | `theme.font_header/font_body` | string | yes | see the font-pairing suggestions in [design-style.md](design-style.md) |
 | `slides[].layout_kind` | enum | yes | see below |
 | `slides[].elements` | array | yes | one object per element; five kinds: `text` / `image` / `shape` / `line` / `icon` |
 
-`layout_kind` enum (corresponds to the official pptx skill's layouts + `title` added for the paper scenario):
+`layout_kind` enum (the deck layouts from [design-style.md](design-style.md) + `title` added for the paper scenario):
 
 ```
 title | two_column | icon_rows | image_half_bleed | stat_callout | grid_2x2 | comparison_columns
