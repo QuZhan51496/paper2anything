@@ -181,6 +181,24 @@ paper2anything/
 
 ---
 
+## 贡献者
+
+**[AI4GC Lab](https://ai4gc.org/)** 各 skill 主导设计:
+
+<table>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/melonthrower">
+        <img src="https://github.com/melonthrower.png" width="80" alt="Honghui Sheng"/><br/>
+        <sub><b>Honghui Sheng</b></sub>
+      </a><br/>
+      <sub>paper2poster</sub>
+    </td>
+  </tr>
+</table>
+
+---
+
 ## 致谢
 
 paper2anything 由浙江大学 **[AI4GC Lab](https://ai4gc.org/)** 开发。
