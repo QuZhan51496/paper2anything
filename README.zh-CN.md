@@ -183,6 +183,8 @@ paper2anything/
 
 ## 致谢
 
+paper2anything 由浙江大学 **[AI4GC Lab](https://ai4gc.org/)** 开发。
+
 - 论文 PDF 解析能力由 **[MinerU](https://github.com/opendatalab/MinerU)** 提供。
 - 小红书发布能力由 **[xiaohongshu-mcp](https://github.com/xpzouying/xiaohongshu-mcp)** 提供。
 - 公众号发布与排版能力由 **[md2wechat](https://pypi.org/project/md2wechat/)** 提供。

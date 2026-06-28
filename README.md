@@ -183,6 +183,8 @@ paper2anything/
 
 ## Acknowledgements
 
+paper2anything is developed by the **[AI4GC Lab](https://ai4gc.org/)** at Zhejiang University.
+
 - Paper PDF parsing is powered by **[MinerU](https://github.com/opendatalab/MinerU)**.
 - Xiaohongshu publishing is powered by **[xiaohongshu-mcp](https://github.com/xpzouying/xiaohongshu-mcp)**.
 - WeChat publishing and formatting are powered by **[md2wechat](https://pypi.org/project/md2wechat/)**.
