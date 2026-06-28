@@ -201,6 +201,13 @@ paper2anything/
       </a><br/>
       <sub>paper2html</sub>
     </td>
+    <td align="center">
+      <a href="https://github.com/b7277">
+        <img src="https://github.com/b7277.png" width="80" alt="Xinchen Xu"/><br/>
+        <sub><b>Xinchen Xu</b></sub>
+      </a><br/>
+      <sub>paper2xhs &amp; paper2wechat</sub>
+    </td>
   </tr>
 </table>
 
