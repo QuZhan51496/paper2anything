@@ -12,7 +12,7 @@
 </div>
 
 <div align="center">
-<img src="assets/marquee.gif" alt="paper2anything 真实产物走马灯——幻灯片、海报、项目主页、小红书与公众号封面" width="100%" />
+<img src="assets/marquee.webp" alt="paper2anything 真实产物走马灯——幻灯片、海报、项目主页、小红书与公众号封面" width="100%" />
 <sub>↑ 全部由 paper2anything 生成</sub>
 </div>
 
