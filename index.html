@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>paper2anything — turn one paper into five forms of reach</title>
+<meta name="description" content="paper2anything: 5 Claude Code agent skills that turn an academic paper PDF into slides, a poster, a project page, a Xiaohongshu post or a WeChat article. Say your intent and the matching skill auto-triggers; scripts do the grunt work, the agent designs and writes by hand.">
+<meta property="og:title" content="paper2anything — one paper, five stunning artifacts">
+<meta property="og:description" content="Turn a paper PDF into slides, a poster, a project page, a Xiaohongshu post, and a WeChat article.">
+<meta property="og:type" content="website">
+<link rel="icon" href="images/logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Noto+Sans+SC:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#06070d; --bg-2:#090b15; --bg-3:#0c0f1b;
+  --ink:#f3f5fb; --muted:#a8b0c4; --faint:#7c869c; --faintest:#5e687e;
+  --surface:rgba(255,255,255,.03); --surface-2:rgba(255,255,255,.055);
+  --border:rgba(255,255,255,.09); --border-lit:rgba(255,255,255,.2);
+  --slides:#5b94ff; --poster:#ffb13d; --html:#2dd4ee; --xhs:#ff486b; --wechat:#1ed16f;
+  --r:16px; --r-lg:24px;
+  --maxw:1300px;
+  --shadow:0 2px 6px rgba(0,0,0,.4),0 26px 64px -30px rgba(0,0,0,.9);
+  --font-disp:"Space Grotesk","Noto Sans SC",system-ui,sans-serif;
+  --font-body:"Noto Sans SC","Space Grotesk",-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  --font-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth; overflow-x:clip}
+body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--font-body);
+  line-height:1.7; font-size:16px; -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility; overflow-x:hidden}
+a{color:inherit; text-decoration:none}
+img{display:block; max-width:100%}
+::selection{background:rgba(91,148,255,.32); color:#fff}
+
+/* ===== background fx ===== */
+.bgfx{position:fixed; inset:0; z-index:-2; overflow:hidden; pointer-events:none}
+.blob{position:absolute; border-radius:50%; filter:blur(95px); mix-blend-mode:screen}
+.b1{width:760px;height:760px; left:-200px; top:-260px; background:radial-gradient(circle,#274dff,transparent 65%); opacity:.42; animation:drift1 28s ease-in-out infinite}
+.b2{width:680px;height:680px; right:-220px; top:-140px; background:radial-gradient(circle,#7a2bff,transparent 65%); opacity:.36; animation:drift2 32s ease-in-out infinite}
+.b3{width:560px;height:560px; left:30%; top:42%; background:radial-gradient(circle,#0bb0c9,transparent 66%); opacity:.16; animation:drift3 36s ease-in-out infinite}
+.b4{width:520px;height:520px; right:6%; bottom:-180px; background:radial-gradient(circle,#ff3d6e,transparent 66%); opacity:.12; animation:drift1 40s ease-in-out infinite reverse}
+@keyframes drift1{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(60px,50px) scale(1.12)}}
+@keyframes drift2{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-50px,70px) scale(1.08)}}
+@keyframes drift3{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(40px,-50px) scale(1.15)}}
+.grid-overlay{position:fixed; inset:0; z-index:-2; pointer-events:none;
+  background-image:radial-gradient(rgba(255,255,255,.05) 1px,transparent 1px); background-size:36px 36px;
+  -webkit-mask-image:radial-gradient(120% 75% at 50% 0%,#000 28%,transparent 72%);
+  mask-image:radial-gradient(120% 75% at 50% 0%,#000 28%,transparent 72%); opacity:.45}
+.grain{position:fixed; inset:0; z-index:-1; pointer-events:none; opacity:.035;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+
+/* ===== layout ===== */
+.wrap{max-width:var(--maxw); margin:0 auto; padding:0 26px}
+section{position:relative; padding:112px 0}
+section[id]{scroll-margin-top:78px}
+.eyebrow{font-family:var(--font-mono); font-size:12px; font-weight:500; letter-spacing:.2em;
+  text-transform:uppercase; color:var(--muted); display:inline-flex; align-items:center; gap:10px}
+.eyebrow::before{content:""; width:24px; height:2px; border-radius:2px; background:var(--ac,var(--slides))}
+.herocopy .eyebrow::before{display:none}
+h2{font-family:var(--font-disp); font-weight:700; font-size:clamp(28px,4vw,46px); line-height:1.12;
+  letter-spacing:-.01em; margin:18px 0 16px; text-wrap:balance}
+.lead{color:var(--muted); font-size:clamp(15px,1.5vw,18px); line-height:1.75; margin:0; text-wrap:pretty}
+.kc{font-family:var(--font-mono); color:var(--ink); font-size:.92em}
+.uline{background:linear-gradient(var(--ac),var(--ac)) no-repeat left bottom/100% 2px; padding-bottom:2px}
+
+/* ===== nav ===== */
+nav{position:fixed; top:0; left:0; right:0; z-index:50; transition:.3s ease}
+.navin{max-width:1360px; margin:0 auto; padding:16px 32px; display:flex; align-items:center; justify-content:space-between}
+nav.scrolled{background:rgba(8,9,16,.72); backdrop-filter:blur(16px) saturate(140%); -webkit-backdrop-filter:blur(16px) saturate(140%); border-bottom:1px solid var(--border)}
+nav.scrolled .navin{padding:11px 26px}
+.brand{display:flex; align-items:center; gap:11px; font-family:var(--font-disp); font-weight:700; font-size:18px; letter-spacing:-.01em}
+.brand img{width:30px; height:30px; border-radius:8px}
+.navlinks{display:flex; align-items:center; gap:30px; font-size:14.5px; color:var(--muted)}
+.navlinks a{transition:color .15s} .navlinks a:hover{color:var(--ink)}
+.ghbtn{display:inline-flex; align-items:center; gap:8px; padding:8px 16px; border:1px solid var(--border-lit);
+  border-radius:10px; color:var(--ink); font-weight:500; transition:.18s}
+.ghbtn:hover{background:var(--surface-2); border-color:rgba(255,255,255,.32); transform:translateY(-1px)}
+.langbtn{font-family:var(--font-mono); cursor:pointer; background:var(--surface); color:var(--ink); border:1px solid var(--border-lit); border-radius:10px; padding:7px 12px; font-size:13px; font-weight:600; letter-spacing:.04em; transition:.18s}
+.langbtn:hover{background:var(--surface-2); border-color:rgba(255,255,255,.32); transform:translateY(-1px)}
+@media(max-width:780px){.navlinks a:not(.ghbtn){display:none}}
+
+/* ===== hero ===== */
+.hero{padding:156px 0 88px; text-align:left; position:relative; overflow:hidden}
+.heroin{display:grid; grid-template-columns:1.04fr .96fr; gap:50px; align-items:center}
+.herocopy .cta{justify-content:flex-start}
+.herovis{position:relative; display:flex; align-items:center; justify-content:center; min-width:0}
+.herovis .pglow{position:absolute; inset:-14%; z-index:0; filter:blur(62px); opacity:.78;
+  background:radial-gradient(circle at 44% 48%, rgba(120,170,255,.42), transparent 58%), radial-gradient(circle at 66% 58%, rgba(255,90,120,.28), transparent 60%), radial-gradient(circle at 74% 42%, rgba(45,212,238,.26), transparent 60%)}
+.herovis img{position:relative; z-index:1; width:156%; max-width:none; transform:translateX(-7%); mix-blend-mode:screen;
+  -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 22%,#000 78%,transparent 100%),linear-gradient(180deg,transparent 0,#000 15%,#000 82%,transparent 100%);
+  -webkit-mask-composite:source-in;
+  mask-image:linear-gradient(90deg,transparent 0,#000 22%,#000 78%,transparent 100%),linear-gradient(180deg,transparent 0,#000 15%,#000 82%,transparent 100%);
+  mask-composite:intersect}
+.herostats{display:flex; gap:32px; flex-wrap:wrap; margin-top:36px}
+.hstat b{display:block; font-family:var(--font-disp); font-weight:700; font-size:30px; line-height:1; letter-spacing:-.02em; font-variant-numeric:tabular-nums}
+.hstat span{font-size:12px; color:var(--faint); letter-spacing:.03em}
+.hstat.s1 b{color:var(--slides)}.hstat.s2 b{color:var(--wechat)}.hstat.s3 b{color:var(--poster)}.hstat.s4 b{color:var(--html)}
+.dots{display:inline-flex; gap:6px; vertical-align:middle}
+.dots i{width:7px;height:7px;border-radius:50%; display:block}
+.dots i:nth-child(1){background:var(--slides)}.dots i:nth-child(2){background:var(--html)}
+.dots i:nth-child(3){background:var(--wechat)}.dots i:nth-child(4){background:var(--poster)}.dots i:nth-child(5){background:var(--xhs)}
+.hero h1{font-family:var(--font-disp); font-weight:900; font-size:clamp(38px,5.2vw,70px); line-height:1.04;
+  letter-spacing:-.02em; margin:20px 0 22px; text-wrap:balance}
+.hero h1 .hl{background:linear-gradient(180deg,#fff 30%,#9fb6ff); -webkit-background-clip:text; background-clip:text; color:transparent}
+.hero .sub{color:var(--muted); font-size:clamp(16px,1.7vw,19px); line-height:1.72; max-width:44ch; margin:0 0 16px}
+.hero .sub b{color:var(--ink); font-weight:500}
+.claimline{font-family:var(--font-mono); font-size:12px; color:var(--faint); letter-spacing:.02em; margin:0 0 30px; line-height:1.7}
+.claimline b{color:var(--muted); font-weight:500}
+.cta{display:flex; gap:14px; justify-content:center; flex-wrap:wrap}
+.btn{display:inline-flex; align-items:center; gap:9px; padding:14px 26px; border-radius:13px;
+  font-family:var(--font-body); font-weight:700; font-size:15.5px; border:1px solid transparent; cursor:pointer; transition:.18s ease}
+.btn svg{width:18px;height:18px}
+.btn-primary{color:#04111f; background:linear-gradient(180deg,#fff,#dde6ff); box-shadow:0 10px 34px -10px rgba(120,170,255,.7), inset 0 1px 0 rgba(255,255,255,.8)}
+.btn-primary:hover{transform:translateY(-2px); box-shadow:0 16px 42px -12px rgba(120,170,255,.95)}
+.btn-ghost{color:var(--ink); background:var(--surface); border-color:var(--border-lit); backdrop-filter:blur(8px)}
+.btn-ghost:hover{background:var(--surface-2); border-color:rgba(255,255,255,.34); transform:translateY(-2px)}
+
+/* hero 1->5 transform visual */
+.transform{display:flex; flex-direction:column; align-items:center; gap:14px; margin:50px auto 4px}
+.transform .srclbl{font-family:var(--font-mono); font-size:11.5px; letter-spacing:.06em; color:var(--faint)}
+.src{flex:none; width:128px; padding:18px 14px; border-radius:14px; border:1px solid var(--border-lit);
+  background:linear-gradient(180deg,var(--surface-2),var(--surface)); box-shadow:var(--shadow); text-align:center}
+.src .pg{width:46px; height:58px; margin:0 auto 10px; border-radius:6px; position:relative;
+  background:linear-gradient(180deg,#eef2fb,#ccd6ea); box-shadow:0 8px 18px -8px rgba(0,0,0,.7)}
+.src .pg::after{content:""; position:absolute; left:9px; right:9px; top:14px; height:2px; border-radius:2px; background:#9aa6bd;
+  box-shadow:0 6px 0 #9aa6bd,0 12px 0 #9aa6bd,0 18px 0 #b7c0d4}
+.src .lbl{font-family:var(--font-mono); font-size:11.5px; color:var(--muted)}
+.fan{flex:none; color:var(--faint); opacity:.85}
+.formats{display:flex; align-items:flex-end; justify-content:center; gap:14px; flex-wrap:nowrap}
+.f{position:relative}
+.fglow{position:absolute; inset:6px; border-radius:14px; background:var(--bc); filter:blur(30px); opacity:.4; z-index:0}
+.fcard{position:relative; z-index:1; border-radius:11px; overflow:hidden; border:1px solid var(--border-lit);
+  background:#0a0c15; box-shadow:0 16px 36px -18px rgba(0,0,0,.9); transition:transform .25s}
+.fcard img{width:100%; height:100%; object-fit:cover; display:block}
+.f:hover .fcard{transform:translateY(-7px)}
+.ftag{position:absolute; left:7px; bottom:7px; z-index:2; font-family:var(--font-mono); font-size:10.5px;
+  padding:3px 8px; border-radius:6px; background:rgba(6,7,13,.62); backdrop-filter:blur(6px);
+  border:1px solid color-mix(in srgb,var(--bc) 45%,transparent); color:var(--bc); letter-spacing:.02em}
+.f-deck .fcard{width:198px;height:111px} .f-poster .fcard{width:148px;height:111px}
+.f-html .fcard{width:166px;height:111px} .f-xhs .fcard{width:92px;height:137px} .f-wechat .fcard{width:190px;height:81px}
+.f-deck{--bc:var(--slides)} .f-poster{--bc:var(--poster)} .f-html{--bc:var(--html)} .f-xhs{--bc:var(--xhs)} .f-wechat{--bc:var(--wechat)}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
+.f .fcard{animation:float 6.5s ease-in-out infinite}
+.f:nth-child(2) .fcard{animation-delay:-1.2s; animation-duration:7.5s}
+.f:nth-child(3) .fcard{animation-delay:-2.4s; animation-duration:6.8s}
+.f:nth-child(4) .fcard{animation-delay:-3.1s; animation-duration:7.2s}
+.f:nth-child(5) .fcard{animation-delay:-4.0s; animation-duration:8s}
+
+/* hero stat band */
+.statband{max-width:760px; margin:62px auto 0; display:grid; grid-template-columns:repeat(4,1fr);
+  border-top:1px solid var(--border); border-bottom:1px solid var(--border)}
+.stat{padding:22px 10px; text-align:center; border-right:1px solid var(--border)}
+.stat:last-child{border-right:none}
+.stat b{display:block; font-family:var(--font-disp); font-weight:700; font-size:40px; line-height:1; letter-spacing:-.02em; font-variant-numeric:tabular-nums}
+.stat span{font-size:12.5px; color:var(--faint); letter-spacing:.03em}
+.stat.s1 b{color:var(--slides)}.stat.s2 b{color:var(--wechat)}.stat.s3 b{color:var(--poster)}.stat.s4 b{color:var(--html)}
+
+/* ===== hero marquee wall (dramatic 3D tilt) ===== */
+.wallwrap{margin-top:62px; position:relative; height:500px; overflow:hidden;
+  -webkit-mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent);
+  mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)}
+.wall{position:absolute; left:50%; top:50%; transform:translate(-50%,-50%) perspective(1500px) rotateX(11deg) scale(1.12);
+  display:flex; flex-direction:column; gap:20px; width:max(1500px,120vw)}
+.track{display:flex; gap:20px; width:max-content; will-change:transform}
+.t1{animation:scrollL 58s linear infinite}
+.t2{animation:scrollR 68s linear infinite}
+.wallwrap:hover .track{animation-play-state:paused}
+@keyframes scrollL{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@keyframes scrollR{from{transform:translateX(-50%)}to{transform:translateX(0)}}
+.tile{flex:none; border-radius:13px; overflow:hidden; border:1px solid rgba(255,255,255,.14);
+  background:var(--bg-3); box-shadow:0 18px 40px -20px rgba(0,0,0,.9), 0 0 0 1px rgba(255,255,255,.02); transition:transform .25s}
+.tile img{height:190px; width:auto; display:block}
+.tile:hover{transform:translateY(-6px)}
+.wallcap{margin-top:18px; text-align:center; font-family:var(--font-mono); font-size:12px; letter-spacing:.06em; color:var(--muted)}
+
+/* ===== bento ===== */
+.bento{display:grid; grid-template-columns:repeat(6,1fr); gap:18px; margin-top:46px}
+.skill{grid-column:span 2; position:relative; border-radius:var(--r-lg); overflow:hidden;
+  border:1px solid var(--border); background:linear-gradient(180deg,var(--surface-2),var(--surface));
+  display:flex; flex-direction:column; transition:transform .22s ease, border-color .22s ease, box-shadow .22s ease}
+.skill.big{grid-column:span 3}
+.skill:hover{transform:translateY(-5px); border-color:color-mix(in srgb,var(--bc) 55%,transparent); box-shadow:0 28px 64px -32px var(--bc)}
+.skill .shot{position:relative; overflow:hidden; background:#0a0c15; border-bottom:1px solid var(--border); aspect-ratio:16/10}
+.skill.big .shot{aspect-ratio:16/8}
+.skill .shot img{width:100%; height:100%; object-fit:cover; transition:transform .5s ease; opacity:.96}
+.skill:hover .shot img{transform:scale(1.05)}
+.skill .shot::before{content:""; position:absolute; inset:0; z-index:1; background:linear-gradient(180deg,transparent 42%,rgba(6,7,13,.5))}
+.skill .glow{position:absolute; top:-44%; left:50%; transform:translateX(-50%); width:70%; height:120px; background:var(--bc); filter:blur(62px); opacity:.45; z-index:0}
+.skill .body{padding:18px 20px 20px; display:flex; flex-direction:column; flex:1}
+.skill .top{display:flex; align-items:center; gap:10px; margin-bottom:9px}
+.skill .ic{width:34px; height:34px; border-radius:9px; display:grid; place-items:center; flex:none;
+  background:color-mix(in srgb,var(--bc) 16%,transparent); color:var(--bc); border:1px solid color-mix(in srgb,var(--bc) 34%,transparent)}
+.skill .ic svg{width:19px; height:19px}
+.skill h3{margin:0; font-family:var(--font-mono); font-weight:700; font-size:16.5px; letter-spacing:-.01em}
+.skill .does{color:var(--muted); font-size:13.8px; line-height:1.62; margin:0 0 14px; flex:1}
+.skill .meta{display:flex; align-items:center; justify-content:space-between; gap:10px; border-top:1px dashed var(--border); padding-top:12px; font-size:12px; color:var(--faint)}
+.skill .out{font-family:var(--font-mono); color:var(--bc)}
+.tagbrand{position:absolute; top:13px; left:14px; z-index:2; font-family:var(--font-mono); font-size:11px; letter-spacing:.1em;
+  padding:4px 10px; border-radius:7px; background:rgba(6,7,13,.5); backdrop-filter:blur(6px); border:1px solid color-mix(in srgb,var(--bc) 40%,transparent); color:var(--bc)}
+
+/* ===== showcase exhibits ===== */
+.exhibit{display:grid; grid-template-columns:1fr 1fr; gap:54px; align-items:center; margin-top:80px}
+.exhibit.flip .art{order:2}
+.exhibit .copy .tag{font-family:var(--font-mono); font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--ec)}
+.exhibit .copy h3{font-family:var(--font-disp); font-weight:700; font-size:clamp(22px,2.4vw,31px); letter-spacing:-.01em; margin:14px 0 12px; line-height:1.16; text-wrap:balance}
+.exhibit .copy p{color:var(--muted); font-size:15.5px; line-height:1.74; margin:0 0 18px; text-wrap:pretty}
+.pills{display:flex; flex-wrap:wrap; gap:8px}
+.pill{font-size:12.5px; padding:5px 12px; border-radius:100px; border:1px solid var(--border); color:var(--muted); background:var(--surface)}
+.pill::before{content:""; display:inline-block; width:6px;height:6px;border-radius:50%; background:var(--ec); margin-right:7px; vertical-align:middle}
+.frame{position:relative; border-radius:var(--r-lg); overflow:hidden; border:1px solid var(--border-lit); box-shadow:var(--shadow); background:#0a0c15}
+.frame::after{content:""; position:absolute; inset:0; pointer-events:none; border-radius:var(--r-lg); box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}
+.frame .glow{position:absolute; inset:-2px; z-index:-1; border-radius:var(--r-lg); background:var(--ec); filter:blur(48px); opacity:.3}
+.frame img{width:100%; display:block}
+.browser .bar,.term .bar,.install .bar{display:flex; align-items:center; gap:7px; padding:11px 14px; background:#0e1120; border-bottom:1px solid var(--border)}
+.dotrow i{width:11px;height:11px;border-radius:50%;display:block}
+.dotrow i:nth-child(1){background:#ff5f57}.dotrow i:nth-child(2){background:#febc2e}.dotrow i:nth-child(3){background:#28c840}
+.browser .url{margin-left:10px; flex:1; height:22px; border-radius:6px; background:#0a0c15; border:1px solid var(--border); display:flex; align-items:center; padding:0 10px; font-family:var(--font-mono); font-size:11px; color:var(--faint)}
+.browser .scrollport{height:430px; overflow:hidden}
+.browser .scrollport img{width:100%}
+.cover-duo{display:flex; gap:22px; align-items:flex-end; justify-content:center}
+.phone{flex:none; width:228px; border-radius:26px; padding:9px; background:#0e1120; border:1px solid var(--border-lit); box-shadow:var(--shadow); position:relative}
+.phone::before{content:""; position:absolute; top:16px; left:50%; transform:translateX(-50%); width:54px; height:5px; border-radius:3px; background:#2a3046; z-index:2}
+.phone img{border-radius:18px}
+.phone .glow{position:absolute; inset:-6px; z-index:-1; border-radius:30px; background:var(--xhs); filter:blur(46px); opacity:.32}
+.banner{flex:1; max-width:330px}
+.banner .frame{margin-bottom:12px} .banner .frame .glow{background:var(--wechat)}
+.banner small{font-family:var(--font-mono); font-size:11.5px; letter-spacing:.08em; color:var(--faint)}
+
+/* ===== how ===== */
+.flow{display:grid; grid-template-columns:repeat(5,1fr); margin-top:46px; border:1px solid var(--border); border-radius:var(--r-lg); overflow:hidden; background:var(--surface)}
+.fstep{padding:26px 22px; position:relative; border-right:1px solid var(--border)}
+.fstep:last-child{border-right:none}
+.fstep.core{background:linear-gradient(180deg,rgba(91,148,255,.15),transparent)}
+.fstep .k{font-family:var(--font-mono); font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--faint)}
+.fstep.core .k{color:var(--slides)}
+.fstep h4{margin:12px 0 6px; font-size:16px; font-family:var(--font-disp); font-weight:600}
+.fstep p{margin:0; font-size:13px; color:var(--muted); line-height:1.6}
+.fstep .n{position:absolute; top:18px; right:18px; font-family:var(--font-disp); font-weight:700; font-size:14px; color:var(--faintest)}
+.fstep .arr{position:absolute; right:-9px; top:50%; transform:translateY(-50%); z-index:3; width:18px;height:18px; border-radius:50%;
+  background:var(--bg-3); border:1px solid var(--border); display:grid; place-items:center; color:var(--faint); font-size:10px}
+.fstep:last-child .arr{display:none}
+.feats{display:grid; grid-template-columns:repeat(2,1fr); gap:18px; margin-top:22px}
+.feat{display:flex; gap:15px; padding:22px; border-radius:var(--r); border:1px solid var(--border); background:var(--surface)}
+.feat .fi{flex:none; width:42px; height:42px; border-radius:11px; display:grid; place-items:center; background:color-mix(in srgb,var(--fc) 14%,transparent); border:1px solid color-mix(in srgb,var(--fc) 32%,transparent); color:var(--fc)}
+.feat .fi svg{width:21px; height:21px; stroke-width:1.8}
+.feat h4{margin:2px 0 5px; font-size:15.5px} .feat p{margin:0; font-size:13.6px; color:var(--muted); line-height:1.62}
+.feat.f1{--fc:var(--slides)}.feat.f2{--fc:var(--html)}.feat.f3{--fc:var(--poster)}.feat.f4{--fc:var(--wechat)}
+
+/* ===== usage ===== */
+.two{display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-top:42px}
+.term{border-radius:var(--r); overflow:hidden; border:1px solid var(--border); background:#0a0c16; box-shadow:var(--shadow)}
+.term .bar span,.install .bar span{margin-left:8px; font-family:var(--font-mono); font-size:11.5px; color:var(--faint)}
+.term pre,.install pre{margin:0; padding:20px 22px; font-family:var(--font-mono); font-size:13px; line-height:2; overflow-x:auto; color:#cdd6e8}
+.term .c,.install .c{color:var(--faintest)} .term .p{color:#86b9ff} .term .y{color:#ffd479}
+.install{margin-top:22px; border-radius:var(--r); border:1px solid var(--border); background:#0a0c16; overflow:hidden}
+.install pre{line-height:1.95}
+
+/* ===== closing cta ===== */
+.closing{text-align:center; padding:120px 0}
+.closing .ring{position:absolute; inset:0; z-index:-1; pointer-events:none;
+  background:radial-gradient(620px 320px at 50% 40%, rgba(91,148,255,.16), transparent 70%)}
+.closing h2{font-size:clamp(30px,5vw,56px); margin:0 auto 18px}
+.closing p{color:var(--muted); font-size:17px; margin:0 auto 30px; max-width:46ch}
+.closing .one{margin:30px auto 0; max-width:560px; border-radius:12px; border:1px solid var(--border); background:#0a0c16; padding:13px 18px;
+  font-family:var(--font-mono); font-size:13px; color:#cdd6e8; text-align:left; display:flex; align-items:center; gap:10px; overflow-x:auto}
+.closing .one .pr{color:var(--wechat)}
+
+/* ===== thanks + footer ===== */
+.thanks{display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin-top:42px}
+.thank{padding:22px; border-radius:var(--r); border:1px solid var(--border); background:var(--surface); transition:.2s}
+.thank:hover{border-color:var(--border-lit); transform:translateY(-3px)}
+.thank b{font-size:15.5px; font-family:var(--font-disp)} .thank p{margin:6px 0 0; font-size:13.4px; color:var(--muted)}
+footer{border-top:1px solid var(--border); padding:40px 0; color:var(--faint); font-size:14px}
+.foot{display:flex; justify-content:space-between; align-items:center; gap:18px; flex-wrap:wrap}
+.foot .brand{font-size:16px; color:var(--muted)}
+
+/* ===== reveal ===== */
+.js .reveal{opacity:0; transform:translateY(26px); transition:opacity .7s cubic-bezier(.2,.7,.2,1), transform .7s cubic-bezier(.2,.7,.2,1)}
+.js .reveal.in{opacity:1; transform:none}
+.reveal.d1{transition-delay:.08s}.reveal.d2{transition-delay:.16s}.reveal.d3{transition-delay:.24s}.reveal.d4{transition-delay:.32s}
+
+/* ===== responsive ===== */
+@media(max-width:980px){
+  .bento{grid-template-columns:repeat(2,1fr)} .skill,.skill.big{grid-column:span 1}
+  .exhibit{grid-template-columns:1fr; gap:28px} .exhibit.flip .art{order:0}
+  .flow{grid-template-columns:repeat(2,1fr)} .fstep{border-right:none; border-bottom:1px solid var(--border)} .fstep .arr{display:none}
+  .feats,.two,.thanks{grid-template-columns:1fr}
+  .formats{flex-wrap:wrap}
+  .heroin{grid-template-columns:1fr; gap:24px; text-align:center} .herocopy .cta,.herostats{justify-content:center} .herovis{justify-content:center; max-width:560px; margin:0 auto; order:-1} .herovis img{width:114%}
+  .statband{max-width:520px; grid-template-columns:repeat(2,1fr)} .stat:nth-child(2){border-right:none} .stat{border-bottom:1px solid var(--border)} .stat:nth-last-child(-n+2){border-bottom:none}
+}
+@media(max-width:620px){
+  section{padding:78px 0} .hero{padding:128px 0 64px}
+  .bento{grid-template-columns:1fr}
+  .tile img{height:128px}
+  .cover-duo{flex-direction:column; align-items:center} .banner{max-width:300px}
+  .wallwrap{height:340px}
+}
+@media(prefers-reduced-motion:reduce){
+  .blob,.track,.f .fcard{animation:none!important} .js .reveal{opacity:1!important; transform:none!important} html{scroll-behavior:auto}
+}
+</style>
+</head>
+<body>
+
+<div class="bgfx" aria-hidden="true"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div><div class="blob b4"></div></div>
+<div class="grid-overlay" aria-hidden="true"></div>
+<div class="grain" aria-hidden="true"></div>
+
+<!-- ============ NAV ============ -->
+<nav id="nav">
+  <div class="navin">
+    <a class="brand" href="#top"><img src="images/logo.png" alt=""><span>paper2<b>anything</b></span></a>
+    <div class="navlinks">
+      <a href="#skills" data-zh='五种能力'>Capabilities</a>
+      <a href="#showcase" data-zh='真实产物'>Showcase</a>
+      <a href="#how" data-zh='设计哲学'>Philosophy</a>
+      <a href="#usage" data-zh='快速开始'>Quick start</a>
+      <button id="langtoggle" class="langbtn" type="button" aria-label="Switch to English">EN</button>
+      <a class="ghbtn" href="https://github.com/QuZhan51496/paper2anything" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.7.5.5 5.7.5 12c0 5.1 3.3 9.4 7.9 10.9.6.1.8-.2.8-.5v-1.7c-3.2.7-3.9-1.5-3.9-1.5-.5-1.3-1.3-1.7-1.3-1.7-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.7 1.3 3.4 1 .1-.8.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17.3 4.7 18.3 5 18.3 5c.6 1.6.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.3c0 .3.2.6.8.5 4.6-1.5 7.9-5.8 7.9-10.9C23.5 5.7 18.3.5 12 .5z"/></svg>
+        GitHub
+      </a>
+    </div>
+  </div>
+</nav>
+
+<span id="top"></span>
+<!-- ============ HERO ============ -->
+<header class="hero">
+  <div class="wrap">
+    <div class="heroin">
+    <div class="herocopy">
+    <span class="eyebrow" style="--ac:transparent"><span class="dots"><i></i><i></i><i></i><i></i><i></i></span> agent skill · paper → anything</span>
+    <h1 data-zh='把你的论文，<br><span class="hl">变成传播力</span>。'>Turn your paper<br>into <span class="hl">reach</span>.</h1>
+    <p class="sub" data-zh='把一篇学术论文，转换成<b>幻灯片、海报、项目主页、<br>小红书、公众号</b>。'>Turn one academic paper into <b>slides, a poster, a project page, Xiaohongshu &amp; WeChat posts</b>.</p>    <div class="cta">
+      <a class="btn btn-primary" href="#usage"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg><span data-zh='快速开始'>Quick start</span></a>
+      <a class="btn btn-ghost" href="https://github.com/QuZhan51496/paper2anything" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.7.5.5 5.7.5 12c0 5.1 3.3 9.4 7.9 10.9.6.1.8-.2.8-.5v-1.7c-3.2.7-3.9-1.5-3.9-1.5-.5-1.3-1.3-1.7-1.3-1.7-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.7 1.3 3.4 1 .1-.8.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17.3 4.7 18.3 5 18.3 5c.6 1.6.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.3c0 .3.2.6.8.5 4.6-1.5 7.9-5.8 7.9-10.9C23.5 5.7 18.3.5 12 .5z"/></svg><span data-zh='在 GitHub 查看'>View on GitHub</span></a>
+    </div>
+
+    <div class="herostats">
+      <div class="hstat s1"><b>50+</b><span data-zh='篇论文实测'>papers tested</span></div>
+      <div class="hstat s2"><b>5</b><span data-zh='种产物'>output formats</span></div>
+      <div class="hstat s3"><b>1</b><span data-zh='条命令装'>command to install</span></div>
+      <div class="hstat s4"><b>100%</b><span data-zh='本地落盘'>saved locally</span></div>
+    </div>
+    </div>
+    <div class="herovis">
+      <span class="pglow" aria-hidden="true"></span>
+      <img src="images/hero-prism.jpg" alt="A prism splitting one white beam into five colors — one paper becoming five forms" data-zh-alt="棱镜把一束白光折射成五色——呼应一篇论文长成五种形态" loading="eager">
+    </div>
+    </div>
+  </div>
+
+  <div class="wallwrap" aria-hidden="true">
+    <div class="wall"><div class="track t1" id="row1"></div><div class="track t2" id="row2"></div></div>
+  </div>
+  <p class="wallcap" data-zh='↑ 全部由 paper2anything 生成'>↑ All generated by paper2anything</p>
+</header>
+
+<!-- ============ 5 SKILLS ============ -->
+<section id="skills">
+  <div class="wrap">
+    <span class="eyebrow reveal" style="--ac:var(--slides)" data-zh='五种能力'>Capabilities</span>
+    <h2 class="reveal d1" data-zh='一篇论文，五副面孔'>One paper, five faces</h2>
+    <p class="lead reveal d2" data-zh='每个子目录都是一个独立、可自动触发的 skill。共享同一环境与凭据，工作流、产物与发布彼此独立。'>Each subdirectory is a standalone, auto-triggered skill. They share one environment and credentials; workflows, outputs and publishing stay independent.</p>
+
+    <div class="bento">
+      <article class="skill big reveal" style="--bc:var(--slides)">
+        <div class="shot"><span class="glow"></span><span class="tagbrand">.pptx</span><img src="images/cap_slides.jpg" alt="A presentation slide title page generated by paper2slides" data-zh-alt="paper2slides 生成的演讲幻灯片标题页" loading="lazy"></div>
+        <div class="body">
+          <div class="top"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h20"/><path d="M21 3v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V3"/><path d="m7 21 5-5 5 5"/></svg></div><h3>paper2slides</h3></div>
+          <p class="does" data-zh='抽要点、定版式、配图，端到端产出一套可直接演讲的幻灯片。'>Pull key points, set the layout, place figures — an end-to-end deck you can present as-is.</p>
+          <div class="meta"><span class="out">→ .pptx</span><span data-zh='"把这篇论文做成 PPT"'>"Make slides from this paper"</span></div>
+        </div>
+      </article>
+      <article class="skill big reveal d1" style="--bc:var(--poster)">
+        <div class="shot"><span class="glow"></span><span class="tagbrand">poster.png</span><img src="images/cap_poster.jpg" alt="A conference poster generated by paper2poster" data-zh-alt="paper2poster 生成的会议海报" loading="lazy"></div>
+        <div class="body">
+          <div class="top"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg></div><h3>paper2poster</h3></div>
+          <p class="does" data-zh='选图、定栏、亲手排版，再以视觉与盲审反复打磨，做出一张可挂会议现场的学术海报。'>Pick figures, set columns, hand-lay it out, then refine with visual and blind-review checks — a poster ready for the conference hall.</p>
+          <div class="meta"><span class="out">→ poster.png + html</span><span data-zh='"论文转海报"'>"Paper to poster"</span></div>
+        </div>
+      </article>
+      <article class="skill reveal d2" style="--bc:var(--html)">
+        <div class="shot"><span class="glow"></span><span class="tagbrand">index.html</span><img src="images/cap_html.jpg" alt="A single-page project homepage generated by paper2html" data-zh-alt="paper2html 生成的单页项目主页" loading="lazy"></div>
+        <div class="body">
+          <div class="top"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 9h20M6 4v5"/></svg></div><h3>paper2html</h3></div>
+          <p class="does" data-zh='做一个可直接部署的单页项目主页——供 GitHub Pages 托管的 landing page。'>Build a deploy-ready single-page project site — a landing page for GitHub Pages.</p>
+          <div class="meta"><span class="out">→ index.html</span><span data-zh='"论文转网页"'>"Paper to webpage"</span></div>
+        </div>
+      </article>
+      <article class="skill reveal d3" style="--bc:var(--xhs)">
+        <div class="shot"><span class="glow"></span><span class="tagbrand" data-zh='小红书'>Xiaohongshu</span><img src="images/cap_xhs.jpg" alt="A Xiaohongshu vertical cover generated by paper2xhs" data-zh-alt="paper2xhs 生成的小红书竖版封面" loading="lazy"></div>
+        <div class="body">
+          <div class="top"><div class="ic"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 3h10a4 4 0 0 1 4 4v10a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V7a4 4 0 0 1 4-4Zm1.4 6.1v5.8h1.3v-3.5l2.5 3.5h1.2V9.1h-1.3v3.5L9.6 9.1H8.4Zm6.3 0v5.8h3.4v-1.2h-2.1V9.1h-1.3Z"/></svg></div><h3>paper2xhs</h3></div>
+          <p class="does" data-zh='定选题角度、写标题正文标签，自动生成竖版封面，用户确认后可直发上号。'>Frame the angle, write title, body and tags, auto-generate a vertical cover, and post on-account after you confirm.</p>
+          <div class="meta"><span class="out" data-zh='→ 帖子 + 封面'>→ post + cover</span><span data-zh='"论文发小红书"'>"Paper to Xiaohongshu"</span></div>
+        </div>
+      </article>
+      <article class="skill reveal d4" style="--bc:var(--wechat)">
+        <div class="shot"><span class="glow"></span><span class="tagbrand" data-zh='公众号'>WeChat</span><img src="images/cap_wechat.jpg" alt="A WeChat banner cover generated by paper2wechat" data-zh-alt="paper2wechat 生成的公众号横版封面" loading="lazy"></div>
+        <div class="body">
+          <div class="top"><div class="ic"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 4C4.6 4 1 6.9 1 10.5c0 2 1.1 3.8 2.9 5L3 18l2.6-1.1c.7.2 1.5.3 2.3.3h.5a5.5 5.5 0 0 1-.3-1.8c0-3.3 3.2-5.9 7.1-5.9h.6C15 6.3 12.3 4 9 4Z"/><path d="M23 15.2c0-2.9-2.9-5.2-6.4-5.2s-6.4 2.3-6.4 5.2 2.9 5.2 6.4 5.2c.7 0 1.4-.1 2-.3l1.9.9-.5-1.6c1.8-1 3-2.5 3-4.2Z"/></svg></div><h3>paper2wechat</h3></div>
+          <p class="does" data-zh='搭结构、写深度解读长文、配图配封面，一键传到公众号草稿箱。'>Outline it, write a deep-dive long read, add figures and a cover, push to the WeChat drafts in one go.</p>
+          <div class="meta"><span class="out" data-zh='→ 长文 + 封面'>→ long read + cover</span><span data-zh='"论文转公众号"'>"Paper to WeChat"</span></div>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SHOWCASE ============ -->
+<section id="showcase" style="background:linear-gradient(180deg,transparent,var(--bg-2) 16%,var(--bg-2) 84%,transparent)">
+  <div class="wrap">
+    <span class="eyebrow reveal" style="--ac:var(--poster)" data-zh='真实产物'>Real output</span>
+    <h2 class="reveal d1" data-zh='真做出来的，不是占位图'>Really generated, not placeholders</h2>
+    <p class="lead reveal d2" data-zh='下面每一张，都来自一篇真实论文的完整运行，未经挑拣、原样呈现。'>Every image below comes from a full run on a real paper — not cherry-picked, shown as-is.</p>
+
+    <div class="exhibit reveal" style="--ec:var(--slides)">
+      <div class="art frame"><span class="glow"></span><img src="images/deck-wall.jpg" alt="A collage of slide title pages generated from 50+ papers" data-zh-alt="50 多篇论文生成的幻灯片标题页拼图" loading="lazy"></div>
+      <div class="copy">
+        <span class="tag" data-zh='paper2slides · 幻灯片'>paper2slides · Slides</span>
+        <h3 data-zh='多样论文，随“意”设计'>Diverse papers, design at will</h3>
+        <p data-zh='没有模板、没有撞脸。每篇论文都会被单独读懂，选择与它内容气质相符的配色、版式与配图。'>No templates, no clones. Each paper is read on its own and picks colors, layout and figures that fit its character.</p>
+        <div class="pills"><span class="pill" data-zh='自动配色'>Auto palette</span><span class="pill" data-zh='高清配图'>HD figures</span><span class="pill" data-zh='视觉 QA 自检'>Visual QA</span></div>
+      </div>
+    </div>
+
+    <div class="exhibit flip reveal" style="--ec:var(--poster)">
+      <div class="art frame"><span class="glow"></span><img src="images/show_poster.jpg" alt="A generated academic conference poster" data-zh-alt="生成的学术会议海报" loading="lazy"></div>
+      <div class="copy">
+        <span class="tag" data-zh='paper2poster · 会议海报'>paper2poster · Poster</span>
+        <h3 data-zh='可直接挂在会议现场的海报'>A poster ready for the conference hall</h3>
+        <p data-zh='多栏版式、亲手排布的图表与公式，再用几何检查与盲审反复打磨。导出高分辨率 PNG 与可编辑 HTML 两份。'>Multi-column layout with hand-placed figures and equations, refined via geometry checks and blind review. Exported as high-res PNG and editable HTML.</p>
+        <div class="pills"><span class="pill" data-zh='多栏版式'>Multi-column</span><span class="pill" data-zh='几何对齐检查'>Geometry check</span><span class="pill" data-zh='盲审打磨'>Blind-review</span></div>
+      </div>
+    </div>
+
+    <div class="exhibit reveal" style="--ec:var(--html)">
+      <div class="art frame browser">
+        <span class="glow"></span>
+        <div class="bar"><span class="dotrow" style="display:flex;gap:7px"><i></i><i></i><i></i></span><div class="url">paper-project.github.io</div></div>
+        <div class="scrollport"><img id="htmlshot" src="images/html-full.jpg" alt="A generated single-page project homepage" data-zh-alt="生成的单页项目主页" loading="lazy"></div>
+      </div>
+      <div class="copy">
+        <span class="tag" data-zh='paper2html · 项目主页'>paper2html · Project page</span>
+        <h3 data-zh='一份能直接部署的项目主页'>A project page ready to deploy</h3>
+        <p data-zh='自包含单页站点：内联样式、相对路径引用配图、响应式排版，桌面与移动双宽度过 QA。打开即用，推到 GitHub Pages 即上线。'>A self-contained single-page site: inline styles, relative-path figures, responsive layout, passing QA at desktop and mobile widths. Open it and go — push to GitHub Pages to ship.</p>
+        <div class="pills"><span class="pill" data-zh='自包含单文件'>Single file</span><span class="pill" data-zh='响应式'>Responsive</span><span class="pill" data-zh='渲染自检'>Render QA</span></div>
+      </div>
+    </div>
+
+    <div class="exhibit flip reveal" style="--ec:var(--xhs)">
+      <div class="art">
+        <div class="cover-duo">
+          <div class="phone"><span class="glow"></span><img src="images/show_xhs.jpg" alt="Xiaohongshu vertical cover" data-zh-alt="小红书竖版封面"></div>
+          <div class="banner">
+            <div class="frame"><span class="glow"></span><img src="images/show_wechat.jpg" alt="WeChat banner cover" data-zh-alt="公众号横版封面"></div>
+            <small data-zh='同一篇论文 · 公众号横版封面'>Same paper · WeChat banner cover</small>
+          </div>
+        </div>
+      </div>
+      <div class="copy">
+        <span class="tag" data-zh='paper2xhs + paper2wechat · 中文社媒'>paper2xhs + paper2wechat · Chinese social</span>
+        <h3 data-zh='标题、正文、封面，全部备好'>Title, body, cover — all ready</h3>
+        <p data-zh='把硬核论文转换成中文社媒语言：抓人的标题、好读的正文，再自动生成竖版 / 横版封面。小红书可直发上号，公众号传到草稿箱。'>Turn hardcore papers into Chinese social language: catchy titles, readable copy, plus auto-generated vertical / horizontal covers. Can post straight to Xiaohongshu, WeChat to drafts.</p>
+        <div class="pills"><span class="pill" data-zh='封面配图'>Cover art</span><span class="pill" data-zh='小红书直发'>Direct to Xiaohongshu</span><span class="pill" data-zh='公众号草稿箱'>WeChat drafts</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ HOW ============ -->
+<section id="how">
+  <div class="wrap">
+    <span class="eyebrow reveal" style="--ac:var(--html)" data-zh='设计哲学'>Philosophy</span>
+    <h2 class="reveal d1" data-zh='粗活交给脚本，设计由 <span class="uline" style="--ac:var(--html)">agent 亲手做</span>'>Scripts do the grunt work; <span class="uline" style="--ac:var(--html)">the agent designs by hand</span></h2>
+    <p class="lead reveal d2" data-zh='每个 skill 都是「agent 主导的协调式」：解析、配图、发布这些机械步骤调用小工具；论文理解、版式设计、文案撰写由 agent 亲手完成，并在关键点与你确认。'>Every skill is agent-led and coordinated: parsing, figure-cropping and publishing call small tools; understanding the paper, designing the layout and writing the copy are done by the agent, confirming with you at key points.</p>
+
+    <div class="flow reveal d1">
+      <div class="fstep"><span class="n">01</span><div class="k" data-zh='输入'>Input</div><h4 data-zh='论文 PDF'>Paper PDF</h4><p data-zh='给一个路径，或直接说出意图。'>Give a path, or just say what you want.</p><span class="arr">›</span></div>
+      <div class="fstep"><span class="n">02</span><div class="k" data-zh='机械 · 脚本'>Mechanical · Script</div><h4 data-zh='MinerU 解析'>MinerU parse</h4><p data-zh='云端解析为结构化文本与图表，并重裁出高清配图。'>Cloud-parsed into structured text and figures, with figures re-cropped in high definition.</p><span class="arr">›</span></div>
+      <div class="fstep core"><span class="n">03</span><div class="k" data-zh='核心 · agent'>Core · Agent</div><h4 data-zh='主导设计与撰写'>Leads design &amp; writing</h4><p data-zh='读懂论文、定方向、亲手写产物，关键点与你确认。'>Reads the paper, sets direction, writes the product by hand, confirms at key points.</p><span class="arr">›</span></div>
+      <div class="fstep"><span class="n">04</span><div class="k" data-zh='机械 · 脚本'>Mechanical · Script</div><h4 data-zh='QA 闸门'>QA gate</h4><p data-zh='缺图 / 坏链 / 渲染失真 / 内容保真逐项校验，按报告修订至清零。'>Checks missing figures / broken links / render distortion / content fidelity, fixed to zero per report.</p><span class="arr">›</span></div>
+      <div class="fstep"><span class="n">05</span><div class="k" data-zh='产出'>Output</div><h4 data-zh='成品落论文旁'>Lands beside the paper</h4><p data-zh='最终成品复制到 PDF 同级目录，打开即用。'>The final product is copied next to the PDF — open and use.</p></div>
+    </div>
+
+    <div class="feats">
+      <div class="feat f1 reveal"><div class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M8.3 10a.7.7 0 0 1-.626-1.079L11.4 3a.7.7 0 0 1 1.198-.043L16.3 8.9a.7.7 0 0 1-.572 1.1Z"/><rect x="3" y="14" width="7" height="7" rx="1"/><circle cx="17.5" cy="17.5" r="3.5"/></svg></div><div><h4 data-zh='每篇都不一样'>No two alike</h4><p data-zh='同一套 skill，每篇论文都从零做设计——配色、结构、版式各不相同，绝不套用同一模板。'>Same skill, but every paper gets a design built from scratch — palette, structure and layout all differ; the same template is never reused.</p></div></div>
+      <div class="feat f2 reveal d1"><div class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1Z"/><path d="m9 12 2 2 4-4"/></svg></div><div><h4 data-zh='只用事实，绝不编造'>Facts only, never fabricated</h4><p data-zh='数字、作者、引用只取自解析出的原文；抽不到的字段由 agent 通读全文补全，不凭空生成。'>Numbers, authors and citations come only from the parsed source; gaps are filled by the agent reading the full paper, never invented.</p></div></div>
+      <div class="feat f3 reveal"><div class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="m8 11 2 2 4-4"/><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></div><div><h4 data-zh='盲审式自检'>Blind-review QA</h4><p data-zh='产物渲染成图后交盲审 agent 逐项挑错——缺图、变形、溢出、失真，循环改到清零。'>Each product is rendered to an image and picked apart by a blind-review agent — missing figures, distortion, overflow, fidelity — looped until zero.</p></div></div>
+      <div class="feat f4 reveal d1"><div class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z"/><path d="m14.5 12.5 2-2"/><path d="m11.5 9.5 2-2"/><path d="m8.5 6.5 2-2"/><path d="m17.5 15.5 2-2"/></svg></div><div><h4 data-zh='品位写进规则'>Taste, encoded</h4><p data-zh='每个 skill 内置设计语言与排版禁忌（该怎么做、绝不做什么），不套通用模板、不出 AI 味。'>Every skill carries its own design language and layout taboos — what to do and what never to do — so outputs avoid generic templates and AI slop.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ USAGE ============ -->
+<section id="usage" style="background:radial-gradient(900px 500px at 50% 0%, rgba(91,148,255,.06), transparent 70%)">
+  <div class="wrap">
+    <span class="eyebrow reveal" style="--ac:var(--wechat)" data-zh='快速开始'>Quick start</span>
+    <h2 class="reveal d1" data-zh='说出意图，或用斜杠命令'>Say what you want, or use a slash command</h2>
+    <p class="lead reveal d2" data-zh='对应 skill 会被自动触发。两种方式都行：'>The matching skill triggers automatically. Either way works:</p>
+
+    <div class="two">
+      <div class="term reveal">
+        <div class="bar"><span class="dotrow" style="display:flex;gap:7px"><i></i><i></i><i></i></span><span data-zh='① 直接说意图'>① Just say what you want</span></div>
+        <pre data-zh='"把 <span class="p">paper.pdf</span> 做成 PPT"
+"用这篇论文做一张会议海报"
+"把这篇 PDF 变成项目主页"
+"帮我把这篇论文发小红书"
+"把这篇论文写成公众号推文"'>"Make slides from <span class="p">paper.pdf</span>"
+"Make a conference poster from this paper"
+"Turn this PDF into a project page"
+"Post this paper to Xiaohongshu"
+"Write this paper up for WeChat"</pre>
+      </div>
+      <div class="term reveal d1">
+        <div class="bar"><span class="dotrow" style="display:flex;gap:7px"><i></i><i></i><i></i></span><span data-zh='② 斜杠命令 + PDF 路径'>② Slash command + PDF path</span></div>
+        <pre><span class="y">/paper2slides</span> <span class="p">path/to/paper.pdf</span>
+<span class="y">/paper2poster</span> <span class="p">path/to/paper.pdf</span>
+<span class="y">/paper2html</span>   <span class="p">path/to/paper.pdf</span>
+<span class="y">/paper2xhs</span>    <span class="p">path/to/paper.pdf</span>
+<span class="y">/paper2wechat</span> <span class="p">path/to/paper.pdf</span></pre>
+      </div>
+    </div>
+
+    <div class="install reveal d2">
+      <div class="bar"><span class="dotrow" style="display:flex;gap:7px"><i></i><i></i><i></i></span><span data-zh='一条命令安装（Claude Code）'>One-command install (Claude Code)</span></div>
+      <pre>git clone https://github.com/QuZhan51496/paper2anything.git &amp;&amp; cd paper2anything
+bash tools/install-linux.sh --create-env --shell-init    <span class="c"># Linux</span>
+bash tools/install-macos.sh --create-env --shell-init    <span class="c"># macOS</span></pre>
+    </div>
+  </div>
+</section>
+
+<!-- ============ THANKS ============ -->
+<section id="thanks" style="padding-top:64px">
+  <div class="wrap">
+    <span class="eyebrow reveal" style="--ac:var(--faint)" data-zh='致谢'>Acknowledgements</span>
+    <h2 class="reveal d1" data-zh='站在这些开源工作之上'>Built on these open-source works</h2>
+    <div class="thanks">
+      <a class="thank reveal" href="https://github.com/opendatalab/MinerU" target="_blank" rel="noopener"><b>MinerU</b><p data-zh='论文 PDF 解析引擎。'>The paper-PDF parsing engine.</p></a>
+      <a class="thank reveal d1" href="https://github.com/xpzouying/xiaohongshu-mcp" target="_blank" rel="noopener"><b>xiaohongshu-mcp</b><p data-zh='小红书发布能力。'>Xiaohongshu publishing.</p></a>
+      <a class="thank reveal d2" href="https://pypi.org/project/md2wechat/" target="_blank" rel="noopener"><b>md2wechat</b><p data-zh='公众号发布与排版能力。'>WeChat publishing and formatting.</p></a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot">
+    <span class="brand" data-zh='paper2anything · 把论文变成传播力'>paper2anything · Turn papers into reach</span>
+    <span><a href="https://github.com/QuZhan51496/paper2anything" target="_blank" rel="noopener">GitHub</a> · Apache 2.0 License</span>
+  </div>
+</footer>
+
+<script>
+document.documentElement.classList.add('js');
+// marquee wall: row1 = diverse decks, row2 = mixed formats
+const ROW1=["m_slide_c1.jpg","m_poster1.jpg","m_html1.jpg","m_slide_i1.jpg","m_poster2.jpg","m_xhs1.jpg","m_slide_c2.jpg","m_html2.jpg","m_poster3.jpg","m_slide_i2.jpg","m_wechat1.jpg","m_html3.jpg","m_slide_c3.jpg","m_poster4.jpg","m_slide_i3.jpg","m_html4.jpg","m_xhs2.jpg","m_poster5.jpg"];
+const ROW2=["m_slide_c4.jpg","m_html5.jpg","m_poster6.jpg","m_slide_i4.jpg","m_wechat2.jpg","m_html6.jpg","m_slide_c5.jpg","m_poster7.jpg","m_slide_i5.jpg","m_xhs3.jpg","m_html7.jpg","m_poster8.jpg","m_slide_c6.jpg","m_slide_i6.jpg","m_wechat3.jpg","m_html8.jpg","m_xhs4.jpg","m_wechat4.jpg"];
+function fill(el,list){ if(!el)return; const make=()=>list.forEach(f=>{const d=document.createElement('div');d.className='tile';const im=document.createElement('img');im.src='images/'+f;im.alt='';im.loading='lazy';d.appendChild(im);el.appendChild(d);}); make(); make(); }
+fill(document.getElementById('row1'),ROW1);
+fill(document.getElementById('row2'),ROW2);
+
+// nav scrolled state
+const nav=document.getElementById('nav');
+const onScroll=()=>nav.classList.toggle('scrolled',window.scrollY>24);
+onScroll(); window.addEventListener('scroll',onScroll,{passive:true});
+
+// reveal on scroll
+const io=new IntersectionObserver((es)=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}}),{threshold:.12,rootMargin:"0px 0px -8% 0px"});
+document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+
+// slow auto-scroll of html browser shot
+(function(){const img=document.getElementById('htmlshot');if(!img)return;const port=img.parentElement;let dir=1;
+function step(){const max=img.scrollHeight-port.clientHeight;if(max>0){port.scrollTop+=0.5*dir;if(port.scrollTop>=max-1)dir=-1;if(port.scrollTop<=0)dir=1;}requestAnimationFrame(step);}
+img.complete?step():img.addEventListener('load',step);})();
+
+// ===== language toggle (zh default / en) =====
+(function(){
+  var KEY='p2a_lang';
+  var btn=document.getElementById('langtoggle');
+  if(!btn) return;
+  var nodes=[].slice.call(document.querySelectorAll('[data-zh]'));
+  var altNodes=[].slice.call(document.querySelectorAll('[data-zh-alt]'));
+  nodes.forEach(function(n){ n.setAttribute('data-en', n.innerHTML); });
+  altNodes.forEach(function(n){ n.setAttribute('data-en-alt', n.getAttribute('alt')||''); });
+  var TITLES={zh:'paper2anything — 一篇论文 PDF，一键长成五种传播形态', en:'paper2anything — turn one paper into five forms of reach'};
+  function apply(lang){
+    nodes.forEach(function(n){ n.innerHTML = (lang==='en') ? n.getAttribute('data-en') : n.getAttribute('data-zh'); });
+    altNodes.forEach(function(n){ n.alt = (lang==='en') ? n.getAttribute('data-en-alt') : n.getAttribute('data-zh-alt'); });
+    document.documentElement.lang = (lang==='en') ? 'en' : 'zh-CN';
+    document.title = (lang==='en') ? TITLES.en : TITLES.zh;
+    btn.textContent = (lang==='en') ? '中' : 'EN';
+    btn.setAttribute('aria-label', (lang==='en') ? '切换到中文' : 'Switch to English');
+    try{ localStorage.setItem(KEY,lang); }catch(e){}
+  }
+  var cur='en';
+  try{ var saved=localStorage.getItem(KEY); if(saved==='zh') cur='zh'; }catch(e){}
+  apply(cur);
+  btn.addEventListener('click', function(){ cur=(cur==='en')?'zh':'en'; apply(cur); });
+})();
+</script>
+</body>
+</html>
