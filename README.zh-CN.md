@@ -5,7 +5,7 @@
 
 # paper2anything
 
-[![Project Homepage](https://img.shields.io/badge/Homepage-Live-2ea44f?logo=githubpages&logoColor=white)](https://quzhan51496.github.io/paper2anything/) [![Claude Code Skill](https://img.shields.io/badge/Claude_Code-Skill-blue?logo=anthropic&logoColor=white)](https://docs.anthropic.com/en/docs/claude-code) [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![Project Page](https://img.shields.io/badge/Project_Page-Live-2ea44f?logo=githubpages&logoColor=white)](https://quzhan51496.github.io/paper2anything/) [![Claude Code Skill](https://img.shields.io/badge/Claude_Code-Skill-blue?logo=anthropic&logoColor=white)](https://docs.anthropic.com/en/docs/claude-code) [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
 [English](README.md) | **简体中文**
 
