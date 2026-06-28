@@ -1,5 +1,5 @@
-"""paper2html 机械能力库（供 scripts/ 下的 stage 脚本调用）。
+"""paper2html mechanical-capability library (called by the stage scripts under scripts/).
 
-只含确定性的解析 / 抽取 / 图片 / QA 能力——HTML 的设计与撰写由你在 SKILL.md
-的创作步骤亲自完成，本库不含任何 HTML 渲染器。
+Contains only deterministic parse / extract / image / QA capabilities — the design and authoring of the HTML
+is done by you in the authoring steps of SKILL.md; this library contains no HTML renderer.
 """

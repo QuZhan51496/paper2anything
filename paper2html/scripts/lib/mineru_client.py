@@ -14,9 +14,9 @@ from .config import (
     LANGUAGE,
 )
 
-# 强制无代理直连 mineru.net / 阿里云 OSS。env 里的 ALL_PROXY=socks5h 会让 requests 走
-# SOCKS（无 pysocks 即报 "Missing dependencies for SOCKS support"）；而 proxies={"http":None}
-# 会被 requests 的 merge_setting 当作 None 键剥掉、压不住 all_proxy —— 必须 trust_env=False。
+# Force a proxy-free direct connection to mineru.net / Alibaba Cloud OSS. An ALL_PROXY=socks5h in env makes requests go
+# through SOCKS (without pysocks it errors "Missing dependencies for SOCKS support"); and proxies={"http":None}
+# gets stripped as a None key by requests' merge_setting and can't suppress all_proxy — trust_env=False is required.
 _session = requests.Session()
 _session.trust_env = False
 _session.proxies = {"http": None, "https": None}
@@ -128,7 +128,7 @@ class MineruClient:
         raise TimeoutError(f"MinerU batch {batch_id} timed out after {timeout}s")
 
     def _download_result(self, zip_url: str, output_dir: Path) -> dict:
-        """Download and extract the result ZIP file（.cn CDN 偶发 SSL EOF，指数退避重试）."""
+        """Download and extract the result ZIP file (the .cn CDN occasionally throws SSL EOF; retry with exponential backoff)."""
         backoff = 2.0
         for attempt in range(1, 4):
             try:

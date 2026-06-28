@@ -3,13 +3,13 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-# 统一加载 paper2anything 包根的 .env（5 个 skill 共用同一份凭据；找不到则静默跳过）。
-# 凭据优先级：已 export 的环境变量 > .env（override=False 不覆盖已存在的变量）。
-# 包根 = 本文件上溯四级：config.py → lib → scripts → paper2html(skill) → 包根（parents[3]）。
+# Uniformly load the .env at the paper2anything package root (the 5 skills share one set of credentials; silently skipped if not found).
+# Credential priority: already-exported env vars > .env (override=False does not overwrite existing variables).
+# Package root = this file going up four levels: config.py → lib → scripts → paper2html(skill) → package root (parents[3]).
 load_dotenv(Path(__file__).resolve().parents[3] / ".env", override=False)
 
 # MinerU API Configuration
-# 注意：mineru_client 会自行拼接 /api/v4，故此处用主机根，勿写成 .../api/v4。
+# Note: mineru_client appends /api/v4 itself, so use the host root here, not .../api/v4.
 MINERU_API_BASE = os.environ.get("MINERU_API_BASE", "https://mineru.net")
 MINERU_API_TOKEN = os.environ.get("MINERU_API_TOKEN", "")
 
@@ -17,10 +17,10 @@ MINERU_API_TOKEN = os.environ.get("MINERU_API_TOKEN", "")
 ENABLE_TABLE = True
 ENABLE_FORMULA = True
 IS_OCR = False
-LANGUAGE = "ch"
+LANGUAGE = "en"
 
 
-# Output — 输出根落在输入文件旁的 <input-dir>/.paper2anything/html/，调用方再按 <stem> 分篇（.../html/<stem>/）。
+# Output — the output root lands next to the input file at <input-dir>/.paper2anything/html/, and the caller splits by <stem> (.../html/<stem>/).
 def default_output_root(source) -> Path:
-    """输入文件同目录下的 .paper2anything/html/（输出根，调用方按 <stem> 分篇）。"""
+    """The .paper2anything/html/ directory next to the input file (the output root; the caller splits by <stem>)."""
     return Path(source).expanduser().resolve().parent / ".paper2anything" / "html"

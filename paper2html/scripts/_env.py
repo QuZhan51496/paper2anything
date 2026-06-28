@@ -1,7 +1,7 @@
-"""统一加载 paper2anything 包根的 .env（机械脚本独立运行时兜底；已 export 的环境变量优先）。
+"""Uniformly load the .env at the paper2anything package root (a fallback when a mechanical script runs standalone; already-exported env vars take priority).
 
-任一脚本在顶部 `import _env` 即可让 os.environ 读到包根 .env 里的凭据；找不到则静默跳过。
-包根 = 本文件上溯两级：_env.py → scripts → paper2html → 包根（parents[2]）。
+Any script can `import _env` at the top to let os.environ read the credentials in the package-root .env; silently skipped if not found.
+Package root = this file going up two levels: _env.py → scripts → paper2html → package root (parents[2]).
 """
 from pathlib import Path
 

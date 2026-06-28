@@ -1,46 +1,51 @@
-# index.html 撰写规范（硬约束 + 易错点）
+# index.html authoring rules (hard constraints + pitfalls)
 
-## manifest 是唯一的事实来源
+## manifest is the single source of truth
 
-只用 `manifest.json` 里**已核实的素材**（title/authors/abstract/links/claims/figures/tables/
-method_components/bibtex）。**不要编造**数字、作者、机构或论文里没有的链接。manifest 里抽空的
-字段（如 authors=[]、abstract=""、links.paper=""）是确定性抽取的局限——**由你据 `clean.md`
-全文补全**（这正是"你来兜底"：你才是主笔，抽取器只是脚手架）。附录/补充材料的图表已在闸门1
-过滤，不会进 manifest。
+Use only the **verified material** in `manifest.json` (title/authors/abstract/links/claims/figures/tables/
+method_components/bibtex). **Do not fabricate** numbers, authors, affiliations, or links the paper doesn't have.
+Fields left empty in the manifest (e.g. authors=[], abstract="", links.paper="") are limits of deterministic
+extraction — **you fill them in from the full text of `clean.md`** (this is exactly "you are the backstop":
+you are the lead author, the extractor is only scaffolding). Appendix/supplementary figures and tables were
+already filtered at gate 1 and never enter the manifest.
 
-## 自包含、可部署
+## Self-contained, deployable
 
-- 产物是 `<workdir>/index.html` + 同级 `<workdir>/images/`，可直接丢 GitHub Pages。
-- 图片用**相对路径** `images/<filename>`（文件名取自 `manifest.figures[].file` / `tables[].image`，
-  parse_pdf 已把它们复制进 `images/`）。**不要**写绝对路径或 `../` 跨目录引用。
-- 每张 `<img>` 都要有**非空 `alt`**（用图注）。不要留 `href="#"` 空锚点。
-- CSS/JS 尽量内联或用 CDN（如 MathJax），保证单文件打开即用。用 MathJax 写公式（`$…$` / `$$…$$`）时，
-  定界符内的 `<` `>` 须写成 `\lt` `\gt`——裸 `<` 紧跟字母会被浏览器当 HTML 起始标签、割裂公式致 MathJax
-  跳过（页面残留字面 `$$…$$`，render_check 判 FAIL）。长 display 公式（`$$…$$`）窄视口不换行、会把页面撑横
-  （render_check 390 判 FAIL）——给它套 `overflow-x:auto` 容器，让公式在自身内横滚、别撑宽页面（同宽表）。
+- The deliverable is `<workdir>/index.html` + a sibling `<workdir>/images/`, droppable straight onto GitHub Pages.
+- Reference images with a **relative path** `images/<filename>` (the filename comes from `manifest.figures[].file` /
+  `tables[].image`, which parse_pdf has already copied into `images/`). **Don't** write absolute paths or `../` cross-directory references.
+- Every `<img>` needs a **non-empty `alt`** (use the caption). Don't leave `href="#"` empty anchors.
+- Inline CSS/JS or use a CDN (e.g. MathJax) so the single file just opens and works. When writing formulas with
+  MathJax (`$…$` / `$$…$$`), the `<` and `>` inside the delimiters must be written as `\lt` / `\gt` — a bare `<`
+  followed by a letter is treated by the browser as an opening HTML tag, splitting the formula and making MathJax
+  skip it (the literal `$$…$$` stays on the page and render_check reports FAIL). A long display formula (`$$…$$`)
+  won't wrap in a narrow viewport and pushes the page wide (render_check at 390 reports FAIL) — wrap it in an
+  `overflow-x:auto` container so the formula scrolls horizontally within itself instead of widening the page (same as wide tables).
 
-## 项目主页版式建议
+## Project-homepage layout suggestions
 
-- 首屏 editorial 轻盈：标题、作者、机构、资源按钮（paper/code/project，取自 manifest.links；空的就不放）。
-- 主图（架构/pipeline）作为一次性 teaser 大图展示，别当重复背景。
-- 顺序参考：teaser → abstract → claims → method → results → 支撑图 → BibTeX（按论文气质调整，非强制）。
-- 结果表**优先用论文裁出的表格截图**（`tables[].image`），因为抽取的 HTML 表常丢公式与对齐。
-- 卡片只用在重复性内容（claims、story、表格、图集项）上，别滥用。
-- 按角色定图大小：架构图给大可读舞台、方法图次要、图集封顶。
+- Keep the first screen editorial and light: title, authors, affiliations, resource buttons (paper/code/project,
+  from manifest.links; omit the empty ones).
+- Show the main figure (architecture/pipeline) as a one-time teaser, not a repeated background.
+- Suggested order: teaser → abstract → claims → method → results → supporting figures → BibTeX (adjust to the paper's character, not mandatory).
+- For result tables, **prefer the table screenshots cropped from the paper** (`tables[].image`), since extracted HTML tables often lose formulas and alignment.
+- Use cards only for repetitive content (claims, story, table, gallery items); don't overuse them.
+- Size figures by role: give the architecture diagram a large readable stage, method figures secondary, gallery capped.
 
-## figure CSS 易错点（边框贴图、绝不失真）
+## figure CSS pitfalls (border hugs the image, never distort)
 
-- **边框要贴住图片本身**，别框住空白：不要在固定宽度盒子上同时用 `width:100%` + `object-fit:contain`
-  （图会缩在大框里、四周留白）。两种安全写法择一：
-  - 填满栏宽：`display:block; width:100%; height:auto;` + border（边框贴图，图自带文字最大化）。
-  - 限高居中：`display:inline-block; max-height:X; width:auto; height:auto;` + border，外层 `text-align:center`。
-- **绝不为填空白强行设固定 `height`（或同时固定 `width`+`height`）**——会把图拉变形。最多设一个轴
-  （`width:100%;height:auto` 或 `max-height:X;width:auto`），另一轴自适应。空白用**内容**填（多一条
-  takeaway / 多一个 bullet）或重排栏宽，别靠拉伸图片。
-- 渲染后自检：每个 `<img>` 的 `renderedW/renderedH` 应等于 `naturalW/naturalH`（±2%），否则就是失真。
+- **The border must hug the image itself**, not frame whitespace: don't combine `width:100%` + `object-fit:contain`
+  on a fixed-width box (the image shrinks inside a big frame with whitespace around it). Pick one of two safe forms:
+  - Fill the column width: `display:block; width:100%; height:auto;` + border (border hugs the image, in-figure text maximized).
+  - Cap the height, centered: `display:inline-block; max-height:X; width:auto; height:auto;` + border, with outer `text-align:center`.
+- **Never force a fixed `height` (or fix both `width`+`height`) to fill whitespace** — it stretches the image out of shape.
+  Set at most one axis (`width:100%;height:auto` or `max-height:X;width:auto`), let the other adapt. Fill whitespace with
+  **content** (one more takeaway / one more bullet) or re-balance the columns; don't stretch the image.
+- Post-render self-check: each `<img>`'s `renderedW/renderedH` should equal `naturalW/naturalH` (±2%), otherwise it's distorted.
 
-## 表格策略
+## Table strategy
 
-- `manifest.tables[]` 多为**图片表**（`image` 有值、`html` 为空）——直接 `<img src="images/...">` 展示。
-- 若某表有 `html`（管道表重建），可在页面内渲成与全站同风格的原生 HTML 表；否则用截图。
-- 原生宽表（多列对比表）须放进**可横滚容器**（`overflow-x:auto` + 给表设 `min-width` 保列宽），别用 `overflow:hidden`——窄视口下右侧列会被裁掉且滚不到。
+- `manifest.tables[]` are mostly **image tables** (`image` has a value, `html` is empty) — display directly with `<img src="images/...">`.
+- If a table has `html` (pipeline table reconstruction), you may render it as a native HTML table styled to match the site; otherwise use the screenshot.
+- Native wide tables (multi-column comparison tables) must go in a **horizontally scrollable container** (`overflow-x:auto`
+  + set a `min-width` on the table to hold column widths); don't use `overflow:hidden` — in a narrow viewport the right-side columns get clipped and can't be scrolled to.

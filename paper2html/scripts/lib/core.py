@@ -1,9 +1,9 @@
-"""paper2html 机械能力库（解析 / 确定性抽取 / 图片 / QA）。
+"""paper2html mechanical-capability library (parse / deterministic extraction / images / QA).
 
-供 scripts/ 下的 stage 脚本调用：
-  PDF/Markdown -> 解析 -> extract_manifest(闸门1:确定性事实)
-                       -> [你亲手写 index.html] -> validate_site(闸门2:QA)
-本库不含任何 HTML 渲染器——页面的设计与撰写由你在 SKILL.md 的创作步骤完成。
+Called by the stage scripts under scripts/:
+  PDF/Markdown -> parse -> extract_manifest (gate 1: deterministic facts)
+                        -> [you hand-author index.html] -> validate_site (gate 2: QA)
+This library contains no HTML renderer — the page's design and authoring are done by you in the authoring steps of SKILL.md.
 """
 
 from __future__ import annotations
@@ -85,7 +85,7 @@ class QAResult:
 
 
 def manifest_from_dict(data: dict) -> PaperManifest:
-    """从 manifest.json(asdict 序列化) 重建 PaperManifest，供 stage 校验复用，无需重抽。"""
+    """Rebuild a PaperManifest from manifest.json (asdict-serialized), reusable for stage validation without re-extracting."""
     return PaperManifest(
         title=data.get("title", ""),
         authors=list(data.get("authors", [])),
@@ -180,7 +180,7 @@ APPENDIX_HEADING_RE = re.compile(
 
 
 def _appendix_offset(markdown: str) -> int | None:
-    """Return the byte offset where the appendix begins, or None if not detected.
+    """Return the character offset where the appendix begins, or None if not detected.
 
     Conservative: a lettered "A ..." heading only counts when it appears in the
     later part of the document (likely a real appendix, not a body section).
@@ -190,8 +190,11 @@ def _appendix_offset(markdown: str) -> int | None:
     for match in APPENDIX_HEADING_RE.finditer(markdown):
         heading_line = match.group(0)
         lowered = heading_line.lower()
+        # Strip whitespace before the keyword check so a spaced CJK heading ("附 录") still matches,
+        # consistent with the regex's `附\s*录` above; harmless for the space-free English keywords.
+        compact = re.sub(r"\s+", "", lowered)
         is_keyword = any(
-            kw in lowered for kw in ("appendix", "supplementary", "supplemental", "附录", "补充材料")
+            kw in compact for kw in ("appendix", "supplementary", "supplemental", "附录", "补充材料")
         )
         if is_keyword:
             return match.start()
@@ -251,8 +254,8 @@ def extract_manifest(
 
 
 def validate_site(html: str, output_dir: Path, manifest: PaperManifest) -> QAResult:
-    # 闸门2：你亲手写完 index.html 后校验。结构错误(缺 doctype / 缺图 / 空链)记 error，
-    # 内容保真(标题/图/表是否真进了页面)记 warning——只校验成品 HTML 本身。
+    # Gate 2: validate after you've hand-authored index.html. Structural issues (missing doctype / missing figures / empty links) are errors,
+    # content fidelity (whether title/figures/tables really made it onto the page) are warnings — only the finished HTML itself is validated.
     errors: list[str] = []
     warnings: list[str] = []
 
@@ -274,21 +277,21 @@ def validate_site(html: str, output_dir: Path, manifest: PaperManifest) -> QARes
     if hash_links:
         errors.append(f"Found {len(hash_links)} empty href=\"#\" links.")
 
-    # 防伪造链接：页面里可点的 <a href="http..."> 须能追溯到论文源文（clean.md）或 manifest 链接。
-    # 页面你亲手写，LLM 可能臆造看似合理的 repo/项目主页 URL（论文从未给）——会 404 或误导。
-    # CDN/字体等基础设施与引用域(arxiv/doi)放行；其余对不上源文的记 warning 让你核实或删除。
+    # Anti-fabrication links: a clickable <a href="http..."> on the page must be traceable to the paper source (clean.md) or a manifest link.
+    # You hand-author the page, and an LLM may hallucinate plausible-looking repo/project-homepage URLs (never given by the paper) — these 404 or mislead.
+    # Infrastructure like CDN/fonts and citation domains (arxiv/doi) are allowed; anything else that doesn't match the source is a warning for you to verify or remove.
     source_text = ""
     source_compact = ""
     clean_md = output_dir / "clean.md"
-    # normalize 会把脚注 URL 从 clean.md 剥掉（ACM/IEEE 论文常把代码/项目链接放脚注），令真链接对不上
-    # clean.md 被误判臆造——并入 MinerU 原始解析 content_list（保留脚注原文）一起作追溯源。
+    # normalize strips footnote URLs from clean.md (ACM/IEEE papers often put code/project links in footnotes), so a real link won't match
+    # clean.md and gets misflagged as fabricated — also fold in the MinerU raw-parse content_list (which keeps the footnote text) as a trace source.
     srcs = [clean_md, *sorted((output_dir / "parsed").glob("*content_list*.json"))]
     source_text = "\n".join(
         s.read_text(encoding="utf-8", errors="ignore") for s in srcs if s.exists()
     ).replace("\\", "")
     if source_text:
-        # MinerU 还会在 URL 里插空格/换行（PDF 折行残留，如 "gith ub.com"），令真链接对不上源文被误判
-        # 臆造——再比一版**去掉所有空白**的源文（URL 本不含空白，去空白不会放过真臆造链接）。
+        # MinerU also inserts spaces/newlines into URLs (PDF line-break residue, e.g. "gith ub.com"), making a real link not match the source and get misflagged
+        # as fabricated — so compare against a version of the source with **all whitespace removed** (URLs contain no whitespace, so stripping it won't let a truly fabricated link through).
         source_compact = re.sub(r"\s+", "", source_text)
     manifest_urls = {u.rstrip("/") for u in asdict(manifest.links).values() if u}
     _LINK_OK = ("cdn.jsdelivr.net", "cdnjs.cloudflare.com", "polyfill.io", "unpkg.com",
@@ -301,8 +304,8 @@ def validate_site(html: str, output_dir: Path, manifest: PaperManifest) -> QARes
             continue
         if u in manifest_urls or u in source_text or (u and u in source_compact):
             continue
-        # 兜底：MinerU 有时把 URL 的 scheme+host 卷进行内公式（如 github → `\mathrm{g}\mathrm{i}`+thub），
-        # 整串对不上，但较长的 path 尾段往往原样保留——用它（≥15 字、足够独特）再追溯一次。
+        # Fallback: MinerU sometimes folds a URL's scheme+host into an inline formula (e.g. github → `\mathrm{g}\mathrm{i}`+thub),
+        # so the whole string doesn't match, but the longer path tail is often preserved verbatim — use it (≥15 chars, distinctive enough) to trace once more.
         tail = re.sub(r"\s+", "", re.sub(r"^https?://[^/]+/?", "", u))
         if len(tail) >= 15 and tail in source_compact:
             continue
@@ -331,7 +334,7 @@ def validate_site(html: str, output_dir: Path, manifest: PaperManifest) -> QARes
     if empty_alt:
         warnings.append(f"Found {len(empty_alt)} non-decorative images with empty alt text.")
 
-    # 内容保真：确认 manifest 的关键事实真的进了你写的页面（漏了记 warning）。
+    # Content fidelity: confirm the manifest's key facts really made it onto the page you wrote (warn if missing).
     lower_html = html.lower()
     title_present = bool(manifest.title) and manifest.title.lower()[:40] in lower_html
     if manifest.title and not title_present:
@@ -342,7 +345,7 @@ def validate_site(html: str, output_dir: Path, manifest: PaperManifest) -> QARes
     def _table_referenced(t: TableBlock) -> bool:
         if t.image and t.image.lower() in lower_html:
             return True
-        # 原生渲染的表（html-authoring.md 推荐做法）不贴截图：图注出现在页面即算引用。
+        # A natively rendered table (the html-authoring.md recommended approach) has no screenshot: the caption appearing on the page counts as a reference.
         cap = (t.caption or "").strip().lower()
         return bool(cap) and cap[:30] in lower_html
     tables_referenced = sum(1 for t in manifest.tables if _table_referenced(t))
@@ -393,11 +396,11 @@ def render_qa_report(qa: QAResult, manifest: PaperManifest) -> str:
     return "\n".join(lines) + "\n"
 
 
-# ── 高清重裁 ──────────────────────────────────────────────────────────────
-# MinerU 抽出的图是降采样的（偏糊）。把 PDF 整页用 pdftoppm 300dpi 渲染，再按 MinerU
-# layout.json 的 bbox 从高清整页重裁，原地覆盖 parsed/ 下的同名源图——下游 copy_manifest_images
-# 拷的就是高清版（不改文件名/manifest/引用 schema）。bbox 用 layout.json 而非 content_list
-# （后者坐标系不一致），按 reading order 与 v2 的 image/chart/table 块顺序配对。
+# ── HD re-crop ──────────────────────────────────────────────────────────────
+# MinerU's extracted figures are downsampled (a bit blurry). Render the PDF full pages with pdftoppm at 300dpi, then use MinerU's
+# layout.json bbox to re-crop from the HD full page, overwriting the same-named source figures under parsed/ in place — so downstream
+# copy_manifest_images copies the HD version (without changing filenames/manifest/reference schema). bbox comes from layout.json, not content_list
+# (whose coordinate system is inconsistent), paired with the v2 image/chart/table block order in reading order.
 
 
 def _load_layout(parsed_dir):
@@ -410,7 +413,7 @@ def _load_layout(parsed_dir):
 
 
 def _bbox_pools(layout):
-    """按 reading order 预聚合各页 image/chart/table 块 bbox（不排序，与 content 元素序对齐）。"""
+    """Pre-aggregate each page's image/chart/table block bboxes in reading order (unsorted, aligned with the content element order)."""
     pools = {"image": {}, "chart": {}, "table": {}}
     for pi, page in enumerate(layout.get("pdf_info", [])):
         for blk in page.get("para_blocks", []):
@@ -421,14 +424,14 @@ def _bbox_pools(layout):
 
 
 def _norm_bbox(b, layout, pi):
-    """[x0,y0,x1,y1] 绝对像素(top-origin) → [x,y,w,h] (0..1)。"""
+    """[x0,y0,x1,y1] absolute pixels (top-origin) → [x,y,w,h] (0..1)."""
     W, H = layout["pdf_info"][pi]["page_size"]
     x0, y0, x1, y1 = b
     return [x0/float(W), y0/float(H), (x1-x0)/float(W), (y1-y0)/float(H)]
 
 
 def _render_pages(pdf_path, pages_dir, dpi=300):
-    """整页 300dpi 渲染到 pages/page-NN.png（学术小字清晰阈值），-hide-annotations 去超链接框。"""
+    """Render full pages at 300dpi to pages/page-NN.png (the clarity threshold for small academic text); -hide-annotations removes hyperlink boxes."""
     Path(pages_dir).mkdir(parents=True, exist_ok=True)
     try:
         subprocess.run(["pdftoppm","-png","-r",str(dpi),"-hide-annotations",
@@ -439,7 +442,7 @@ def _render_pages(pdf_path, pages_dir, dpi=300):
 
 
 def _crop_from_page(pages_dir, page_no, bbox, out_path, pad=0.005):
-    """从 pages/page-NN.png 按归一化 bbox(+pad) 裁出高清图到 out_path。"""
+    """Crop an HD figure from pages/page-NN.png by normalized bbox(+pad) to out_path."""
     from PIL import Image
     cands = (list(Path(pages_dir).glob(f"page-{page_no}.png"))
              + list(Path(pages_dir).glob(f"page-{page_no:02d}.png"))
@@ -457,37 +460,37 @@ def _crop_from_page(pages_dir, page_no, bbox, out_path, pad=0.005):
 
 
 def _recrop_inplace(pdf_path: Path, parsed_dir: Path) -> dict[str, int]:
-    """按 layout.json 的 bbox 从 pdftoppm 300dpi 整页重裁，原地覆盖 parsed/ 下被引用的源图。
+    """Re-crop from pdftoppm 300dpi full pages by layout.json bbox, overwriting the referenced source figures under parsed/ in place.
 
-    遍历 *_content_list_v2.json（list[页][block]）每页 block，遇 image/chart/table，从
-    pools[kind][page_idx] 顺序弹一个 bbox（consumed 计数器，按 reading-order
-    配对），重裁覆盖该 block content.image_source.path 指向的源文件（相对 parsed_dir 定位）。
-    配不到 bbox / 裁剪失败保留原图。无 layout 或 pdftoppm 不可用则整体跳过（保留原图）。
+    Walk each page's blocks in *_content_list_v2.json (list[page][block]); on an image/chart/table, pop a bbox in order from
+    pools[kind][page_idx] (a consumed counter, paired in reading order), and re-crop over the source file the block's
+    content.image_source.path points to (located relative to parsed_dir).
+    If no bbox matches / the crop fails, keep the original figure. With no layout or pdftoppm unavailable, skip entirely (keep originals).
 
-    返回 {"recropped": n, "total": m}。覆盖的是 copy_manifest_images 会拷的源文件，故后续
-    copy 到 images/ 的就是高清版——不改文件名 / manifest / 下游引用 schema。
+    Returns {"recropped": n, "total": m}. It overwrites the source files copy_manifest_images will copy, so what's subsequently
+    copied to images/ is the HD version — without changing filenames / manifest / downstream reference schema.
     """
     parsed_dir = Path(parsed_dir)
     stats = {"recropped": 0, "total": 0}
 
     layout = _load_layout(parsed_dir)
     if not layout:
-        print("[paper2html] 无 layout.json，跳过高清重裁（保留 MinerU 抽出图）。")
+        print("[paper2html] No layout.json; skipping HD re-crop (keeping MinerU's extracted figures).")
         return stats
 
     v2_files = sorted(parsed_dir.glob("*_content_list_v2.json"))
     if not v2_files:
-        print("[paper2html] 无 content_list_v2.json，跳过高清重裁（保留 MinerU 抽出图）。")
+        print("[paper2html] No content_list_v2.json; skipping HD re-crop (keeping MinerU's extracted figures).")
         return stats
     try:
         v2 = json.loads(v2_files[0].read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
-        print("[paper2html] content_list_v2.json 无法解析，跳过高清重裁（保留 MinerU 抽出图）。")
+        print("[paper2html] content_list_v2.json could not be parsed; skipping HD re-crop (keeping MinerU's extracted figures).")
         return stats
 
     pages_dir = parsed_dir / "pages"
     if not _render_pages(Path(pdf_path), pages_dir):
-        print("[paper2html] 整页渲染失败（pdftoppm 不可用？），跳过高清重裁（保留 MinerU 抽出图）。")
+        print("[paper2html] Full-page render failed (pdftoppm unavailable?); skipping HD re-crop (keeping MinerU's extracted figures).")
         return stats
 
     pools = _bbox_pools(layout)
@@ -510,7 +513,7 @@ def _recrop_inplace(pdf_path: Path, parsed_dir: Path) -> dict[str, int]:
             if not rel:
                 continue
             stats["total"] += 1
-            # image_source.path 相对 parsed_dir；定位已落地的源图（取 basename 兜底）
+            # image_source.path is relative to parsed_dir; locate the landed source figure (fall back to basename)
             src_path = parsed_dir / rel
             if not src_path.exists():
                 src_path = parsed_dir / "images" / Path(rel).name
@@ -519,14 +522,14 @@ def _recrop_inplace(pdf_path: Path, parsed_dir: Path) -> dict[str, int]:
             avail = pools.get(kind, {}).get(page_idx, [])
             i = consumed.get((kind, page_idx), 0)
             if i >= len(avail):
-                continue  # 配不到 bbox，保留原图
+                continue  # no bbox to pair, keep the original figure
             consumed[(kind, page_idx)] = i + 1
-            page_no = page_idx + 1  # pdftoppm 页码 1-based
+            page_no = page_idx + 1  # pdftoppm page numbers are 1-based
             if _crop_from_page(pages_dir, page_no, _norm_bbox(avail[i], layout, page_idx), src_path):
                 stats["recropped"] += 1
-            # 裁剪失败保留原图（src_path 未被覆盖）
+            # on crop failure keep the original figure (src_path not overwritten)
 
-    print(f"[paper2html] 高清重裁：{stats['recropped']}/{stats['total']} 张已用 300dpi 重裁覆盖。")
+    print(f"[paper2html] HD re-crop: {stats['recropped']}/{stats['total']} figures overwritten with 300dpi re-crops.")
     return stats
 
 
@@ -633,7 +636,7 @@ def _extract_authors(author_block: str) -> list[str]:
         line = raw.strip()
         if not line or line.startswith("#") or "provided proper attribution" in line.lower():
             continue
-        # 含 4 位年份（19xx/20xx）的行是日期 / 投稿信息，不是作者——作者名不含年份。
+        # A line with a 4-digit year (19xx/20xx) is a date / submission info, not authors — author names contain no year.
         if re.search(r"\b(19|20)\d{2}\b", line):
             continue
         line = re.sub(r"\S+@\S+", "", line)
@@ -705,26 +708,26 @@ def _lead_abstract(markdown: str) -> str:
     return best if len(best.split()) >= 40 else ""
 
 
-# 库 / 工具官网（pydata 等）常出现在 "Tools and Libraries" 节，不是论文自己的资源链接。
+# Library / tool homepages (pydata etc.) often appear in a "Tools and Libraries" section and are not the paper's own resource links.
 _TOOL_DOMAINS = (
     "pydata.org", "matplotlib.org", "numpy.org", "scipy.org", "scikit-learn.org",
     "pytorch.org", "tensorflow.org", "keras.io", "rdkit.org", "opencv.org",
     "python.org", "readthedocs.io", "huggingface.co/docs",
 )
-# data 链接要有明确的数据集信号，而非任何含 "data" 子串的 URL（如 py*data*.org）。
+# A data link needs a clear dataset signal, not just any URL containing the "data" substring (e.g. py*data*.org).
 _DATA_SIGNALS = (
     "dataset", "zenodo.org", "figshare", "kaggle.com",
     "huggingface.co/datasets", "dryad", "osf.io", "/data/",
 )
-# code 链接要邻近"代码可得"信号才采纳 github URL，而非全文第一个 github——后者往往是
-# 被引工具仓库（lm-eval-harness、nanochat 等），不是本文自己的代码。\bcode\b 用词边界避开
-# encode/decode；不含 "code" 字样的纯引用条目（"A framework for…"）因此被正确跳过。
+# A code link adopts a github URL only when a "code available" signal is nearby, not the first github in the whole text — the latter is often
+# a cited tool repo (lm-eval-harness, nanochat, etc.), not the paper's own code. \bcode\b uses word boundaries to avoid
+# encode/decode; a pure citation entry with no "code" ("A framework for…") is therefore correctly skipped.
 _CODE_SIGNAL_RE = re.compile(r"\bcode\b|\bimplementation\b|\brepositor", re.IGNORECASE)
 
 
 def _clean_url(url: str) -> str:
-    # 去 markdown 转义反斜杠 + 尾随标点：MinerU 把 URL 里的 _ 等转义成 \_，而反斜杠在 URL 中非法，
-    # 留着会让带下划线的仓库链接（repo 名常含 _）404。反斜杠从不是合法 URL 字符，整串删安全。
+    # Strip markdown-escape backslashes + trailing punctuation: MinerU escapes _ etc. in URLs as \_, but a backslash is illegal in a URL,
+    # and leaving it makes underscore-bearing repo links (repo names often contain _) 404. A backslash is never a valid URL character, so removing all is safe.
     return url.replace("\\", "").rstrip(".,;")
 
 
@@ -742,8 +745,8 @@ def _extract_links(markdown: str, source: Path, paper_url: str | None, code_url:
     if code_url:
         links.code = code_url
     else:
-        # 只采纳邻近出现"代码可得"信号的 github URL（与 data 链接需数据信号同理）。
-        # 全文第一个 github 往往是被引工具仓库，裸抓必错；找不到带信号的就留空交兜底。
+        # Adopt only a github URL with a "code available" signal nearby (same idea as a data link needing a data signal).
+        # The first github in the whole text is often a cited tool repo, so a naive grab is wrong; if none with a signal is found, leave it empty for you to fill.
         for m in re.finditer(r"https?://[^\s)]*github\.com[^\s)]*", cleaned, re.IGNORECASE):
             window = cleaned[max(0, m.start() - 90):m.end() + 20]
             if _CODE_SIGNAL_RE.search(window):
@@ -753,7 +756,7 @@ def _extract_links(markdown: str, source: Path, paper_url: str | None, code_url:
     for url in urls:
         lower = url.lower()
         if any(dom in lower for dom in _TOOL_DOMAINS):
-            continue  # 库 / 工具官网不是论文的资源链接
+            continue  # library / tool homepages are not the paper's resource links
         if not links.project and any(word in lower for word in ["github.io", "project", "demo"]):
             links.project = url
         if not links.data and any(word in lower for word in _DATA_SIGNALS):

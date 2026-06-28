@@ -1,16 +1,16 @@
 """
-paper2html 工具函数模块
+paper2html utility module
 
-协调式（你主导）下的基础设施：日志、工作区解析、JSON 读写、Rich 输出。
-工作区落在论文旁 `<pdf目录>/.paper2anything/html/<stem>/`（同目录多篇论文按 `<stem>` 分篇）。
+Infrastructure for the you-led, coordinated flow: logging, workspace resolution, JSON read/write, Rich output.
+The workspace lands next to the paper at `<pdf-dir>/.paper2anything/html/<stem>/` (multiple papers in one directory are split by `<stem>`).
 
-布局（root = .paper2anything/html/<stem>/）：
-  root/clean.md       normalize 后的 markdown（parse_pdf 写，你读）
-  root/manifest.json  确定性抽取的事实（parse_pdf 写，闸门1）
-  root/index.html     你亲手写的单页网站
-  root/validation.json + root/qa_report.md  QA 结果（validate 写，闸门2）
-  root/parsed/        MinerU 原始解析（含 parsed/images/ 所有裁图）
-  root/images/        页面引用的图（parse_pdf 从 parsed 复制；你以 images/<name> 引用）
+Layout (root = .paper2anything/html/<stem>/):
+  root/clean.md       normalized markdown (parse_pdf writes, you read)
+  root/manifest.json  deterministically extracted facts (parse_pdf writes, gate 1)
+  root/index.html     the single-page website you hand-author
+  root/validation.json + root/qa_report.md  QA results (validate writes, gate 2)
+  root/parsed/        MinerU raw parse (includes parsed/images/ with all crops)
+  root/images/        the figures the page references (parse_pdf copies from parsed; referenced by you as images/<name>)
   root/logs/          *_result.json
 """
 
@@ -28,7 +28,7 @@ console = Console()
 
 
 def setup_logging(log_level: str = "INFO") -> logging.Logger:
-    """配置日志系统"""
+    """Configure the logging system"""
     logging.basicConfig(
         level=getattr(logging, log_level),
         format="%(message)s",
@@ -42,17 +42,17 @@ logger = setup_logging()
 
 
 def resolve_workspace(workdir: str | Path) -> dict[str, Path]:
-    """解析协调式工作区（root = 论文旁 .paper2anything/html/<stem>/），按需创建子目录。
+    """Resolve the coordinated workspace (root = .paper2anything/html/<stem>/ next to the paper), creating subdirectories as needed.
 
-    供机械脚本（parse/extract/validate）共用：每个脚本拿到同一个 --workdir 即对齐到
-    同一组产物目录。index.html / clean.md / manifest.json 直接落在 root。
+    Shared by the mechanical scripts (parse/extract/validate): each script given the same --workdir aligns to
+    the same set of output directories. index.html / clean.md / manifest.json land directly in root.
     """
     base = Path(workdir).expanduser().resolve()
     dirs = {
         "root": base,
-        "parsed": base / "parsed",      # MinerU 原始解析（含 parsed/images/ 所有裁图）
-        "images": base / "images",      # 页面引用的图（parse_pdf 从 parsed 复制）
-        "logs": base / "logs",          # 各步骤 *_result.json + QA 产物
+        "parsed": base / "parsed",      # MinerU raw parse (includes parsed/images/ with all crops)
+        "images": base / "images",      # the figures the page references (parse_pdf copies from parsed)
+        "logs": base / "logs",          # per-step *_result.json (validation.json + qa_report.md land in root)
     }
     for d in dirs.values():
         d.mkdir(parents=True, exist_ok=True)
@@ -60,28 +60,28 @@ def resolve_workspace(workdir: str | Path) -> dict[str, Path]:
 
 
 def save_json(data: Any, path: Path, indent: int = 2) -> None:
-    """将数据保存为 JSON 文件"""
+    """Save data to a JSON file"""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=indent)
-    logger.debug(f"已保存: {path}")
+    logger.debug(f"Saved: {path}")
 
 
 def load_json(path: Path) -> Any:
-    """从 JSON 文件加载数据"""
+    """Load data from a JSON file"""
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
 def save_stage_result(result: dict, stage_name: str, workspace: dict[str, Path]) -> None:
-    """保存步骤执行结果到日志目录"""
+    """Save a step's execution result to the logs directory"""
     log_path = workspace["logs"] / f"{stage_name}_result.json"
     save_json(result, log_path)
 
 
 def print_stage_header(title: str) -> None:
-    """打印步骤标题"""
+    """Print a step header"""
     console.print(
         Panel(
             Text(title, style="bold cyan", justify="center"),

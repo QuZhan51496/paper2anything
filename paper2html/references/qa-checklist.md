@@ -1,30 +1,34 @@
-# QA 检查项与修复（validate 产出 → 你据此修 index.html）
+# QA checks and fixes (validate output → you fix index.html accordingly)
 
-`validate.py` 校验你写的 `index.html`，产出 `validation.json` + `qa_report.md`。
-**error 必须清零**才算过；**warning 看情况修**（多数该修，少数可接受）。
+`validate.py` checks the `index.html` you wrote and produces `validation.json` + `qa_report.md`.
+**Errors must be cleared to zero** to pass; **warnings are fixed case by case** (fix most, a few are acceptable).
 
-## error（结构性，必修）
+## error (structural, must fix)
 
-| 报告 | 原因 | 修法 |
+| Report | Cause | Fix |
 |---|---|---|
-| `HTML does not start with <!DOCTYPE html>` | 缺文档类型声明 | 文件首行写 `<!DOCTYPE html>` |
-| `HTML is missing </html>` | 结构不完整 | 补 `</html>` 闭合 |
-| `Missing image files: images/x` | 引用了不存在的图 | 核对文件名（取自 `manifest.figures[].file`/`tables[].image`）；只引用 parse_pdf 复制进 `images/` 的图；别拼错哈希名 |
-| `Found N empty href="#" links` | 空锚点 | 给真实链接或去掉该 `<a>` |
+| `HTML does not start with <!DOCTYPE html>` | Missing doctype declaration | Write `<!DOCTYPE html>` as the first line |
+| `HTML is missing </html>` | Incomplete structure | Add the closing `</html>` |
+| `Missing image files: images/x` | References a non-existent image | Check the filename (from `manifest.figures[].file`/`tables[].image`); only reference images parse_pdf copied into `images/`; don't mistype the hash name |
+| `Found N empty href="#" links` | Empty anchors | Give a real link or remove the `<a>` |
 
-## warning（按需修）
+## warning (fix as needed)
 
-| 报告 | 含义 | 处理 |
+| Report | Meaning | Handling |
 |---|---|---|
-| `Paper title not found in the page` | 标题前 40 字没出现在页面 | 确保 hero 用 manifest 的真实标题原文 |
-| `None of the extracted figures are referenced` | 一张抽出的图都没用 | 至少展示主图（架构/pipeline） |
-| `None of the extracted result tables are referenced` | 结果表全没用 | 把结果表截图放进 results 区 |
-| `Repeated image references` | 同一图被引多次 | 一般去重；除非刻意（teaser+gallery） |
-| `Fewer than three impact claims were extracted` | manifest.claims<3 | 抽取局限，不必强凑；可据 abstract/results 在文案里自然写关键数字 |
-| `No paper link was detected` | links.paper 空（不假设 arxiv） | 知道规范链接就重跑 Step 1 加 `--paper-url`；否则接受留空 |
-| `non-decorative images with empty alt` | 有图 `alt=""` | 补图注作 alt；纯装饰图加 `aria-hidden="true"` |
+| `Paper title not found in the page` | The first 40 chars of the title don't appear on the page | Make sure the hero uses the real title text from the manifest |
+| `None of the extracted figures are referenced` | Not one extracted figure is used | Show at least the main figure (architecture/pipeline) |
+| `None of the extracted result tables are referenced` | No result table is used | Put a result-table screenshot in the results section |
+| `Repeated image references` | The same image is referenced multiple times | Usually deduplicate; unless intentional (teaser+gallery) |
+| `Fewer than three impact claims were extracted` | manifest.claims<3 | Extraction limit, no need to pad; you can naturally write the key numbers from abstract/results into the copy |
+| `No paper link was detected` | links.paper empty (no arxiv assumption) | If you know the canonical link, re-run Step 1 with `--paper-url`; otherwise accept it empty |
+| `No code link was detected` | links.code empty | If the paper provides a code repo, re-run Step 1 with `--code-url`; otherwise accept it empty |
+| `No figures were detected` | manifest.figures empty | Extraction limit (or the paper truly has no figures); fine to leave a text-only page |
+| `No table screenshots were detected; results will use extracted HTML tables` | No table has a cropped screenshot | Acceptable; render the result tables as native HTML, or re-run Step 1 if a screenshot is expected |
+| `Link(s) not traceable to the paper source (possible fabrication; verify or remove)` | A clickable `<a href="http…">` on the page can't be traced to the paper source or a manifest link — likely a fabricated/hallucinated URL | Remove the link or replace it with a real one from `manifest.links` / the paper; only fabrications are flagged (CDN/font and arxiv/doi domains are allowed) |
+| `non-decorative images with empty alt` | An image has `alt=""` | Add the caption as alt; for purely decorative images add `aria-hidden="true"` |
 
-## 循环
+## Loop
 
-修完 `index.html` → 重跑 `validate.py --workdir <...>` → 直到 error 清零、warning 可接受。
-QA 不改你的 HTML，只报告——主笔始终是你。
+Fix `index.html` → re-run `validate.py --workdir <...>` → until errors are zero and warnings acceptable.
+QA doesn't edit your HTML, it only reports — you remain the lead author throughout.
