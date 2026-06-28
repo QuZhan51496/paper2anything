@@ -194,6 +194,13 @@ paper2anything/
       </a><br/>
       <sub>paper2poster</sub>
     </td>
+    <td align="center">
+      <a href="https://github.com/YuanDaoze">
+        <img src="https://github.com/YuanDaoze.png" width="80" alt="Tao Xiong"/><br/>
+        <sub><b>Tao Xiong</b></sub>
+      </a><br/>
+      <sub>paper2html</sub>
+    </td>
   </tr>
 </table>
 
