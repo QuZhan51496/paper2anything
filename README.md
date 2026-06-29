@@ -9,6 +9,8 @@
 
 **English** | [简体中文](README.zh-CN.md)
 
+[Showcase](#showcase) · [Installation](#installation) · [Usage](#usage) · [Output locations](#output-locations) · [Directory structure](#directory-structure) · [Contributors](#contributors) · [Acknowledgements](#acknowledgements)
+
 </div>
 
 <div align="center">
