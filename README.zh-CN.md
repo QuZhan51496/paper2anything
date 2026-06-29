@@ -31,11 +31,16 @@
 
 ## 效果展示
 
-**paper2poster** 产物示例——9 张海报，每张都仅凭一篇论文 PDF 生成，覆盖 9 个研究领域（药物设计、图形学、人机交互、材料科学、X 射线检测、NLP / 大模型安全、光学与光子学、统计机器学习、计算机视觉）：
+<details>
+<summary><b>paper2poster</b></summary>
+
+**paper2poster** 产物示例——9 张海报，覆盖 9 个研究领域（药物设计、图形学、人机交互、材料科学、X 射线检测、NLP / 大模型安全、光学与光子学、统计机器学习、计算机视觉）：
 
 <div align="center">
-<img src="paper2poster/showcase/SHOWCASE_3x3.png" alt="paper2poster 从论文 PDF 生成的 9 张会议海报，覆盖 9 个研究领域" width="100%" />
+<img src="assets/showcase/paper2poster/SHOWCASE_3x3.png" alt="paper2poster 从论文 PDF 生成的 9 张会议海报，覆盖 9 个研究领域" width="100%" />
 </div>
+
+</details>
 
 ---
 
@@ -168,6 +173,7 @@ paper2anything/
 ├── README.zh-CN.md          # 中文版（本文件）
 ├── tools/                   # 安装脚本
 ├── assets/                  # 静态文件
+│   └── showcase/            # 各 skill 产物样例（assets/showcase/<skill>/）
 ├── paper2slides/            # 论文 → slides
 │   ├── SKILL.md
 │   ├── references/          # 设计风格、大纲启发式、pipeline、schema、pptxgenjs
@@ -175,7 +181,6 @@ paper2anything/
 ├── paper2poster/            # 论文 → 海报 HTML/PNG
 │   ├── SKILL.md
 │   ├── references/          # 海报示例、配色、版式指南
-│   ├── showcase/            # 本 skill 生成的海报样例
 │   └── scripts/             # parse_pdf / auto_outline / geom_check / collect_figures / screenshot / check_env
 ├── paper2html/              # 论文 → 单页项目主页
 │   ├── SKILL.md
