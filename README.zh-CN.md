@@ -34,6 +34,17 @@
 ## 效果展示
 
 <details>
+<summary><b>paper2slides</b></summary>
+
+**paper2slides** 产物示例——8 套 deck，覆盖不同研究领域（HCI / VR、计算机视觉、药物发现、安全与溯源、多模态智能体、量子计算、优化、机器学习理论）：
+
+<div align="center">
+<img src="assets/showcase/paper2slides/SHOWCASE_decks.png" alt="paper2slides 从论文 PDF 生成的 8 套幻灯片，覆盖不同研究领域" width="100%" />
+</div>
+
+</details>
+
+<details>
 <summary><b>paper2poster</b></summary>
 
 **paper2poster** 产物示例——9 张海报，覆盖 9 个研究领域（药物设计、图形学、人机交互、材料科学、X 射线检测、NLP / 大模型安全、光学与光子学、统计机器学习、计算机视觉）：
