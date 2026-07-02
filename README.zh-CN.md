@@ -49,6 +49,14 @@
 <img src="assets/showcase/paper2poster/SHOWCASE_3x3.png" alt="paper2poster 从论文 PDF 生成的 9 张会议海报，覆盖 9 个研究领域" width="100%" />
 </div>
 
+### paper2html
+
+**paper2html** 产物示例——8 个项目主页，覆盖不同研究领域（HCI / VR、药物发现、机器写作、机器人、安全、软件工程、智能体技能、金融交易）：
+
+<div align="center">
+<img src="assets/showcase/paper2html/SHOWCASE_pages.png" alt="paper2html 从论文 PDF 生成的 8 个项目主页，覆盖不同研究领域" width="100%" />
+</div>
+
 ---
 
 ## 环境安装
