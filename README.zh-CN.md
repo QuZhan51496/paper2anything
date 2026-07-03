@@ -59,7 +59,7 @@
 
 ### paper2xhs
 
-**paper2xhs** 产物示例——10 篇小红书笔记，覆盖不同研究领域（AI、生物学、计算机视觉、多模态智能体、机器人、软件工程、AI for Science、优化、大语言模型）：
+**paper2xhs** 产物示例——10 篇小红书笔记，覆盖不同研究领域（世界模型、智能体群体、AI 供应链安全、大模型测评、机器人操作、编程教学、机器翻译、气候治理仿真、医疗诊断、因果推断）：
 
 <div align="center">
 <img src="assets/showcase/paper2xhs/SHOWCASE_tenpapers.png" alt="paper2xhs 从论文 PDF 生成的 10 篇小红书笔记，覆盖不同研究领域" width="100%" />
@@ -67,7 +67,7 @@
 
 ### paper2wechat
 
-**paper2wechat** 产物示例——12 篇微信公众号文章，覆盖不同研究领域（AI、生物学、计算机视觉、多模态智能体、机器人、软件工程、AI for Science、优化、大语言模型）：
+**paper2wechat** 产物示例——12 篇微信公众号文章，覆盖不同研究领域（世界模型、智能体群体、AI 供应链安全、大模型测评、机器人操作、编程教学、机器翻译、气候治理仿真、医疗诊断、因果推断、高效推理、NLP）：
 
 <div align="center">
 <img src="assets/showcase/paper2wechat/SHOWCASE_cover.jpg" alt="paper2wechat 从论文 PDF 生成的 12 篇微信公众号封面，覆盖不同研究领域" width="100%" />
