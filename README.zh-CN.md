@@ -57,6 +57,22 @@
 <img src="assets/showcase/paper2html/SHOWCASE_pages.png" alt="paper2html 从论文 PDF 生成的 8 个项目主页，覆盖不同研究领域" width="100%" />
 </div>
 
+### paper2xhs
+
+**paper2xhs** 产物示例——10 篇小红书笔记，覆盖不同研究领域（AI、生物学、计算机视觉、多模态智能体、机器人、软件工程、AI for Science、优化、大语言模型）：
+
+<div align="center">
+<img src="assets/showcase/paper2xhs/SHOWCASE_tenpapers.png" alt="paper2xhs 从论文 PDF 生成的 10 篇小红书笔记，覆盖不同研究领域" width="100%" />
+</div>
+
+### paper2wechat
+
+**paper2wechat** 产物示例——12 篇微信公众号文章，覆盖不同研究领域（AI、生物学、计算机视觉、多模态智能体、机器人、软件工程、AI for Science、优化、大语言模型）：
+
+<div align="center">
+<img src="assets/showcase/paper2wechat/SHOWCASE_cover.jpg" alt="paper2wechat 从论文 PDF 生成的 12 篇微信公众号封面，覆盖不同研究领域" width="100%" />
+</div>
+
 ---
 
 ## 环境安装
