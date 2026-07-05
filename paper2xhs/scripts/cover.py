@@ -213,6 +213,7 @@ def generate_cover(client, understanding: dict, title: str, subtitle: str, outpu
     """调用 GPT Image API 生成封面图"""
     prompt = _build_image_prompt(understanding, title, subtitle)
     print_info(f"封面 Prompt: {prompt[:200]}...")
+    print_info("正在调用生图 API（high 质量单次可达数分钟，经中转更久）——请勿给本命令设过短超时")
 
     try:
         response = client.images.generate(

@@ -24,7 +24,7 @@
 | **paper2slides** | 演讲幻灯片 | `.pptx` | "把这篇论文做成 PPT"、"生成幻灯片"、"deck this paper" |
 | **paper2poster** | 会议海报 | `poster.html` + `poster.png` | "make a poster from this paper"、"论文转海报" |
 | **paper2html** | 单页项目主页 | `index.html` | "论文转网页"、"生成 project page / landing page" |
-| **paper2xhs** | 小红书帖子 | `xhs_post.json/md` + 封面 | "把这篇论文发小红书"、"论文转小红书" |
+| **paper2xhs** | 小红书多图帖 | `xhs_post.json/md` + 封面 + 配图 | "把这篇论文发小红书"、"论文转小红书" |
 | **paper2wechat** | 公众号推文 | `wechat_article.md/html` + 封面 | "把论文写成公众号文章"、"论文转公众号" |
 
 每个子目录都是一个独立、可自动触发的 skill（各有 `SKILL.md`）。
@@ -187,7 +187,7 @@ set -a; source <paper2anything 包根>/.env; set +a
 | paper2slides | `<论文名>_slides/`（`<论文名>.pptx`） | `.paper2anything/slides/<论文名>/` |
 | paper2poster | `<论文名>_poster/`（`poster.png` + `poster.html` + `images/`） | `.paper2anything/poster/<论文名>/` |
 | paper2html | `<论文名>_html/`（`index.html` + `images/`） | `.paper2anything/html/<论文名>/` |
-| paper2xhs | `<论文名>_xhs/`（`xhs_post.md` + `.json` + `cover.png`） | `.paper2anything/xhs/<论文名>/` |
+| paper2xhs | `<论文名>_xhs/`（`xhs_post.md` + `.json` + `cover.png` + `post_images/`） | `.paper2anything/xhs/<论文名>/` |
 | paper2wechat | `<论文名>_wechat/`（`wechat_article.md` + `.json` + `cover.jpg` + `figures/`） | `.paper2anything/wechat/<论文名>/` |
 
 ---
@@ -220,7 +220,7 @@ paper2anything/
 ├── paper2xhs/               # 论文 → 小红书
 │   ├── SKILL.md
 │   ├── references/          # 发布指引
-│   └── scripts/             # parse_pdf / cover / publish / xhs_login + utils
+│   └── scripts/             # parse_pdf / cover / post_images / publish / xhs_login + utils
 └── paper2wechat/            # 论文 → 公众号
     ├── SKILL.md
     └── scripts/             # parse_pdf / cover / publish + utils

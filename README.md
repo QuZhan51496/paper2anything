@@ -24,7 +24,7 @@ A skills pack that turns an academic paper PDF into any of several promotional a
 | **paper2slides** | a presentation deck | `.pptx` | "make slides from this paper", "generate a deck from this PDF", "deck this paper" |
 | **paper2poster** | a conference poster | `poster.html` + `poster.png` | "make a poster from this paper", "turn this paper into a poster" |
 | **paper2html** | a single-page project homepage | `index.html` | "turn this paper into a webpage", "generate a project page / landing page" |
-| **paper2xhs** | a Xiaohongshu (rednote) post | `xhs_post.json/md` + cover | "post this paper to Xiaohongshu", "turn this paper into a rednote post" |
+| **paper2xhs** | a Xiaohongshu (rednote) multi-image post | `xhs_post.json/md` + cover + figure images | "post this paper to Xiaohongshu", "turn this paper into a rednote post" |
 | **paper2wechat** | a WeChat Official Account article | `wechat_article.md/html` + cover | "write this paper as a WeChat article", "turn this paper into a WeChat post" |
 
 Each subdirectory is an independent, auto-triggerable skill (each has its own `SKILL.md`).
@@ -187,7 +187,7 @@ Each skill's final deliverable lands in the same directory as the paper; all int
 | paper2slides | `<paper-name>_slides/` (`<paper-name>.pptx`) | `.paper2anything/slides/<paper-name>/` |
 | paper2poster | `<paper-name>_poster/` (`poster.png` + `poster.html` + `images/`) | `.paper2anything/poster/<paper-name>/` |
 | paper2html | `<paper-name>_html/` (`index.html` + `images/`) | `.paper2anything/html/<paper-name>/` |
-| paper2xhs | `<paper-name>_xhs/` (`xhs_post.md` + `.json` + `cover.png`) | `.paper2anything/xhs/<paper-name>/` |
+| paper2xhs | `<paper-name>_xhs/` (`xhs_post.md` + `.json` + `cover.png` + `post_images/`) | `.paper2anything/xhs/<paper-name>/` |
 | paper2wechat | `<paper-name>_wechat/` (`wechat_article.md` + `.json` + `cover.jpg` + `figures/`) | `.paper2anything/wechat/<paper-name>/` |
 
 ---
@@ -220,7 +220,7 @@ paper2anything/
 ├── paper2xhs/               # paper → Xiaohongshu
 │   ├── SKILL.md
 │   ├── references/          # publish guide
-│   └── scripts/             # parse_pdf / cover / publish / xhs_login + utils
+│   └── scripts/             # parse_pdf / cover / post_images / publish / xhs_login + utils
 └── paper2wechat/            # paper → WeChat
     ├── SKILL.md
     └── scripts/             # parse_pdf / cover / publish + utils

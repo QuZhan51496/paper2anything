@@ -2,7 +2,7 @@
 publish — 发布到小红书（xiaohongshu-mcp REST 客户端）
 
 发布前先查登录状态（GET /api/v1/login/status）：
-  - 已登录 → 读 xhs_post.json + cover.png 拼载荷 → POST /api/v1/publish
+  - 已登录 → 读 xhs_post.json + cover.png（+ post_images/ 配图）拼载荷 → POST /api/v1/publish
   - 未登录 → 提示按 references/publish-guide.md 完成登录，退出码 2
 
 发布能力由开源项目 xiaohongshu-mcp（作者 xpzouying）提供；用户自行从其官方
@@ -11,6 +11,7 @@ release 下载二进制并启动服务（默认 http://localhost:18060，可经 
 
 import argparse
 import os
+import re
 import sys
 
 import requests
@@ -45,8 +46,11 @@ def check_login(mcp_url: str) -> tuple[bool, str | None]:
     return bool(data.get("is_logged_in")), data.get("username")
 
 
+XHS_MAX_IMAGES = 18  # 小红书图集上限
+
+
 def _build_payload(workspace: dict, visibility: str) -> dict | None:
-    """从 xhs_post.json + cover.png 拼 /publish 载荷。缺关键字段返回 None。"""
+    """从 xhs_post.json + cover.png（+ post_images/ 配图）拼 /publish 载荷。缺关键字段返回 None。"""
     post_path = workspace["xhs"] / "xhs_post.json"
     if not post_path.exists():
         print_error(f"帖子文件不存在: {post_path}")
@@ -64,7 +68,7 @@ def _build_payload(workspace: dict, visibility: str) -> dict | None:
         lines.pop()
     content = "\n".join(lines).strip()[:1000]
 
-    # 封面（发布至少需 1 张图）
+    # 图集 = 封面 + post_images/ 配图（按 p1、p2… 序号排），至少需 1 张
     cover = workspace["xhs"] / "cover.png"
     if not cover.exists():
         print_error(f"未找到封面 cover.png（发布至少需 1 张图）: {cover}")
@@ -73,10 +77,20 @@ def _build_payload(workspace: dict, visibility: str) -> dict | None:
         print_error("标题或正文为空，无法发布")
         return None
 
+    images = [str(cover.resolve())]
+    post_dir = workspace["root"] / "post_images"
+    if post_dir.is_dir():
+        extras = sorted((p for p in post_dir.glob("p[0-9]*") if p.is_file()),
+                        key=lambda p: int(re.sub(r"\D", "", p.stem) or "0"))
+        images += [str(p.resolve()) for p in extras]
+    if len(images) > XHS_MAX_IMAGES:
+        print_warning(f"图集 {len(images)} 张超过小红书 {XHS_MAX_IMAGES} 张上限，截取前 {XHS_MAX_IMAGES} 张")
+        images = images[:XHS_MAX_IMAGES]
+
     return {
         "title": title,
         "content": content,
-        "images": [str(cover.resolve())],
+        "images": images,
         "tags": tags,
         "visibility": visibility,
     }
@@ -107,7 +121,8 @@ def run(workdir: str, visibility: str, mcp_url: str) -> dict:
 
     print_info(f"标题（{len(payload['title'])} 字）：{payload['title']}")
     print_info(
-        f"正文 {len(payload['content'])} 字 ｜ 话题 {len(payload['tags'])} 个 ｜ 可见性：{visibility}"
+        f"正文 {len(payload['content'])} 字 ｜ 图 {len(payload['images'])} 张 ｜ "
+        f"话题 {len(payload['tags'])} 个 ｜ 可见性：{visibility}"
     )
 
     # 3) 发布

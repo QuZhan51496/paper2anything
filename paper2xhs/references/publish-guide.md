@@ -62,14 +62,14 @@ cd ~/.paper2anything/xhs
 4. **登录成功后**：`cookies.json` 写出。**先 `pkill -x xiaohongshu-mcp` 停掉，再去掉 `-rod monitor` flag 重启 mcp**（普通发布不需要 monitor）——重启时才会加载 cookies，再用 status 确认 `is_logged_in:true`。
 
 ## 发布
-登录态 OK 后，发布由 `scripts/publish.py` 完成（读 `xhs_post.json` + `cover.png`，`POST /api/v1/publish`）：
+登录态 OK 后，发布由 `scripts/publish.py` 完成（读 `xhs_post.json` + `cover.png` + `post_images/` 配图，`POST /api/v1/publish`）：
 
 ```bash
 conda run -n paper2anything --no-capture-output \
   python "${SKILL_DIR}/scripts/publish.py" --workdir "$WORKDIR" --visibility "公开可见"
 ```
 
-`title`≤20 字、`content`≤1000 字、`images` 用封面的**服务器本地绝对路径**、`visibility` 可选「公开可见 / 仅自己可见 / 仅互关好友可见」。
+`title`≤20 字、`content`≤1000 字、`images` 为封面 + `post_images/` 配图的**本地绝对路径**列表（含封面最多 18 张）、`visibility` 可选「公开可见 / 仅自己可见 / 仅互关好友可见」。
 
 ## 坑速查
 - **登录成功后要重启 mcp 才会加载 cookies**：mcp 仅在启动时读 `cookies.json`。首次登录拿到 cookies 后重启一次（无头机顺便去掉 monitor flag），status 才会变 `is_logged_in:true`。
