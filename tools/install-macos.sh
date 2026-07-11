@@ -41,7 +41,7 @@ for arg in "$@"; do
     -h|--help)
       awk 'NR==1{next} /^#/{sub(/^# ?/,""); print; next} {exit}' "${BASH_SOURCE[0]}"
       exit 0 ;;
-    *) red "未知参数: $arg（用 -h 看用法）"; exit 1 ;;
+    *) red "未知参数: $arg (用 -h 看用法)"; exit 1 ;;
   esac
 done
 
@@ -82,7 +82,7 @@ if [[ -f "$repo_root/.env" ]]; then
   green ".env 已存在"
 elif [[ -f "$repo_root/.env.example" ]]; then
   cp "$repo_root/.env.example" "$repo_root/.env"
-  green ".env 已从 .env.example 复制 —— 填入你的 key（至少 MINERU_API_TOKEN）"
+  green ".env 已从 .env.example 复制 —— 填入你的 key (至少 MINERU_API_TOKEN)"
 else
   yellow ".env 与 .env.example 都不存在，跳过"
 fi
@@ -103,7 +103,7 @@ env_marker="# >>> paper2anything env >>>"
 echo
 if [[ "$SHELL_INIT" == 1 ]]; then
   if [[ -f "$rc_file" ]] && grep -qF "$env_marker" "$rc_file"; then
-    green "shell 自动导出已在 $rc_file（跳过，幂等）"
+    green "shell 自动导出已在 $rc_file (跳过，幂等)"
   else
     {
       printf '\n%s\n' "$env_marker"
@@ -124,7 +124,7 @@ if [[ "$CREATE_ENV" == 1 ]]; then
     red "conda 不在 PATH，无法 --create-env；先装 miniconda/anaconda"; exit 1
   fi
   if conda env list 2>/dev/null | awk '{print $1}' | grep -qx "$ENV_NAME"; then
-    yellow "  env 已存在 → 按 environment.yml 更新（--prune）"
+    yellow "  env 已存在 → 按 environment.yml 更新 (--prune)"
     conda env update -n "$ENV_NAME" -f "$repo_root/environment.yml" --prune
   else
     conda env create -f "$repo_root/environment.yml"
@@ -132,8 +132,8 @@ if [[ "$CREATE_ENV" == 1 ]]; then
   echo "  装 playwright chromium ..."
   conda run -n "$ENV_NAME" python -m playwright install chromium \
     || yellow "  playwright chromium 安装失败，可稍后手动重试"
-  echo "  自检（pip check + 关键库 import）..."
-  conda run -n "$ENV_NAME" pip check || yellow "  pip check 有告警（见上）"
+  echo "  自检 (pip check + 关键库 import)..."
+  conda run -n "$ENV_NAME" pip check || yellow "  pip check 有告警 (见上)"
   conda run -n "$ENV_NAME" python -c \
     "import requests, rich, dotenv, PIL, openai, playwright, markitdown; print('  关键库 import OK')" \
     || red "  关键库 import 失败 —— pip 可能 PARTIAL，按 README 单独补装后再 pip check"
@@ -154,8 +154,8 @@ check() {
 }
 
 check "conda"    "conda"     "装 miniconda/anaconda"
-check "node"     "node"      "brew install node（Node.js v20+）；paper2slides 渲染 PPT 用"
-check "pdftoppm" "pdftoppm"  "brew install poppler（paper2slides 整页渲染）"
+check "node"     "node"      "brew install node (Node.js v20+)；paper2slides 渲染 PPT 用"
+check "pdftoppm" "pdftoppm"  "brew install poppler (paper2slides 整页渲染)"
 
 # libreoffice（macOS：cask 装的 soffice 默认不在 PATH，额外查 app 包）
 mac_soffice="/Applications/LibreOffice.app/Contents/MacOS/soffice"
@@ -163,9 +163,9 @@ if command -v soffice >/dev/null 2>&1; then
   green "  [ok] libreoffice → $(command -v soffice)"
 elif [[ -x "$mac_soffice" ]]; then
   green "  [ok] libreoffice → $mac_soffice"
-  yellow "       （不在 PATH；如 slides 视觉 QA 找不到 soffice，可: sudo ln -s \"$mac_soffice\" /usr/local/bin/soffice）"
+  yellow "       (不在 PATH；如 slides 视觉 QA 找不到 soffice，可: sudo ln -s \"$mac_soffice\" /usr/local/bin/soffice)"
 else
-  yellow "  [missing] libreoffice — brew install --cask libreoffice（paper2slides 视觉 QA）"
+  yellow "  [missing] libreoffice — brew install --cask libreoffice (paper2slides 视觉 QA)"
 fi
 
 # conda env
@@ -173,7 +173,7 @@ if command -v conda >/dev/null 2>&1; then
   if conda env list 2>/dev/null | awk '{print $1}' | grep -qx "$ENV_NAME"; then
     green "  [ok] conda env '$ENV_NAME'"
   else
-    yellow "  [missing] conda env '$ENV_NAME' — 跑: conda env create -f $repo_root/environment.yml（或本脚本加 --create-env）"
+    yellow "  [missing] conda env '$ENV_NAME' — 跑: conda env create -f $repo_root/environment.yml (或本脚本加 --create-env)"
   fi
 fi
 
@@ -204,9 +204,9 @@ if [[ -n "${MINERU_API_TOKEN:-}" ]]; then
 elif [[ -f "$repo_root/.env" ]] \
      && grep -q '^MINERU_API_TOKEN=' "$repo_root/.env" \
      && ! grep -q '^MINERU_API_TOKEN=your-mineru-token' "$repo_root/.env"; then
-  green "  [ok] .env 内已填 MINERU_API_TOKEN（skill 运行时自动读取）"
+  green "  [ok] .env 内已填 MINERU_API_TOKEN (skill 运行时自动读取)"
 else
-  yellow "  [todo] MINERU_API_TOKEN 未设置 — 在包根 .env 填入即可（https://mineru.net 申请；skill 会自动从 .env 读取）"
+  yellow "  [todo] MINERU_API_TOKEN 未设置 — 在包根 .env 填入即可 (https://mineru.net 申请；skill 会自动从 .env 读取)"
 fi
 
 # ---------- 收尾 ----------
@@ -215,6 +215,6 @@ echo
 if [[ "$fail" == 0 ]]; then
   green "Done. 5 个 skill 已注册。在 Claude Code 里测试，如: /paper2html <paper>.pdf"
 else
-  yellow "完成，但有 skill 注册失败（见上）。修正后重跑本脚本。"
+  yellow "完成，但有 skill 注册失败 (见上)。修正后重跑本脚本。"
   exit 1
 fi
